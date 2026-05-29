@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Home Network · 3 variations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    #root { width: 100%; height: 100%; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="src/design-canvas.jsx"></script>
+  <script type="text/babel" src="src/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="src/data.jsx"></script>
+  <script type="text/babel" src="src/reference/variant-atelier.jsx"></script>
+  <script type="text/babel" src="src/variant-noc.jsx"></script>
+  <script type="text/babel" src="src/reference/variant-card.jsx"></script>
+  <script type="text/babel" src="src/view-detail.jsx"></script>
+  <script type="text/babel" src="src/view-cables.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showOffline": true,
+      "density": "regular",
+      "layout": "radial",
+      "polling": "5min"
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      // common artboard dimensions
+      const W = 1280, H = 800;
+
+      return (
+        <>
+          <DesignCanvas>
+            <DCSection
+              id="primary"
+              title="Home · ホーム画面"
+              subtitle="radial / spine をヘッダーで切替可能 · これが製品としてのメインビュー"
+            >
+              <DCArtboard id="primary-home" label="メイン画面 · レイアウト切替をヘッダーに内蔵" width={1440} height={860}>
+                <NocVariant
+                  tweaks={t}
+                  onLayoutChange={(v) => setTweak('layout', v)}
+                />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="detail"
+              title="詳細ビュー ─ 1台を深掘り"
+              subtitle="マップでノードをクリックした際に表示される画面 · network カードに patch / cable 行を追加しました"
+            >
+              <DCArtboard id="detail-nas" label="詳細 · NAS ─ 有線・cable 表示あり" width={1280} height={900}>
+                <DetailView deviceId="nas" tweaks={t} onBack={() => {}} />
+              </DCArtboard>
+              <DCArtboard id="detail-pix" label="詳細 · Pixel 8 (オフライン) ─ 無線なので cable 行なし" width={1280} height={900}>
+                <DetailView deviceId="pix" tweaks={t} onBack={() => {}} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="cables"
+              title="ケーブル & スイッチ・インベントリ ─ 新規追加"
+              subtitle="スイッチ/ハブをポート単位で可視化 + ケーブルを台帳化 + 新規ケーブル追加フォーム。点検・買い足し判断に。"
+            >
+              <DCArtboard id="cables-main" label="インベントリ · ポート可視化 + 一覧 + 追加フォーム" width={1440} height={1180}>
+                <CablesView tweaks={t} onBack={() => {}} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="b-layouts"
+              title="選択した2レイアウトの比較"
+              subtitle="並べて見て雰囲気を確認 · 階層ツリー・グループ枠はボツしたので隠しました"
+            >
+              <DCArtboard id="b-radial" label="① 放射 (radial) ─ 全体把握と雰囲気重視" width={W} height={H}>
+                <NocVariant tweaks={{ ...t, layout: 'radial' }} />
+              </DCArtboard>
+              <DCArtboard id="b-spine" label="② 水平バス (spine) ─ ネットワーク図らしさ・加途の余裕あり" width={W} height={H}>
+                <NocVariant tweaks={{ ...t, layout: 'spine' }} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="originals"
+              title="参考 ─ 当初の3案 (前ターンの比較)"
+              subtitle="Bの方向で深掘り中。A·Cは残しておきます"
+            >
+              <DCArtboard id="atelier" label="A · Atelier" width={W} height={H}>
+                <AtelierVariant tweaks={t} />
+              </DCArtboard>
+              <DCArtboard id="noc" label="B · NOC (現在のTweaks反映)" width={W} height={H}>
+                <NocVariant tweaks={t} />
+              </DCArtboard>
+              <DCArtboard id="catalog" label="C · Catalog" width={W} height={H}>
+                <CatalogVariant tweaks={t} />
+              </DCArtboard>
+            </DCSection>
+
+            <DCPostIt top={40} left={32} rotate={-2.5} width={250}>
+              <b>選択済</b>　radial + spine で進めます。<br/><br/>
+              メイン画面のNOCヘッダーに<b>切替ボタン</b>を内蔵しました。<br/>
+              · <b>radial</b>：個人で見る「ダッシュボード」用途<br/>
+              · <b>spine</b>：人に説明する・ケーブル点検する用途
+            </DCPostIt>
+
+            <DCPostIt top={40} right={32} rotate={2} width={260}>
+              <b>負荷について</b><br/><br/>
+              実用なら<b>「ルーターのARPテーブル取得 + ICMP ping を5分毎」</b>がおすすめ。<br/>
+              <span style={{ color: '#666' }}>家庭LANで毎分1回 = ほぼ0負荷</span><br/><br/>
+              CPU/メモリ使用率を実機から取るなら<b>SNMP</b> か <b>node_exporter</b> を別途設置。それ以外の機器は「最終スキャン時刻」を見せるだけで十分です。
+            </DCPostIt>
+
+            <DCPostIt top={880} left={32} rotate={-2} width={220}>
+              右下の<b>Tweaks</b>で<br/>
+              ・レイアウト<br/>
+              ・ポーリング間隔<br/>
+              ・密度 / オフライン表示<br/>
+              を切替できます。
+            </DCPostIt>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="レイアウト" />
+            <TweakSelect
+              label="図示スタイル"
+              value={t.layout}
+              options={[
+                { value: 'radial', label: '① 放射 (radial)' },
+                { value: 'spine',  label: '② 水平バス (spine)' },
+              ]}
+              onChange={(v) => setTweak('layout', v)}
+            />
+
+            <TweakSection label="データ取得" />
+            <TweakRadio
+              label="ポーリング間隔"
+              value={t.polling}
+              options={['manual', '5min', '30s', 'live']}
+              onChange={(v) => setTweak('polling', v)}
+            />
+
+            <TweakSection label="表示" />
+            <TweakToggle
+              label="オフライン機器を表示"
+              value={t.showOffline}
+              onChange={(v) => setTweak('showOffline', v)}
+            />
+            <TweakRadio
+              label="密度"
+              value={t.density}
+              options={['compact', 'regular']}
+              onChange={(v) => setTweak('density', v)}
+            />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

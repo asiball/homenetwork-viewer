@@ -1,0 +1,27 @@
+# homenet — LAN device catalog. Two services: FastAPI backend + nginx-served SPA.
+#
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# The SPA (port 8080) is the only published service; nginx reverse-proxies
+# /api to the backend over the internal compose network. Device data lives in
+# ./data/devices.json (bind-mounted) so you can edit it from the UI or by hand.
+
+services:
+  backend:
+    build: ./backend
+    image: homenet-backend
+    environment:
+      HOMENET_DATA_FILE: /data/devices.json
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: homenet-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

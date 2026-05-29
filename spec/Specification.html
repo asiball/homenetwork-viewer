@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>homenet · 仕様書 v1.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700&display=swap" />
+  <style>
+    :root {
+      --bg:        #fbf9f4;
+      --bg-soft:   #f1ede4;
+      --bg-card:   #ffffff;
+      --ink:       #1f1c17;
+      --ink-soft:  #534e44;
+      --ink-faint: #8a8276;
+      --rule:      #d9d2c2;
+      --rule-2:    #efe9db;
+      --accent:    #b85a36;
+      --accent-soft: #c97a55;
+      --ok:    #3f8a5c;
+      --warn:  #b88318;
+      --err:   #b85436;
+      --code-bg: #f4efe2;
+      --max-w: 760px;
+    }
+
+    @page { size: A4; margin: 18mm 16mm; }
+
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+      font-size: 15.5px;
+      line-height: 1.6;
+      font-weight: 400;
+      text-rendering: optimizeLegibility;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ── Page chrome ─────────────────────────────────────────── */
+
+    .doc { max-width: var(--max-w); margin: 0 auto; padding: 64px 32px 96px; }
+
+    .cover { padding: 28px 0 48px; border-bottom: 2px solid var(--ink); margin-bottom: 56px;
+      page-break-after: always; }
+    .cover .stamp {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--ink-faint); margin-bottom: 24px;
+    }
+    .cover .stamp .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); margin-right: 8px; vertical-align: 1px; }
+    .cover h1 {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 64px; line-height: 1.02; letter-spacing: -0.015em;
+      margin: 0 0 12px; font-weight: 400;
+    }
+    .cover h1 em { color: var(--accent); font-style: italic; }
+    .cover .subtitle {
+      font-size: 19px; color: var(--ink-soft);
+      line-height: 1.4; max-width: 580px; margin: 0 0 36px;
+    }
+    .cover dl { display: grid; grid-template-columns: 120px 1fr; row-gap: 4px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11.5px; max-width: 460px; }
+    .cover dt { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; padding-top: 2px;}
+    .cover dd { margin: 0; color: var(--ink); }
+
+    /* ── Headings ────────────────────────────────────────────── */
+
+    h2 {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-weight: 400;
+      font-size: 32px; line-height: 1.1; letter-spacing: -0.005em;
+      margin: 72px 0 18px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--rule);
+      position: relative;
+      page-break-after: avoid;
+    }
+    h2::before {
+      content: attr(data-num);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: 0.12em;
+      color: var(--accent);
+      position: absolute; top: 12px; left: -82px; width: 64px; text-align: right;
+    }
+    h3 {
+      font-family: 'Source Serif 4', serif; font-weight: 600;
+      font-size: 18px; margin: 28px 0 8px; line-height: 1.3;
+      page-break-after: avoid;
+    }
+    h3::before {
+      content: attr(data-num);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: 0.08em;
+      color: var(--ink-faint); font-weight: 400;
+      margin-right: 10px;
+    }
+    h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 20px 0 6px; font-weight: 500;
+    }
+
+    p { margin: 0 0 12px; text-wrap: pretty; }
+    p + p { margin-top: 0; }
+
+    a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px;
+      text-underline-offset: 2px; }
+
+    ul, ol { margin: 0 0 14px; padding-left: 22px; }
+    li { margin-bottom: 4px; }
+    li::marker { color: var(--ink-faint); }
+
+    /* ── TOC ─────────────────────────────────────────────────── */
+
+    .toc { margin: 0 0 48px; padding: 22px 26px; background: var(--bg-soft);
+      border: 1px solid var(--rule); border-radius: 2px; }
+    .toc h4 { margin: 0 0 12px; }
+    .toc ol { list-style: none; padding: 0; margin: 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .toc ol li { display: flex; gap: 12px; padding: 3px 0;
+      border-bottom: 1px dotted var(--rule); }
+    .toc ol li:last-child { border-bottom: 0; }
+    .toc ol li span:first-child { color: var(--ink-faint); width: 30px; flex-shrink: 0; }
+    .toc ol li a { color: var(--ink); text-decoration: none; flex: 1; }
+    .toc ol li a:hover { color: var(--accent); }
+
+    /* ── Inline elements ────────────────────────────────────── */
+
+    code, .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+    :not(pre) > code { background: var(--code-bg); padding: 1px 6px;
+      border-radius: 2px; color: var(--ink); border: 1px solid var(--rule-2); }
+
+    pre { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+      padding: 14px 18px; overflow-x: auto; margin: 14px 0 18px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.55;
+      page-break-inside: avoid; }
+    pre code { background: none; padding: 0; border: 0; font-size: inherit; }
+    .tk-kw { color: var(--accent); }
+    .tk-st { color: var(--ok); }
+    .tk-co { color: var(--ink-faint); font-style: italic; }
+    .tk-nu { color: var(--warn); }
+    .tk-pn { color: var(--ink-soft); }
+
+    /* ── Tables ─────────────────────────────────────────────── */
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 18px;
+      font-size: 13.5px; }
+    th { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1.5px solid var(--ink);
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+      font-weight: 500; vertical-align: bottom; }
+    td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule-2);
+      vertical-align: top; }
+    td.mono, td .mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+    td.req { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      letter-spacing: 0.08em; text-transform: uppercase; }
+    td.opt { color: var(--ink-faint); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      letter-spacing: 0.08em; text-transform: uppercase; }
+    table.compact td, table.compact th { font-size: 12.5px; padding: 5px 8px 5px 0; }
+
+    /* ── Callouts ───────────────────────────────────────────── */
+
+    .callout { background: var(--bg-soft); border-left: 3px solid var(--accent);
+      padding: 14px 18px; margin: 16px 0 18px; font-size: 14.5px; }
+    .callout.note { border-left-color: var(--ink-soft); }
+    .callout.warn { border-left-color: var(--warn); background: #fbf3e0; }
+    .callout strong { color: var(--accent); }
+    .callout.note strong { color: var(--ink); }
+    .callout.warn strong { color: var(--warn); }
+
+    /* ── Figure ─────────────────────────────────────────────── */
+
+    figure { margin: 20px 0 24px; }
+    figure svg { display: block; width: 100%; height: auto;
+      border: 1px solid var(--rule); background: var(--bg-card);
+      border-radius: 2px; }
+    figcaption { font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+      color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase;
+      margin-top: 8px; text-align: center; }
+
+    .fig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    .fig-row figure { margin: 0; }
+
+    /* ── Two-col for screen breakdown ─────────────────────── */
+
+    .pair { display: grid; grid-template-columns: 180px 1fr; gap: 18px; margin: 10px 0; }
+    .pair .label { font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+      padding-top: 3px; }
+
+    /* ── Print-friendly ─────────────────────────────────────── */
+
+    @media print {
+      body { background: white; font-size: 11pt; }
+      .doc { padding: 0; max-width: none; }
+      h2 { margin-top: 32px; page-break-before: avoid; }
+      h2::before { display: none; }
+      pre, figure, table, .callout { page-break-inside: avoid; }
+      a { color: var(--ink); text-decoration: none; }
+      .no-print { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .doc { padding: 32px 18px 64px; }
+      .cover h1 { font-size: 44px; }
+      h2::before { display: none; }
+      .fig-row { grid-template-columns: 1fr; }
+      .pair { grid-template-columns: 1fr; gap: 4px; }
+    }
+
+    /* ── Small SVG-figure styles ───────────────────────────── */
+    .fig svg .fbg { fill: var(--bg-card); }
+    .fig svg .frule { stroke: var(--rule); }
+    .fig svg .fink { fill: var(--ink); }
+    .fig svg .ftxt { fill: var(--ink); font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: 0.06em; }
+    .fig svg .fmuted { fill: var(--ink-faint); }
+    .fig svg .faccent { stroke: var(--accent); fill: var(--accent); }
+    .fig svg .fline { stroke: var(--ink-faint); stroke-width: 0.6; fill: none; }
+    .fig svg .fdash { stroke-dasharray: 2 3; }
+    .fig svg .fnode { fill: var(--bg-card); stroke: var(--ink); stroke-width: 1; }
+    .fig svg .fnode.center { fill: var(--ink); stroke: var(--ink); }
+    .fig svg .fnode.off { stroke: var(--ink-faint); }
+  </style>
+</head>
+<body>
+
+<article class="doc">
+
+  <!-- ─────────────────────────────────────────────── COVER ── -->
+  <header class="cover">
+    <div class="stamp"><span class="dot"></span>spec / engineering brief · v1.0 · 2026-05-19</div>
+    <h1><em>homenet</em> ─<br/>家庭ネットワーク機器カタログ仕様書</h1>
+    <p class="subtitle">
+      自宅LAN配下の機器を一覧・調査するための単体Webアプリケーション。
+      個人利用、ブラウザ表示、ローカルホスト or 家庭内サーバー配信を想定。
+    </p>
+    <dl>
+      <dt>document</dt><dd>仕様書 (engineering brief)</dd>
+      <dt>version</dt>  <dd>1.0</dd>
+      <dt>date</dt>     <dd>2026-05-19</dd>
+      <dt>status</dt>   <dd>design complete / ready to implement</dd>
+      <dt>scope</dt>    <dd>1 dev · 1 user · ~25 devices</dd>
+      <dt>related</dt>  <dd><code>Home Network Explorer.html</code></dd>
+    </dl>
+  </header>
+
+  <!-- ────────────────────────────────────────────────── TOC ── -->
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><span>1</span><a href="#s1">概要 · objective &amp; scope</a></li>
+      <li><span>2</span><a href="#s2">画面構成 · screen map</a></li>
+      <li><span>3</span><a href="#s3">データモデル · data model</a></li>
+      <li><span>4</span><a href="#s4">データ取得方針 · polling strategy</a></li>
+      <li><span>5</span><a href="#s5">ホーム画面 · home screen</a></li>
+      <li><span>6</span><a href="#s6">詳細ビュー · detail screen</a></li>
+      <li><span>7</span><a href="#s7">デザインシステム · design tokens</a></li>
+      <li><span>8</span><a href="#s8">技術構成 · recommended stack</a></li>
+      <li><span>9</span><a href="#s9">ファイル構成 · file layout</a></li>
+      <li><span>10</span><a href="#s10">受け入れ条件 · definition of done</a></li>
+      <li><span>11</span><a href="#s11">拡張余地 · future work</a></li>
+    </ol>
+  </nav>
+
+  <!-- ─────────────────────────────────────── 1. OBJECTIVE ── -->
+  <section id="s1">
+    <h2 data-num="01">概要</h2>
+
+    <h3 data-num="1.1">目的</h3>
+    <p>
+      自宅のローカルネットワーク (192.168.1.0/24 を想定) に接続している機器のIPアドレス・MACアドレス・ホスト名・ハードウェアスペック・所有情報をブラウザから一覧・参照できるリファレンスサイト。
+      日常的に発生する「これって何のIP?」「あのMacのRAMいくつだっけ?」を10秒以内に解消することを目的とする。
+    </p>
+
+    <h3 data-num="1.2">利用者と利用環境</h3>
+    <ul>
+      <li>利用者: 自分 1名 (admin)。マルチユーザーは考慮しない。</li>
+      <li>主環境: デスクトップブラウザ (1280×800以上)。サブ環境: iPad / iPhone。</li>
+      <li>配信: 家庭内サーバー (Raspberry Pi or NAS) からLAN内へ。インターネット公開しない。</li>
+      <li>認証: ローカル前提のため当面不要。Basic認証を簡易にかけるのは可。</li>
+    </ul>
+
+    <h3 data-num="1.3">主要シナリオ</h3>
+    <ol>
+      <li>帰宅後ふと機器を見て「これ何だっけ」 → ホーム画面でノードクリック → 右パネルで即把握。</li>
+      <li>新しいIoT機器を購入 → 編集フォーム (v2スコープ) で登録。</li>
+      <li>トラブル時、特定機器の履歴・開放ポート・メモを確認 → 詳細ビューへ遷移。</li>
+    </ol>
+
+    <h3 data-num="1.4">非ゴール</h3>
+    <ul>
+      <li>マルチユーザー、ロール、共有リンク。</li>
+      <li>毎秒更新のリアルタイム監視ダッシュボード。</li>
+      <li>パケット解析・侵入検知・脆弱性スキャン。</li>
+      <li>クラウド連携 (Home Assistant等との連携は v3 以降スコープ)。</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────────────────── 2. SCREEN MAP ── -->
+  <section id="s2">
+    <h2 data-num="02">画面構成</h2>
+    <p>v1.0 では以下の2画面のみ。編集機能は v1.1 でフォームを追加する。</p>
+
+    <figure class="fig">
+      <svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Home -->
+        <rect className="fbg" class="fbg" x="40" y="40" width="240" height="140" rx="2"/>
+        <rect class="fbg" x="40" y="40" width="240" height="140" rx="2" fill="#ffffff" stroke="#1f1c17" stroke-width="1"/>
+        <text x="160" y="34" text-anchor="middle" class="ftxt" fill="#1f1c17" font-family="JetBrains Mono" font-size="11">HOME · TOPOLOGY MAP</text>
+        <rect x="48" y="48" width="80" height="124" fill="none" stroke="#d9d2c2"/>
+        <rect x="136" y="48" width="92" height="124" fill="none" stroke="#d9d2c2"/>
+        <rect x="236" y="48" width="36" height="124" fill="none" stroke="#d9d2c2"/>
+        <circle cx="182" cy="110" r="4" fill="#1f1c17"/>
+        <g stroke="#8a8276" stroke-width="0.6">
+          <line x1="182" y1="110" x2="146" y2="68"/><line x1="182" y1="110" x2="218" y2="68"/>
+          <line x1="182" y1="110" x2="146" y2="152"/><line x1="182" y1="110" x2="218" y2="152"/>
+          <line x1="182" y1="110" x2="158" y2="138"/><line x1="182" y1="110" x2="206" y2="138"/>
+        </g>
+        <g fill="#ffffff" stroke="#1f1c17">
+          <circle cx="146" cy="68" r="3"/><circle cx="218" cy="68" r="3"/>
+          <circle cx="146" cy="152" r="3"/><circle cx="218" cy="152" r="3"/>
+          <circle cx="158" cy="138" r="3"/><circle cx="206" cy="138" r="3"/>
+        </g>
+
+        <!-- arrow -->
+        <g stroke="#b85a36" fill="none" stroke-width="1.5">
+          <path d="M 290 110 L 360 110"/>
+          <path d="M 354 105 L 360 110 L 354 115"/>
+        </g>
+        <text x="325" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#b85a36" letter-spacing="0.08em">click node</text>
+
+        <!-- Detail -->
+        <rect x="370" y="40" width="290" height="140" rx="2" fill="#ffffff" stroke="#1f1c17"/>
+        <text x="515" y="34" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#1f1c17">DETAIL · 1 DEVICE</text>
+        <rect x="378" y="48" width="60" height="124" fill="none" stroke="#d9d2c2"/>
+        <rect x="446" y="48" width="206" height="22" fill="none" stroke="#d9d2c2"/>
+        <rect x="446" y="76" width="206" height="22" fill="none" stroke="#d9d2c2"/>
+        <g>
+          <rect x="446" y="104" width="100" height="32" fill="none" stroke="#d9d2c2"/>
+          <rect x="552" y="104" width="100" height="32" fill="none" stroke="#d9d2c2"/>
+          <rect x="446" y="142" width="100" height="30" fill="none" stroke="#d9d2c2"/>
+          <rect x="552" y="142" width="100" height="30" fill="none" stroke="#d9d2c2"/>
+        </g>
+
+        <!-- back arrow -->
+        <g stroke="#8a8276" fill="none" stroke-width="1" stroke-dasharray="2 2">
+          <path d="M 660 196 Q 660 210, 600 210 Q 60 210, 60 196"/>
+          <path d="M 66 192 L 60 198 L 66 202" stroke-dasharray="0"/>
+        </g>
+        <text x="350" y="208" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#8a8276" letter-spacing="0.08em">back to map</text>
+      </svg>
+      <figcaption>図 2.1 — 画面遷移の概要</figcaption>
+    </figure>
+
+    <table>
+      <thead>
+        <tr><th>id</th><th>画面</th><th>用途</th><th>v1.0</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">/home</td><td>トポロジーマップ + サマリー</td><td>全体把握。日常使い。</td><td class="req">必須</td></tr>
+        <tr><td class="mono">/d/:id</td><td>詳細ビュー</td><td>1台を深掘り。ポート・履歴・所有情報。</td><td class="req">必須</td></tr>
+        <tr><td class="mono">/d/:id/edit</td><td>編集フォーム</td><td>機器情報を手動で書き換え。</td><td class="opt">v1.1</td></tr>
+        <tr><td class="mono">/add</td><td>機器追加</td><td>新規機器の登録。</td><td class="opt">v1.1</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ─────────────────────────────────────── 3. DATA MODEL ── -->
+  <section id="s3">
+    <h2 data-num="03">データモデル</h2>
+
+    <p>
+      データはJSONファイル <code>devices.json</code> で管理する (v1.0)。ファイルは手動編集 or 編集フォーム経由で書き換える。
+      自動取得した値とユーザー編集した値を区別するため、各値は <code>{ value, source, updated_at }</code> の形で保持する方針 (v1.1で導入)。v1.0はフラットな値で良い。
+    </p>
+
+    <h3 data-num="3.1">Device — 必須フィールド</h3>
+    <table>
+      <thead><tr><th>キー</th><th>型</th><th>必須</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">id</td><td class="mono">string</td><td class="req">●</td><td>不変識別子。kebab-case。例 <code>nas</code></td></tr>
+        <tr><td class="mono">name</td><td class="mono">string</td><td class="req">●</td><td>表示名 (短く)。例 <code>NAS</code></td></tr>
+        <tr><td class="mono">host</td><td class="mono">string</td><td class="req">●</td><td>FQDN。例 <code>nas.home.arpa</code></td></tr>
+        <tr><td class="mono">ip</td><td class="mono">string</td><td class="req">●</td><td>IPv4。<code>x.x.x.x</code> 形式。</td></tr>
+        <tr><td class="mono">mac</td><td class="mono">string</td><td class="req">●</td><td>MACアドレス。<code>XX:XX:XX:XX:XX:XX</code></td></tr>
+        <tr><td class="mono">group</td><td class="mono">enum</td><td class="req">●</td><td><code>Infra | IoT | Media | Mobile | Computer | Misc</code></td></tr>
+        <tr><td class="mono">type</td><td class="mono">string</td><td class="req">●</td><td>機器種別。<code>router | ap | nas | phone | laptop | desktop | tv | console | speaker | camera | hub | printer | reader | wearable</code> 等。アイコン選択に使用。</td></tr>
+        <tr><td class="mono">online</td><td class="mono">boolean</td><td class="req">●</td><td>最新スキャン時のオンライン状態。</td></tr>
+      </tbody>
+    </table>
+
+    <h3 data-num="3.2">Device — 任意フィールド (スペック・ネットワーク)</h3>
+    <table>
+      <thead><tr><th>キー</th><th>型</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">cpu</td><td class="mono">string</td><td>例 <code>Apple M3 Pro 11C</code></td></tr>
+        <tr><td class="mono">mem</td><td class="mono">string</td><td>例 <code>16 GB DDR4-3200</code></td></tr>
+        <tr><td class="mono">storage</td><td class="mono">string</td><td>例 <code>4 × 8 TB HDD · RAID5</code></td></tr>
+        <tr><td class="mono">conn</td><td class="mono">enum</td><td><code>Wired 1G | Wired 2.5G | Wired 100M | Wi-Fi 2.4 GHz | Wi-Fi 5 GHz | Wi-Fi 6 GHz | —</code></td></tr>
+        <tr><td class="mono">ring</td><td class="mono">0 | 1 | 2</td><td>radialレイアウト用。0=Gateway, 1=Infra, 2=末端。</td></tr>
+        <tr><td class="mono">last</td><td class="mono">string</td><td>最終オンライン時刻。<code>now</code> or 相対時刻。</td></tr>
+        <tr><td class="mono">uptime</td><td class="mono">string</td><td>起動からの経過。<code>47d 12h</code> 等。</td></tr>
+        <tr><td class="mono">notes</td><td class="mono">string</td><td>自由記述。Markdown非対応 (v1.0)。</td></tr>
+      </tbody>
+    </table>
+
+    <h3 data-num="3.3">DetailData — 詳細ビュー専用 (任意)</h3>
+    <p>各機器の詳細ビューでのみ参照する追加情報。サブオブジェクトとして格納する。</p>
+<pre><code><span class="tk-pn">{</span>
+  <span class="tk-st">"net"</span>: <span class="tk-pn">{</span> ipv4, ipv6, gateway, dns, dhcp, vlan, rssi <span class="tk-pn">}</span>,
+  <span class="tk-st">"hw"</span>:  <span class="tk-pn">{</span> cpu_full, arch, mem_full, chassis, bios <span class="tk-pn">}</span>,
+  <span class="tk-st">"metrics"</span>: <span class="tk-pn">{</span>
+    cpu_pct: <span class="tk-nu">18</span>, cpu_series: <span class="tk-pn">[</span>...<span class="tk-pn">]</span>,
+    mem_pct: <span class="tk-nu">62</span>, mem_series: <span class="tk-pn">[</span>...<span class="tk-pn">]</span>,
+    net_in: <span class="tk-nu">3.2</span>, net_out: <span class="tk-nu">0.4</span>, temp: <span class="tk-nu">48</span>
+  <span class="tk-pn">}</span>,
+  <span class="tk-st">"services"</span>: <span class="tk-pn">[</span>
+    <span class="tk-pn">{</span> port: <span class="tk-nu">22</span>, proto: <span class="tk-st">"tcp"</span>, svc: <span class="tk-st">"SSH"</span>, banner: <span class="tk-st">"OpenSSH 9.0"</span> <span class="tk-pn">}</span>,
+    ...
+  <span class="tk-pn">]</span>,
+  <span class="tk-st">"storage"</span>: <span class="tk-pn">{</span> drives: <span class="tk-pn">[</span>...<span class="tk-pn">]</span>, pool, health <span class="tk-pn">}</span>,
+  <span class="tk-st">"hist7"</span>: <span class="tk-pn">[</span> <span class="tk-nu">1.0</span>, <span class="tk-nu">1.0</span>, <span class="tk-nu">0.99</span>, <span class="tk-nu">1.0</span>, <span class="tk-nu">0.92</span>, <span class="tk-nu">1.0</span>, <span class="tk-nu">1.0</span> <span class="tk-pn">]</span>,
+  <span class="tk-st">"own"</span>: <span class="tk-pn">{</span> manufacturer, model, purchased, price, warranty, location, tags <span class="tk-pn">}</span>
+<span class="tk-pn">}</span>
+</code></pre>
+
+    <div class="callout note">
+      <strong>取り扱いの原則:</strong> 詳細データは「無いのが普通」。すべてのフィールドは optional とし、欠損時のレンダリングを必ず定義する (本文§6.4)。
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────── 4. POLLING ──────── -->
+  <section id="s4">
+    <h2 data-num="04">データ取得方針</h2>
+
+    <p>
+      家庭内LANで「実機・サーバー側どちらも軽い」ことを優先する。リアルタイム描画は<strong>個別機器の詳細を開いている間のみ</strong>許可し、それ以外は5分間隔のバッチ収集に留める。
+    </p>
+
+    <h3 data-num="4.1">階層化されたポーリング</h3>
+
+    <table>
+      <thead><tr><th>tier</th><th>取得元</th><th>間隔</th><th>取得項目</th><th>負荷</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">T1</td>
+          <td>ルーター ARP テーブル</td>
+          <td class="mono">5 min</td>
+          <td>IP / MAC / オンライン</td>
+          <td>ほぼ 0 (API 1呼び出し)</td>
+        </tr>
+        <tr>
+          <td class="mono">T2</td>
+          <td>各機器へ ICMP ping</td>
+          <td class="mono">5 min</td>
+          <td>到達性確認</td>
+          <td>1機器あたり1pkt / 5min</td>
+        </tr>
+        <tr>
+          <td class="mono">T3</td>
+          <td>SNMP / node_exporter</td>
+          <td class="mono">5 min</td>
+          <td>CPU・メモリ・帯域</td>
+          <td>agent設置機器のみ</td>
+        </tr>
+        <tr>
+          <td class="mono">T4</td>
+          <td>同上 (詳細表示中のみ)</td>
+          <td class="mono">2 s</td>
+          <td>CPU/メモリ/帯域 (live)</td>
+          <td>1機器のみ・閲覧中のみ</td>
+        </tr>
+        <tr>
+          <td class="mono">T5</td>
+          <td>nmap (手動実行のみ)</td>
+          <td class="mono">on demand</td>
+          <td>開放ポート</td>
+          <td>明示的に「scan」を押した時のみ</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>判断:</strong> 通常表示は T1 + T2 で十分。T3 はラックのNAS・mini PC等「自分が管理する」機器に限定。IoT機器に対するメトリクス取得は<strong>しない</strong> (機器側に負荷をかけない & そもそも取れない)。
+    </div>
+
+    <h3 data-num="4.2">ユーザー編集との競合</h3>
+    <p>
+      ユーザーがUI上で書き換えたフィールドは <code>source: 'user'</code> としてマーク。バックグラウンドの自動取得は <code>source: 'auto'</code> の値しか上書きしない。<code>name</code>, <code>notes</code>, <code>own.*</code>, <code>tags</code> は基本的に user-only。
+    </p>
+
+    <h3 data-num="4.3">UI上の表現</h3>
+    <ul>
+      <li>ヘッダー右に現在のポーリング間隔と「次回スキャンまで」を表示。</li>
+      <li><code>manual</code> モード時はメーターを止め「last scan 11:42 JST」のみ。</li>
+      <li><code>live</code> モード時のみスパークラインがティック更新。<strong>デフォルトは 5min</strong>。</li>
+    </ul>
+  </section>
+
+  <!-- ─────────────────────────────────── 5. HOME SCREEN ─── -->
+  <section id="s5">
+    <h2 data-num="05">ホーム画面</h2>
+
+    <h3 data-num="5.1">レイアウト構造</h3>
+
+    <figure class="fig">
+      <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="20" width="600" height="160" fill="#ffffff" stroke="#1f1c17"/>
+        <!-- header -->
+        <rect x="20" y="20" width="600" height="22" fill="#f1ede4" stroke="#1f1c17" stroke-width="0.5"/>
+        <text x="30" y="35" font-family="JetBrains Mono" font-size="10" fill="#1f1c17">● HOMENET / NOC</text>
+        <text x="610" y="35" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#8a8276">⊙ radial · ─ spine    poll · 5min    up 21/24    ⟳ scan</text>
+        <!-- left -->
+        <rect x="20" y="42" width="120" height="138" fill="none" stroke="#d9d2c2"/>
+        <text x="80" y="58" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#8a8276" letter-spacing="0.08em">DEVICE LIST</text>
+        <g stroke="#d9d2c2"><line x1="32" y1="70" x2="128" y2="70"/><line x1="32" y1="84" x2="128" y2="84"/><line x1="32" y1="98" x2="128" y2="98"/><line x1="32" y1="112" x2="128" y2="112"/><line x1="32" y1="126" x2="128" y2="126"/><line x1="32" y1="140" x2="128" y2="140"/><line x1="32" y1="154" x2="128" y2="154"/></g>
+        <!-- center map -->
+        <rect x="140" y="42" width="320" height="138" fill="none" stroke="#d9d2c2"/>
+        <text x="300" y="58" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#8a8276" letter-spacing="0.08em">TOPOLOGY MAP</text>
+        <circle cx="300" cy="115" r="4" fill="#1f1c17"/>
+        <g stroke="#8a8276" stroke-width="0.5" fill="none">
+          <circle cx="300" cy="115" r="22"/>
+          <circle cx="300" cy="115" r="40" stroke-dasharray="2 3"/>
+          <line x1="300" y1="115" x2="285" y2="100"/>
+          <line x1="300" y1="115" x2="315" y2="100"/>
+          <line x1="300" y1="115" x2="270" y2="125"/>
+          <line x1="300" y1="115" x2="330" y2="125"/>
+          <line x1="300" y1="115" x2="300" y2="85"/>
+          <line x1="300" y1="115" x2="300" y2="155"/>
+          <line x1="300" y1="115" x2="270" y2="85"/>
+          <line x1="300" y1="115" x2="330" y2="85"/>
+          <line x1="300" y1="115" x2="280" y2="145"/>
+          <line x1="300" y1="115" x2="320" y2="145"/>
+        </g>
+        <g fill="#ffffff" stroke="#1f1c17" stroke-width="0.6">
+          <circle cx="285" cy="100" r="2"/><circle cx="315" cy="100" r="2"/>
+          <circle cx="270" cy="125" r="2"/><circle cx="330" cy="125" r="2"/>
+          <circle cx="300" cy="85" r="2"/><circle cx="300" cy="155" r="2"/>
+          <circle cx="270" cy="85" r="2"/><circle cx="330" cy="85" r="2"/>
+          <circle cx="280" cy="145" r="2"/><circle cx="320" cy="145" r="2"/>
+        </g>
+        <!-- right -->
+        <rect x="460" y="42" width="160" height="138" fill="none" stroke="#d9d2c2"/>
+        <text x="540" y="58" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#8a8276" letter-spacing="0.08em">DETAIL SUMMARY</text>
+        <rect x="470" y="68" width="140" height="18" fill="none" stroke="#d9d2c2"/>
+        <rect x="470" y="92" width="140" height="36" fill="none" stroke="#d9d2c2"/>
+        <rect x="470" y="134" width="140" height="36" fill="none" stroke="#d9d2c2"/>
+        <text x="475" y="80" font-family="JetBrains Mono" font-size="7" fill="#8a8276">IDENTITY</text>
+        <text x="475" y="104" font-family="JetBrains Mono" font-size="7" fill="#8a8276">NETWORK / HARDWARE</text>
+        <text x="475" y="146" font-family="JetBrains Mono" font-size="7" fill="#8a8276">NOTES PREVIEW</text>
+      </svg>
+      <figcaption>図 5.1 — ホーム画面の5領域 (header / list / map / detail / footer)</figcaption>
+    </figure>
+
+    <h3 data-num="5.2">マップ: 2つのレイアウト</h3>
+    <p>
+      v1.0 は <strong>radial</strong> と <strong>spine</strong> の2種類のみを実装する (検討時のtree / gridはボツ)。ヘッダー内のトグルボタンで瞬時に切り替えできること。
+    </p>
+
+    <div class="fig-row">
+      <figure class="fig">
+        <svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+          <rect width="240" height="160" fill="#ffffff" stroke="#d9d2c2"/>
+          <circle cx="120" cy="80" r="30" fill="none" stroke="#d9d2c2" stroke-dasharray="2 3"/>
+          <circle cx="120" cy="80" r="55" fill="none" stroke="#d9d2c2" stroke-dasharray="2 3"/>
+          <g stroke="#8a8276" stroke-width="0.6">
+            <line x1="120" y1="80" x2="98" y2="58"/>
+            <line x1="120" y1="80" x2="142" y2="58"/>
+            <line x1="120" y1="80" x2="120" y2="30"/>
+            <line x1="120" y1="80" x2="170" y2="80"/>
+            <line x1="120" y1="80" x2="70" y2="80"/>
+            <line x1="120" y1="80" x2="120" y2="130"/>
+            <line x1="120" y1="80" x2="155" y2="115"/>
+            <line x1="120" y1="80" x2="85" y2="115"/>
+            <line x1="120" y1="80" x2="155" y2="45"/>
+            <line x1="120" y1="80" x2="85" y2="45"/>
+          </g>
+          <circle cx="120" cy="80" r="6" fill="#1f1c17"/>
+          <g fill="#ffffff" stroke="#1f1c17" stroke-width="0.8">
+            <circle cx="98" cy="58" r="3"/><circle cx="142" cy="58" r="3"/>
+            <circle cx="120" cy="30" r="2.5"/><circle cx="170" cy="80" r="2.5"/>
+            <circle cx="70" cy="80" r="2.5"/><circle cx="120" cy="130" r="2.5"/>
+            <circle cx="155" cy="115" r="2.5"/><circle cx="85" cy="115" r="2.5"/>
+            <circle cx="155" cy="45" r="2.5"/><circle cx="85" cy="45" r="2.5"/>
+          </g>
+        </svg>
+        <figcaption>① radial / 放射</figcaption>
+      </figure>
+
+      <figure class="fig">
+        <svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+          <rect width="240" height="160" fill="#ffffff" stroke="#d9d2c2"/>
+          <line x1="20" y1="80" x2="220" y2="80" stroke="#1f1c17" stroke-width="1.4"/>
+          <text x="220" y="72" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#8a8276">br-lan</text>
+          <!-- gateway -->
+          <rect x="22" y="73" width="14" height="14" fill="#ffffff" stroke="#1f1c17"/>
+          <!-- AP / NAS -->
+          <line x1="50" y1="80" x2="50" y2="50" stroke="#8a8276" stroke-width="0.6"/>
+          <line x1="50" y1="80" x2="50" y2="110" stroke="#8a8276" stroke-width="0.6"/>
+          <rect x="46" y="46" width="8" height="8" fill="#ffffff" stroke="#1f1c17"/>
+          <rect x="46" y="106" width="8" height="8" fill="#ffffff" stroke="#1f1c17"/>
+          <!-- categories above/below -->
+          <g stroke="#8a8276" stroke-width="0.6">
+            <line x1="90"  y1="80" x2="90"  y2="40"/>
+            <line x1="130" y1="80" x2="130" y2="120"/>
+            <line x1="170" y1="80" x2="170" y2="40"/>
+            <line x1="210" y1="80" x2="210" y2="120"/>
+          </g>
+          <g fill="#ffffff" stroke="#1f1c17" stroke-width="0.6">
+            <circle cx="90"  cy="35" r="2"/><circle cx="90"  cy="50" r="2"/><circle cx="90"  cy="65" r="2"/>
+            <circle cx="130" cy="95" r="2"/><circle cx="130" cy="110" r="2"/><circle cx="130" cy="125" r="2"/>
+            <circle cx="170" cy="35" r="2"/><circle cx="170" cy="50" r="2"/><circle cx="170" cy="65" r="2"/>
+            <circle cx="210" cy="95" r="2"/><circle cx="210" cy="110" r="2"/><circle cx="210" cy="125" r="2"/>
+          </g>
+          <g fill="#8a8276">
+            <circle cx="90" cy="80" r="1.5"/><circle cx="130" cy="80" r="1.5"/>
+            <circle cx="170" cy="80" r="1.5"/><circle cx="210" cy="80" r="1.5"/>
+          </g>
+        </svg>
+        <figcaption>② spine / 水平バス</figcaption>
+      </figure>
+    </div>
+
+    <h3 data-num="5.3">ヘッダー</h3>
+    <ul>
+      <li>左: <code>● HOMENET / NOC</code> ブランドラベル + パンくず (<code>net 192.168.1.0/24 · iface br-lan · layout {…}</code>)。</li>
+      <li>右: <strong>レイアウト切替トグル</strong> (radial / spine)、ポーリング状態、オンライン台数 (<code>up 21/24</code>)、手動スキャンボタン (<code>⟳ scan</code>)。</li>
+      <li>高さ: 約 44px。背景は <code>--bg-2</code>、下線 <code>--rule</code>。</li>
+    </ul>
+
+    <h3 data-num="5.4">左サイドバー — 機器リスト</h3>
+    <ul>
+      <li>幅 220px。カテゴリ (group) ごとにグループ化、見出しは小さなキャプション。</li>
+      <li>各行: <strong>ステータスドット (7px)</strong> · 機器名 · IP末尾オクテット (<code>.10</code>)。</li>
+      <li>選択中: 背景濃く + 左端に2pxのアンバーアクセント、機器名はアンバー色。</li>
+      <li>クリックでマップ・右パネル両方を同期更新。</li>
+    </ul>
+
+    <h3 data-num="5.5">右パネル — サマリー</h3>
+    <ul>
+      <li>幅 320px。マップを残したまま選択機器の概要を表示する。</li>
+      <li>4ブロック: <strong>identity / network / hardware / notes</strong>。各ブロックはラベル付きの枠 (1px dashed)。</li>
+      <li>下部に <strong>「詳細を見る →」</strong> ボタンを置き、詳細ビューへ遷移。</li>
+    </ul>
+
+    <h3 data-num="5.6">インタラクション</h3>
+    <table class="compact">
+      <thead><tr><th>操作</th><th>対象</th><th>結果</th></tr></thead>
+      <tbody>
+        <tr><td>click</td><td>ノード or リスト行</td><td>選択を更新。マップにパルス。右パネル差し替え。</td></tr>
+        <tr><td>click</td><td>レイアウトトグル</td><td>マップを radial ⇄ spine でクロスフェード遷移 (200ms)。</td></tr>
+        <tr><td>click</td><td>⟳ scan ボタン</td><td>即時スキャンを発火。ボタンに進行スピナー。</td></tr>
+        <tr><td>click</td><td>「詳細を見る」</td><td><code>/d/:id</code> へ遷移。</td></tr>
+        <tr><td>hover</td><td>ノード</td><td>軽くハイライト。ツールチップで <code>name + ip</code>。</td></tr>
+        <tr><td>keydown</td><td><code>↑↓</code></td><td>リスト内の選択移動。</td></tr>
+        <tr><td>keydown</td><td><code>Enter</code></td><td>選択中の機器の詳細ビューへ遷移。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ──────────────────────────────────── 6. DETAIL ──────── -->
+  <section id="s6">
+    <h2 data-num="06">詳細ビュー</h2>
+
+    <h3 data-num="6.1">構成</h3>
+    <p>NOCシェル (ヘッダー・左リスト・フッター) を保持しつつ、中央エリアをマップから「機器ドシエ」に置換する。</p>
+
+    <h3 data-num="6.2">セクション</h3>
+    <div class="pair">
+      <div class="label">identity row</div>
+      <div>カテゴリ (eyebrow) / 機器名 (28px monospace) / ホスト名 · IP · MAC を <code>·</code> 区切りで一行。右端にステータスバッジ列 (<code>ONLINE / OFFLINE</code>、リンク種別、<code>live agent</code>)。</div>
+    </div>
+    <div class="pair">
+      <div class="label">stat row × 4</div>
+      <div>CPU負荷 · メモリ · 帯域 · 稼働時間。各カードに数値・単位・スパークライン (12点)・補足キャプション。データなし時は <code>—</code>。</div>
+    </div>
+    <div class="pair">
+      <div class="label">network</div>
+      <div>ipv4 / ipv6 / mac / link / gateway / dns / dhcp / vlan / rssi (該当時のみ)。<code>dl</code> 2カラム。</div>
+    </div>
+    <div class="pair">
+      <div class="label">hardware</div>
+      <div>cpu (詳細) / arch / memory / chassis / firmware。</div>
+    </div>
+    <div class="pair">
+      <div class="label">services</div>
+      <div>テーブル: port / proto / service / banner。下部に <code>last scan</code> 時刻と件数。</div>
+    </div>
+    <div class="pair">
+      <div class="label">storage</div>
+      <div>各ドライブ行: name · size / model / 使用率メーター / %。下部に pool 構成・health。</div>
+    </div>
+    <div class="pair">
+      <div class="label">connection</div>
+      <div>過去7日間の縦棒ヒストグラム。95%超え=ok / 70%超え=warn / それ未満=err。</div>
+    </div>
+    <div class="pair">
+      <div class="label">ownership</div>
+      <div>maker / model / location / purchased / price / warranty。下部に編集可能なタグ列。</div>
+    </div>
+    <div class="pair">
+      <div class="label">notes</div>
+      <div>2カラム幅 (full)。<code>white-space: pre-wrap</code> で長文表示。最終編集日表示。</div>
+    </div>
+
+    <h3 data-num="6.3">サイズ規定</h3>
+    <ul>
+      <li>キャンバス: 1280×900 を基準とする (スクロール許容)。</li>
+      <li>identity row 高 ≈ 90px、stat row 高 ≈ 110px、グリッドカード最低高 ≈ 130px。</li>
+      <li>カードの内側余白は 14–16px。グリッドのギャップは 12px。</li>
+    </ul>
+
+    <h3 data-num="6.4">欠損時の表示ルール</h3>
+    <div class="callout warn">
+      <strong>原則:</strong> 取得できない値は<strong>無理に推測しない</strong>。<code>—</code> または <code>no agent / offline</code> と書く。空欄禁止。
+    </div>
+    <table class="compact">
+      <thead><tr><th>シナリオ</th><th>表示</th></tr></thead>
+      <tbody>
+        <tr><td>機器がオフライン</td><td>stat row全て <code>—</code> + <code>last online {…}</code> サブテキスト</td></tr>
+        <tr><td>SNMP / agent未設置</td><td>CPU/メモリスパークラインを <code>no agent</code> に置換</td></tr>
+        <tr><td>ポートスキャン未実施</td><td><code>no scan data · run port scan to populate</code></td></tr>
+        <tr><td>所有情報未登録</td><td>各フィールドに <code>—</code>、タグ行に <code>+ add</code> プレースホルダー</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ──────────────────────────────── 7. DESIGN TOKENS ──── -->
+  <section id="s7">
+    <h2 data-num="07">デザインシステム</h2>
+
+    <h3 data-num="7.1">カラー (NOC theme)</h3>
+    <table class="compact">
+      <thead><tr><th>token</th><th>value</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">--bg</td>      <td class="mono">#0b0d10</td><td>ベース背景</td></tr>
+        <tr><td class="mono">--bg-2</td>    <td class="mono">#11141a</td><td>ヘッダー・パネル背景</td></tr>
+        <tr><td class="mono">--bg-3</td>    <td class="mono">#161a22</td><td>選択行・メーター背景</td></tr>
+        <tr><td class="mono">--fg</td>      <td class="mono">#d9e0e8</td><td>本文</td></tr>
+        <tr><td class="mono">--fg-soft</td> <td class="mono">#8a93a0</td><td>サブ情報</td></tr>
+        <tr><td class="mono">--fg-faint</td><td class="mono">#525a66</td><td>ラベル・キャプション</td></tr>
+        <tr><td class="mono">--rule</td>    <td class="mono">#1d222b</td><td>境界線</td></tr>
+        <tr><td class="mono">--rule-2</td>  <td class="mono">#2a313d</td><td>カード境界</td></tr>
+        <tr><td class="mono">--amber</td>   <td class="mono">#f0b657</td><td>アクセント (選択・強調)</td></tr>
+        <tr><td class="mono">--ok</td>      <td class="mono">#79ddb0</td><td>オンライン・正常</td></tr>
+        <tr><td class="mono">--warn</td>    <td class="mono">#f0b657</td><td>警告 (= amber と同色)</td></tr>
+        <tr><td class="mono">--err</td>     <td class="mono">#e87a6a</td><td>オフライン・エラー</td></tr>
+      </tbody>
+    </table>
+
+    <h3 data-num="7.2">タイポグラフィ</h3>
+    <ul>
+      <li>UI: <code>JetBrains Mono</code> 400/500/600。全UIラベル・本文ともmonospaceで統一。</li>
+      <li>本文サイズ: 10.5–11px。データ表示: 11–14px (機器名は 15–24px)。</li>
+      <li>letter-spacing: ラベルは 0.06–0.14em で広く取る。本文は 0.02–0.04em。</li>
+      <li>uppercaseはラベル類のみ。本文はそのまま。</li>
+    </ul>
+
+    <h3 data-num="7.3">スペーシング / ボーダー</h3>
+    <ul>
+      <li>4px grid。<code>4 / 8 / 12 / 14 / 18 / 22 / 28</code> をよく使う。</li>
+      <li>border-radius: 基本 <code>2px</code> (角を立てる)。ピル類のみ <code>0</code>。</li>
+      <li>border: 全て <code>0.75–1px</code>。点線は <code>2 3</code> または <code>2 4</code>。</li>
+    </ul>
+
+    <h3 data-num="7.4">構成要素</h3>
+    <table class="compact">
+      <thead><tr><th>要素</th><th>仕様</th></tr></thead>
+      <tbody>
+        <tr><td>panel</td><td>1px solid <code>--rule-2</code>。<code>data-title</code> 属性をラベルとしてカード上端に描画。</td></tr>
+        <tr><td>pill</td><td>9px monospace · 2px 6px padding · 1px border · uppercase。状態色は <code>.on / .off</code>。</td></tr>
+        <tr><td>meter bar</td><td>高さ 4–6px。fill 色は <code>--amber</code> (cpu)、<code>--ok</code> (mem)、85%超は <code>--err</code> に変色。</td></tr>
+        <tr><td>sparkline</td><td>88×24px。stroke 1px + area opacity 0.08。stroke色はメトリクス種で切替。</td></tr>
+        <tr><td>dl</td><td>2カラムグリッド。<code>dt</code> uppercase ラベル、<code>dd</code> monospace 値。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ──────────────────────────────── 8. STACK ──────────── -->
+  <section id="s8">
+    <h2 data-num="08">技術構成 (推奨)</h2>
+
+    <h3 data-num="8.1">フロントエンド</h3>
+    <ul>
+      <li>静的サイト。<strong>Vite + React + TypeScript</strong> を推奨。</li>
+      <li>SVGはすべてインライン (アイコンライブラリ不使用)。</li>
+      <li>状態管理は React state + URL (<code>/d/:id?layout=spine</code>) のみで十分。</li>
+      <li>データソース: <code>public/devices.json</code> を fetch。</li>
+    </ul>
+
+    <h3 data-num="8.2">バックエンド (v1.1 以降)</h3>
+    <ul>
+      <li>軽量サーバー: <strong>Go (Echo / Chi)</strong> または <strong>Python (FastAPI)</strong>。</li>
+      <li>ARP取得: SSHでルーターに入り <code>arp -a</code> をパース、もしくは OpenWrt の RPC API。</li>
+      <li>ping: GoroutineまたはasyncIOで並列。タイムアウト 1秒。</li>
+      <li>SNMPは <code>gosnmp</code> / <code>pysnmp</code>。</li>
+      <li>データ永続化は SQLite で十分。<code>devices</code>, <code>history</code> の2テーブル。</li>
+    </ul>
+
+    <h3 data-num="8.3">配信 / 認証</h3>
+    <ul>
+      <li>RPi or NAS 上に <code>nginx</code> でリバースプロキシ。</li>
+      <li>HTTPはLAN内のみ。<code>auth_basic</code> を簡易にかける。</li>
+      <li>HTTPSは内部CA (mkcert等) を使う or 不要 (LAN内割り切り)。</li>
+    </ul>
+  </section>
+
+  <!-- ──────────────────────────────── 9. FILE LAYOUT ────── -->
+  <section id="s9">
+    <h2 data-num="09">ファイル構成 (デザイン側)</h2>
+
+    <p>本仕様書と同梱されているデザインファイル一式は以下の通り。実装時はこれらを参考実装として読む。</p>
+
+<pre><code><span class="tk-co">/</span>
+├── <span class="tk-kw">Home Network Explorer.html</span>   <span class="tk-co"># 設計検討用キャンバス (entry)</span>
+├── <span class="tk-kw">Specification.html</span>           <span class="tk-co"># この仕様書</span>
+├── design-canvas.jsx                <span class="tk-co"># 検討用キャンバスの骨組</span>
+├── tweaks-panel.jsx                 <span class="tk-co"># tweaksパネル (検討時のみ)</span>
+├── data.jsx                         <span class="tk-co"># ─ 22機器のサンプルデータ</span>
+├── variant-noc.jsx                  <span class="tk-co"># ─ ホーム画面 (radial + spine)</span>
+├── view-detail.jsx                  <span class="tk-co"># ─ 詳細ビュー</span>
+├── variant-atelier.jsx              <span class="tk-co"># 参考案 (採用しない)</span>
+└── variant-card.jsx                 <span class="tk-co"># 参考案 (採用しない)</span>
+</code></pre>
+  </section>
+
+  <!-- ──────────────────────────────── 10. DOD ─────────── -->
+  <section id="s10">
+    <h2 data-num="10">受け入れ条件 (DoD)</h2>
+
+    <h4>v1.0 として最低限満たすべき条件</h4>
+    <ol>
+      <li><code>devices.json</code> を読み込み、22件以上の機器を破綻なくマップに表示できる。</li>
+      <li>radial と spine の両方が実装され、ヘッダーから切り替えできる。</li>
+      <li>ノードをクリックすると右パネルが該当機器の情報に切り替わる。</li>
+      <li>「詳細を見る」から詳細ビュー (<code>/d/:id</code>) に遷移できる。</li>
+      <li>詳細ビューの8セクション (identity / 4stats / 6cards / notes) がデータの濃淡に対応して破綻なく描画される。</li>
+      <li>オフライン機器のスタイルが明確に区別される (枠色・パルスなし・stat <code>—</code>)。</li>
+      <li>1280×800 以上のデスクトップブラウザで横スクロールが発生しない。</li>
+      <li>iPad縦 (820px幅) で「左リストを格納できる」状態で破綻しないこと (v1.0 は格納UIまで実装、サイドバー自体は閉じる動作)。</li>
+    </ol>
+
+    <h4>v1.1 で追加</h4>
+    <ol>
+      <li>機器の追加 / 編集 / 削除フォーム。</li>
+      <li><code>devices.json</code> の自動書き戻し (バックエンド経由)。</li>
+      <li>ARP / ping によるT1+T2のバックグラウンド収集。</li>
+    </ol>
+  </section>
+
+  <!-- ──────────────────────────────── 11. FUTURE ────────── -->
+  <section id="s11">
+    <h2 data-num="11">拡張余地</h2>
+    <ul>
+      <li><strong>サブネット / VLANビュー</strong>: spine上に複数バスを縦に並べる派生レイアウト。</li>
+      <li><strong>OUIによるメーカー自動判定</strong>: MACの先頭24bitから機器メーカー名を引く。</li>
+      <li><strong>履歴ページ</strong>: 機器ごとに30日分のオンライン率・IP変動を表示。</li>
+      <li><strong>通知</strong>: 重要機器 (タグ=critical) が N 分以上オフラインなら自分にpush。</li>
+      <li><strong>Home Assistant連携</strong>: 状態のクロスチェック・自動化トリガー。</li>
+      <li><strong>パケット集計</strong>: ルーターのNetFlowを活用したトラフィックグラフ (機器ごと)。</li>
+      <li><strong>テーマ切替</strong>: NOC dark 以外にライト (Atelier) を後付け可能 (CSS変数で完結)。</li>
+    </ul>
+  </section>
+
+  <footer style="margin-top: 80px; padding-top: 18px; border-top: 1px solid var(--rule); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; display: flex; justify-content: space-between;">
+    <span>homenet · spec v1.0</span>
+    <span>end of document · 2026-05-19</span>
+  </footer>
+
+</article>
+
+</body>
+</html>

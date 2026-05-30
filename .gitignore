@@ -9,6 +9,7 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+*.tsbuildinfo
 
 # ── runtime data (seeded on first run; edit via UI or by hand) ──
 data/*.json

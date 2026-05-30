@@ -57,15 +57,19 @@ export function shortHost(host: string): string {
 
 // Generate a kebab-case id suggestion from a free-text name.
 export function kebabId(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
+    .replace(/^-+|-+$/g, "");
+  // Non-Latin names (e.g. Japanese) reduce to empty — fall back to a usable base.
+  return slug.slice(0, 24).replace(/-+$/, "") || "device";
 }
 
 export const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
+// Reject leading-zero octets (00, 08, .04) so the form matches Python's
+// ipaddress.IPv4Address on the backend — otherwise the client says "valid"
+// and the user gets a 422 instead of an inline error.
 export const IPV4_RE =
-  /^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/;
+  /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/;

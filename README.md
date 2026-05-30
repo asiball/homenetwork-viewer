@@ -6,6 +6,8 @@
 
 設計の正本は [`spec/homenet-spec.md`](spec/homenet-spec.md)。本リポジトリはその仕様を実装したものです。
 
+> 🔰 **はじめての方へ** — ウェブ技術の基礎から、導入・使い方・運用・カスタマイズまでをやさしく解説した入門ドキュメントを [`docs/`](docs/README.md) に用意しました。Web に不慣れな場合はまずそちらをどうぞ。
+
 ```
 ┌──────────── HOME · TOPOLOGY MAP ────────────┐        ┌─── DETAIL · 1 DEVICE ───┐
 │ ● HOMENET/NOC   ◎radial ─spine  up 15/22  ⟳ │        │ identity / 4 stats /     │

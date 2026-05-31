@@ -7,6 +7,7 @@ import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
 import { cableForDevice, cableSwatch, switchForDevice } from "../lib/helpers";
+import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 
 function mean(xs: number[]): number {
   return Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
@@ -18,36 +19,7 @@ export function DetailView() {
   const { devices, switches, cables } = useCatalog();
   const device = devices.find((d) => d.id === id);
 
-  const footer = (
-    <>
-      <span>view <b>detail</b></span>
-      <span className="right">homenet v1.0 · {id}</span>
-    </>
-  );
-
-  if (!device) {
-    return (
-      <Shell
-        devices={devices}
-        onSelect={(did) => navigate(`/d/${did}`)}
-        crumbs={
-          <>
-            <Link className="d-back" to="/">← map</Link> &nbsp;<span>not found</span>
-          </>
-        }
-        right={<RefreshControls />}
-        footer={footer}
-      >
-        <div className="d-main">
-          <div className="center-screen">
-            <div className="big">device not found</div>
-            <div>id · {id}</div>
-            <Link className="f-btn" to="/">← back to map</Link>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
+  if (!device) return <DeviceNotFound devices={devices} id={id} />;
 
   const detail = device.detail ?? null;
   const m = detail?.metrics ?? null;
@@ -75,7 +47,7 @@ export function DetailView() {
           </Link>
         </>
       }
-      footer={footer}
+      footer={<ViewFooter view="detail" tail={id} />}
     >
       <div className="d-main">
         {/* identity */}

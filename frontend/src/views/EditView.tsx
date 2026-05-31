@@ -6,6 +6,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
+import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { ApiError, api } from "../api";
 import {
   CONN_OPTIONS,
@@ -247,33 +248,10 @@ export function EditView({ mode }: Props) {
     }
   }
 
-  const footer = (
-    <>
-      <span>view <b>{mode === "add" ? "add" : "edit"}</b></span>
-      <span className="right">homenet v1.0 · {mode === "add" ? "new device" : id}</span>
-    </>
-  );
-
   // Edit mode but device not found.
-  if (mode === "edit" && !existing) {
-    return (
-      <Shell
-        devices={devices}
-        onSelect={(did) => navigate(`/d/${did}`)}
-        crumbs={<><Link className="d-back" to="/">← map</Link> &nbsp;<span>not found</span></>}
-        right={<span />}
-        footer={footer}
-      >
-        <div className="f-main">
-          <div className="center-screen">
-            <div className="big">device not found</div>
-            <Link className="f-btn" to="/">← back to map</Link>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
+  if (mode === "edit" && !existing) return <DeviceNotFound devices={devices} id={id} />;
 
+  const footer = <ViewFooter view={mode === "add" ? "add" : "edit"} tail={mode === "add" ? "new device" : id} />;
   const backTo = mode === "edit" ? `/d/${id}` : "/";
 
   return (

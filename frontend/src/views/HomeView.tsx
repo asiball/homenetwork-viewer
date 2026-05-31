@@ -7,8 +7,7 @@ import { Shell } from "../components/Shell";
 import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
 import { RefreshControls } from "../components/RefreshControls";
-import { GROUP_ORDER } from "../types";
-import { countOnline } from "../lib/helpers";
+import { countOnline, orderedByGroup } from "../lib/helpers";
 import type { LayoutKind } from "../lib/topology";
 
 const LAYOUT_KEY = "homenet.layout";
@@ -39,10 +38,7 @@ export function HomeView() {
   );
 
   // Display order matches the grouped sidebar — used for keyboard nav.
-  const ordered = useMemo(
-    () => GROUP_ORDER.flatMap((g) => visible.filter((d) => d.group === g)),
-    [visible],
-  );
+  const ordered = useMemo(() => orderedByGroup(visible), [visible]);
 
   const selected = visible.find((d) => d.id === selId) ?? visible[0];
 

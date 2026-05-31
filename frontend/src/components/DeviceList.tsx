@@ -1,8 +1,8 @@
 // Left sidebar device list, grouped by category (spec §5.4).
 
 import { Link } from "react-router-dom";
-import { GROUP_ORDER, type Device } from "../types";
-import { lastOctet } from "../lib/helpers";
+import type { Device } from "../types";
+import { groupByOrder, lastOctet } from "../lib/helpers";
 
 interface Props {
   devices: Device[];
@@ -11,17 +11,14 @@ interface Props {
 }
 
 export function DeviceList({ devices, selectedId, onSelect }: Props) {
-  const grouped = GROUP_ORDER.map((g) => ({
-    g,
-    items: devices.filter((d) => d.group === g),
-  })).filter((x) => x.items.length);
+  const grouped = groupByOrder(devices);
 
   return (
     <aside className="n-left" aria-label="device list">
-      {grouped.map(({ g, items }) => (
-        <div key={g}>
+      {grouped.map(({ group, items }) => (
+        <div key={group}>
           <div className="ltitle">
-            {g} · {items.length}
+            {group} · {items.length}
           </div>
           {items.map((d) => (
             <button

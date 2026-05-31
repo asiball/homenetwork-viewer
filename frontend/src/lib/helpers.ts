@@ -1,9 +1,29 @@
 // Lookup + formatting helpers, ported from the prototype's data.jsx.
 
-import type { Cable, Device, Switch } from "../types";
+import { GROUP_ORDER, type Cable, type Device, type Group, type Switch } from "../types";
 
 export function countOnline(devs: Device[]): number {
   return devs.filter((d) => d.online).length;
+}
+
+export interface DeviceGroup {
+  group: Group;
+  items: Device[];
+}
+
+// Bucket devices by category in GROUP_ORDER, dropping empty groups. Single
+// source of truth for both the sidebar order and the keyboard-nav order, so
+// the list you see and the ↑/↓ traversal can never drift apart.
+export function groupByOrder(devices: Device[]): DeviceGroup[] {
+  return GROUP_ORDER.map((group) => ({
+    group,
+    items: devices.filter((d) => d.group === group),
+  })).filter((g) => g.items.length > 0);
+}
+
+// The same devices flattened into display order (for ↑/↓ keyboard navigation).
+export function orderedByGroup(devices: Device[]): Device[] {
+  return groupByOrder(devices).flatMap((g) => g.items);
 }
 
 // Find a cable whose end terminates at this device (to-end preferred).

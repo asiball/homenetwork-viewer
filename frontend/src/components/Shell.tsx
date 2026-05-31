@@ -16,18 +16,10 @@ interface Props {
   children: ReactNode;
 }
 
-export function Shell({
-  devices,
-  selectedId,
-  onSelect,
-  crumbs,
-  right,
-  footer,
-  children,
-}: Props) {
+export function Shell({ devices, selectedId, onSelect, crumbs, right, footer, children }: Props) {
   // Wide screens start with the list open; iPad-portrait starts collapsed.
   const [leftOpen, setLeftOpen] = useState(
-    () => typeof window === "undefined" || window.innerWidth > 820,
+    () => typeof window === "undefined" || window.innerWidth > 820
   );
 
   return (

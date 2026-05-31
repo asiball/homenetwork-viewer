@@ -18,10 +18,12 @@ function fmtTime(d: Date | null): string {
 export function RefreshControls() {
   const { meta, lastSync, loading, refresh } = useCatalog();
   const [interval, setInterval_] = useState<Interval>(
-    () => (localStorage.getItem(KEY) as Interval) || "5m",
+    () => (localStorage.getItem(KEY) as Interval) || "5m"
   );
   const savedRefresh = useRef(refresh);
-  savedRefresh.current = refresh;
+  useEffect(() => {
+    savedRefresh.current = refresh;
+  });
 
   useEffect(() => {
     localStorage.setItem(KEY, interval);
@@ -33,8 +35,7 @@ export function RefreshControls() {
   return (
     <>
       <span>
-        up{" "}
-        <b style={{ color: "var(--amber)" }}>{meta.online}</b>/{meta.total}
+        up <b style={{ color: "var(--amber)" }}>{meta.online}</b>/{meta.total}
       </span>
       <select
         className="sel-interval"

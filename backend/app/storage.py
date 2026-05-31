@@ -15,17 +15,15 @@ import os
 import shutil
 import tempfile
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 APP_DIR = Path(__file__).resolve().parent
 SEED_FILE = APP_DIR / "seed" / "devices.json"
 
 # Runtime data file. Override with HOMENET_DATA_FILE (docker mounts /data).
-DATA_FILE = Path(
-    os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json"))
-)
+DATA_FILE = Path(os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json")))
 
 _lock = threading.RLock()
 
@@ -70,9 +68,7 @@ def _write_doc(doc: dict[str, Any]) -> None:
     """Atomically replace the data file."""
     with _lock:
         DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(
-            dir=str(DATA_FILE.parent), prefix=".devices.", suffix=".tmp"
-        )
+        fd, tmp = tempfile.mkstemp(dir=str(DATA_FILE.parent), prefix=".devices.", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False, indent=2)
@@ -86,6 +82,7 @@ def _write_doc(doc: dict[str, Any]) -> None:
 
 
 # ─── Reads ──────────────────────────────────────────────────────────────────
+
 
 def list_devices() -> list[dict[str, Any]]:
     return _read_doc()["devices"]
@@ -106,14 +103,15 @@ def list_cables() -> list[dict[str, Any]]:
     return _read_doc()["cables"]
 
 
-def updated_at() -> Optional[str]:
+def updated_at() -> str | None:
     if not DATA_FILE.exists():
         return None
     ts = DATA_FILE.stat().st_mtime
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ts, tz=UTC).isoformat()
 
 
 # ─── Writes ─────────────────────────────────────────────────────────────────
+
 
 def create_device(device: dict[str, Any]) -> dict[str, Any]:
     with _lock:

@@ -100,9 +100,7 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
     positions[d.id] = { x, y, labelOffset: { x: x + 14, y, anchor: "start" } };
   });
 
-  const cats = GROUP_ORDER.filter(
-    (g) => g !== "Infra" && visible.some((d) => d.group === g),
-  );
+  const cats = GROUP_ORDER.filter((g) => g !== "Infra" && visible.some((d) => d.group === g));
   const catStart = startX + 150;
   const catSpacing = (endX - catStart) / Math.max(1, cats.length);
   const cellH = compact ? 24 : 28;
@@ -136,12 +134,6 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
   return { positions, edges, deco: { kind: "spine", busY, startX, endX, taps } };
 }
 
-export function computeLayout(
-  layout: LayoutKind,
-  visible: Device[],
-  compact: boolean,
-): Layout {
-  return layout === "spine"
-    ? computeSpine(visible, compact)
-    : computeRadial(visible, compact);
+export function computeLayout(layout: LayoutKind, visible: Device[], compact: boolean): Layout {
+  return layout === "spine" ? computeSpine(visible, compact) : computeRadial(visible, compact);
 }

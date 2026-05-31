@@ -47,13 +47,12 @@ export const api = {
   switches: () => req<Switch[]>("/switches"),
   cables: () => req<Cable[]>("/cables"),
   meta: () => req<Meta>("/meta"),
-  create: (d: Device) =>
-    req<Device>("/devices", { method: "POST", body: JSON.stringify(d) }),
+  create: (d: Device) => req<Device>("/devices", { method: "POST", body: JSON.stringify(d) }),
   update: (id: string, d: Device) =>
     req<Device>(`/devices/${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(d),
     }),
   remove: (id: string) =>
-    req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    req<undefined>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

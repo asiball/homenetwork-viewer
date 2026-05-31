@@ -2,13 +2,7 @@
 
 import type { Device } from "../types";
 import { lastOctet, shortHost } from "../lib/helpers";
-import {
-  computeLayout,
-  type LayoutKind,
-  MAP_H,
-  MAP_W,
-  type Pos,
-} from "../lib/topology";
+import { computeLayout, type LayoutKind, MAP_H, MAP_W, type Pos } from "../lib/topology";
 
 interface Props {
   devices: Device[]; // already filtered to "visible"
@@ -23,13 +17,7 @@ const LAYOUT_LABEL: Record<LayoutKind, string> = {
   spine: "spine / bus",
 };
 
-export function TopologyMap({
-  devices,
-  layout,
-  selectedId,
-  onSelect,
-  compact = false,
-}: Props) {
+export function TopologyMap({ devices, layout, selectedId, onSelect, compact = false }: Props) {
   const { positions, edges, deco } = computeLayout(layout, devices, compact);
   const getPos = (id: string): Pos => positions[id] ?? { x: 0, y: 0 };
   const selPos = getPos(selectedId);
@@ -49,7 +37,13 @@ export function TopologyMap({
         )}
         {deco.kind === "spine" && (
           <>
-            <line className="bus" x1={deco.startX - 12} y1={deco.busY} x2={deco.endX} y2={deco.busY} />
+            <line
+              className="bus"
+              x1={deco.startX - 12}
+              y1={deco.busY}
+              x2={deco.endX}
+              y2={deco.busY}
+            />
             <line
               x1={deco.startX - 12}
               y1={deco.busY - 2}

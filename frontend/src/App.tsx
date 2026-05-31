@@ -1,13 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 // App root: catalog data provider + router + toast host.
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";

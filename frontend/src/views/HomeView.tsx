@@ -26,28 +26,33 @@ export function HomeView() {
 
   const [layout, setLayout] = useState<LayoutKind>(() => initialLayout(params.get("layout")));
   const [showOffline, setShowOffline] = useState(
-    () => localStorage.getItem(OFFLINE_KEY) !== "false",
+    () => localStorage.getItem(OFFLINE_KEY) !== "false"
   );
   const [selId, setSelId] = useState<string>(
-    () => (devices.some((d) => d.id === "nas") ? "nas" : devices[0]?.id) ?? "",
+    () => (devices.some((d) => d.id === "nas") ? "nas" : devices[0]?.id) ?? ""
   );
 
   const visible = useMemo(
     () => devices.filter((d) => showOffline || d.online),
-    [devices, showOffline],
+    [devices, showOffline]
   );
 
   // Display order matches the grouped sidebar — used for keyboard nav.
   const ordered = useMemo(
     () => GROUP_ORDER.flatMap((g) => visible.filter((d) => d.group === g)),
-    [visible],
+    [visible]
   );
 
   const selected = visible.find((d) => d.id === selId) ?? visible[0];
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
-    if (selected && selected.id !== selId) setSelId(selected.id);
+    if (selected && selected.id !== selId) {
+      const handle = requestAnimationFrame(() => {
+        setSelId(selected.id);
+      });
+      return () => cancelAnimationFrame(handle);
+    }
   }, [selected, selId]);
 
   function changeLayout(next: LayoutKind) {
@@ -97,18 +102,23 @@ export function HomeView() {
           net <span>192.168.1.0/24</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>br-lan</span> &nbsp;·&nbsp; layout{" "}
-            <span>{layoutLabel}</span>
+            &nbsp;·&nbsp; iface <span>br-lan</span> &nbsp;·&nbsp; layout <span>{layoutLabel}</span>
           </span>
         </>
       }
       right={
         <>
           <div className="layout-tog" title="レイアウト切替 (radial / spine)">
-            <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
+            <button
+              className={layout === "radial" ? "sel" : ""}
+              onClick={() => changeLayout("radial")}
+            >
               ◎ radial
             </button>
-            <button className={layout === "spine" ? "sel" : ""} onClick={() => changeLayout("spine")}>
+            <button
+              className={layout === "spine" ? "sel" : ""}
+              onClick={() => changeLayout("spine")}
+            >
               ─ spine
             </button>
           </div>
@@ -126,7 +136,9 @@ export function HomeView() {
           <span>
             <b style={{ color: "var(--err)" }}>{visible.filter((d) => !d.online).length}</b> down
           </span>
-          <span>subnet <b>/24</b></span>
+          <span>
+            subnet <b>/24</b>
+          </span>
           <button className={`tg ${showOffline ? "on" : ""}`} onClick={toggleOffline}>
             show offline · <b>{showOffline ? "on" : "off"}</b>
           </button>

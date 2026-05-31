@@ -1,21 +1,8 @@
 // Shared types — mirror backend/app/models.py and spec/homenet-spec.md §3.
 
-export type Group =
-  | "Infra"
-  | "IoT"
-  | "Media"
-  | "Mobile"
-  | "Computer"
-  | "Misc";
+export type Group = "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
 
-export const GROUP_ORDER: Group[] = [
-  "Infra",
-  "IoT",
-  "Media",
-  "Mobile",
-  "Computer",
-  "Misc",
-];
+export const GROUP_ORDER: Group[] = ["Infra", "IoT", "Media", "Mobile", "Computer", "Misc"];
 
 export type Conn =
   | "Wired 1G"

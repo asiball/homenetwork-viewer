@@ -8,17 +8,13 @@ export function countOnline(devs: Device[]): number {
 
 // Find a cable whose end terminates at this device (to-end preferred).
 export function cableForDevice(cables: Cable[], devId: string): Cable | null {
-  return (
-    cables.find((c) => c.toDev === devId) ??
-    cables.find((c) => c.fromDev === devId) ??
-    null
-  );
+  return cables.find((c) => c.toDev === devId) ?? cables.find((c) => c.fromDev === devId) ?? null;
 }
 
 // Find a switch/hub carrying this device on a downstream (non-uplink) port.
 export function switchForDevice(
   switches: Switch[],
-  devId: string,
+  devId: string
 ): { sw: Switch; port: number } | null {
   for (const sw of switches) {
     for (const [port, slot] of Object.entries(sw.portMap || {})) {
@@ -67,5 +63,4 @@ export function kebabId(name: string): string {
 
 export const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
-export const IPV4_RE =
-  /^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/;
+export const IPV4_RE = /^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/;

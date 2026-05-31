@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -33,34 +33,34 @@ ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # kebab-case (spec §3.1)
 
 class NetInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    ipv4: Optional[str] = None
-    ipv6: Optional[str] = None
-    gateway: Optional[str] = None
-    dns: Optional[str] = None
-    dhcp: Optional[str] = None
-    vlan: Optional[str] = None
-    rssi: Optional[str] = None
+    ipv4: str | None = None
+    ipv6: str | None = None
+    gateway: str | None = None
+    dns: str | None = None
+    dhcp: str | None = None
+    vlan: str | None = None
+    rssi: str | None = None
 
 
 class HwInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    cpu_full: Optional[str] = None
-    arch: Optional[str] = None
-    mem_full: Optional[str] = None
-    chassis: Optional[str] = None
-    bios: Optional[str] = None
+    cpu_full: str | None = None
+    arch: str | None = None
+    mem_full: str | None = None
+    chassis: str | None = None
+    bios: str | None = None
 
 
 class Metrics(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    cpu_pct: Optional[float] = None
-    cpu_series: Optional[List[float]] = None
-    mem_pct: Optional[float] = None
-    mem_series: Optional[List[float]] = None
-    net_in: Optional[float] = None
-    net_out: Optional[float] = None
-    net_in_series: Optional[List[float]] = None
-    temp: Optional[float] = None
+    cpu_pct: float | None = None
+    cpu_series: list[float] | None = None
+    mem_pct: float | None = None
+    mem_series: list[float] | None = None
+    net_in: float | None = None
+    net_out: float | None = None
+    net_in_series: list[float] | None = None
+    temp: float | None = None
 
 
 class Service(BaseModel):
@@ -74,40 +74,40 @@ class Service(BaseModel):
 class Drive(BaseModel):
     model_config = ConfigDict(extra="ignore")
     nm: str
-    md: Optional[str] = None
-    size: Optional[str] = None
+    md: str | None = None
+    size: str | None = None
     pct: float = 0
 
 
 class StorageInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    drives: Optional[List[Drive]] = None
-    pool: Optional[str] = None
-    health: Optional[str] = None
+    drives: list[Drive] | None = None
+    pool: str | None = None
+    health: str | None = None
 
 
 class Ownership(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
-    purchased: Optional[str] = None
-    price: Optional[str] = None
-    warranty: Optional[str] = None
-    location: Optional[str] = None
-    tags: Optional[List[str]] = None
+    manufacturer: str | None = None
+    model: str | None = None
+    purchased: str | None = None
+    price: str | None = None
+    warranty: str | None = None
+    location: str | None = None
+    tags: list[str] | None = None
 
 
 class DeviceDetail(BaseModel):
     """Detail-view-only payload (spec §3.3). All fields optional / nullable."""
 
     model_config = ConfigDict(extra="ignore")
-    net: Optional[NetInfo] = None
-    hw: Optional[HwInfo] = None
-    metrics: Optional[Metrics] = None
-    services: Optional[List[Service]] = None
-    storage: Optional[StorageInfo] = None
-    hist7: Optional[List[float]] = None
-    own: Optional[Ownership] = None
+    net: NetInfo | None = None
+    hw: HwInfo | None = None
+    metrics: Metrics | None = None
+    services: list[Service] | None = None
+    storage: StorageInfo | None = None
+    hist7: list[float] | None = None
+    own: Ownership | None = None
 
 
 class DeviceBase(BaseModel):
@@ -124,17 +124,17 @@ class DeviceBase(BaseModel):
     online: bool = False
 
     # optional spec §3.2
-    cpu: Optional[str] = None
-    mem: Optional[str] = None
-    storage: Optional[str] = None
-    conn: Optional[Conn] = None
-    ring: Optional[Literal[0, 1, 2]] = None
-    idx: Optional[int] = None
-    last: Optional[str] = None
-    uptime: Optional[str] = None
-    notes: Optional[str] = None
+    cpu: str | None = None
+    mem: str | None = None
+    storage: str | None = None
+    conn: Conn | None = None
+    ring: Literal[0, 1, 2] | None = None
+    idx: int | None = None
+    last: str | None = None
+    uptime: str | None = None
+    notes: str | None = None
 
-    detail: Optional[DeviceDetail] = None
+    detail: DeviceDetail | None = None
 
     @field_validator("ip")
     @classmethod
@@ -186,42 +186,42 @@ class Device(DeviceCreate):
 class PortSlot(BaseModel):
     model_config = ConfigDict(extra="ignore")
     device: str
-    cable: Optional[str] = None
-    role: Optional[Literal["uplink", "downlink"]] = None
+    cable: str | None = None
+    role: Literal["uplink", "downlink"] | None = None
 
 
 class Switch(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
-    model: Optional[str] = None
+    model: str | None = None
     type: Literal["switch", "hub"] = "switch"
-    location: Optional[str] = None
-    portCount: Optional[int] = None
-    speed: Optional[str] = None
-    managed: Optional[bool] = None
+    location: str | None = None
+    portCount: int | None = None
+    speed: str | None = None
+    managed: bool | None = None
     online: bool = True
-    notes: Optional[str] = None
-    radio: Optional[str] = None
-    portMap: dict[str, Optional[PortSlot]] = {}
+    notes: str | None = None
+    radio: str | None = None
+    portMap: dict[str, PortSlot | None] = {}
 
 
 class Cable(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    cat: Optional[str] = None
-    len: Optional[str] = None
-    color: Optional[str] = None
-    jacket: Optional[str] = None
+    cat: str | None = None
+    len: str | None = None
+    color: str | None = None
+    jacket: str | None = None
     fromDev: str
-    fromPort: Optional[str | int] = None
+    fromPort: str | int | None = None
     toDev: str
-    toPort: Optional[str | int] = None
-    notes: Optional[str] = None
+    toPort: str | int | None = None
+    notes: str | None = None
 
 
 class Meta(BaseModel):
     total: int
     online: int
     offline: int
-    updated_at: Optional[str] = None
+    updated_at: str | None = None

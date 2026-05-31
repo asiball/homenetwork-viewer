@@ -128,7 +128,7 @@ export function EditView({ mode }: Props) {
   const existing = mode === "edit" ? devices.find((d) => d.id === id) : undefined;
 
   const [form, setForm] = useState<FormState>(() =>
-    existing ? formFromDevice(existing) : emptyForm(),
+    existing ? formFromDevice(existing) : emptyForm()
   );
   const [idTouched, setIdTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -246,7 +246,9 @@ export function EditView({ mode }: Props) {
 
   const footer = (
     <>
-      <span>view <b>{mode === "add" ? "add" : "edit"}</b></span>
+      <span>
+        view <b>{mode === "add" ? "add" : "edit"}</b>
+      </span>
       <span className="right">homenet v1.0 · {mode === "add" ? "new device" : id}</span>
     </>
   );
@@ -257,14 +259,23 @@ export function EditView({ mode }: Props) {
       <Shell
         devices={devices}
         onSelect={(did) => navigate(`/d/${did}`)}
-        crumbs={<><Link className="d-back" to="/">← map</Link> &nbsp;<span>not found</span></>}
+        crumbs={
+          <>
+            <Link className="d-back" to="/">
+              ← map
+            </Link>{" "}
+            &nbsp;<span>not found</span>
+          </>
+        }
         right={<span />}
         footer={footer}
       >
         <div className="f-main">
           <div className="center-screen">
             <div className="big">device not found</div>
-            <Link className="f-btn" to="/">← back to map</Link>
+            <Link className="f-btn" to="/">
+              ← back to map
+            </Link>
           </div>
         </div>
       </Shell>
@@ -280,7 +291,9 @@ export function EditView({ mode }: Props) {
       onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to={backTo}>← {mode === "edit" ? "detail" : "map"}</Link>
+          <Link className="d-back" to={backTo}>
+            ← {mode === "edit" ? "detail" : "map"}
+          </Link>
           &nbsp;<span>{mode === "add" ? "add device" : existing?.host}</span>
         </>
       }
@@ -300,7 +313,12 @@ export function EditView({ mode }: Props) {
 
           <div className="f-section" data-title="identity">
             <div className="f-grid">
-              <Field label="id" required={mode === "add"} error={errors.id} hint="kebab-case · 不変">
+              <Field
+                label="id"
+                required={mode === "add"}
+                error={errors.id}
+                hint="kebab-case · 不変"
+              >
                 <input
                   value={form.id}
                   readOnly={mode === "edit"}
@@ -312,13 +330,25 @@ export function EditView({ mode }: Props) {
                 />
               </Field>
               <Field label="display name" required error={errors.name}>
-                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="NAS" />
+                <input
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="NAS"
+                />
               </Field>
               <Field label="host (fqdn)" required error={errors.host}>
-                <input value={form.host} onChange={(e) => set("host", e.target.value)} placeholder="nas.home.arpa" />
+                <input
+                  value={form.host}
+                  onChange={(e) => set("host", e.target.value)}
+                  placeholder="nas.home.arpa"
+                />
               </Field>
               <Field label="ipv4" required error={errors.ip}>
-                <input value={form.ip} onChange={(e) => set("ip", e.target.value)} placeholder="192.168.1.10" />
+                <input
+                  value={form.ip}
+                  onChange={(e) => set("ip", e.target.value)}
+                  placeholder="192.168.1.10"
+                />
               </Field>
               <Field label="mac" required error={errors.mac}>
                 <input
@@ -365,7 +395,10 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="placement & link">
             <div className="f-grid">
               <Field label="connection">
-                <select value={form.conn} onChange={(e) => set("conn", e.target.value as Conn | "")}>
+                <select
+                  value={form.conn}
+                  onChange={(e) => set("conn", e.target.value as Conn | "")}
+                >
                   <option value="">— (未設定)</option>
                   {CONN_OPTIONS.map((c) => (
                     <option key={c} value={c}>
@@ -375,7 +408,10 @@ export function EditView({ mode }: Props) {
                 </select>
               </Field>
               <Field label="topology ring" hint="マップ上の配置層">
-                <select value={form.ring} onChange={(e) => set("ring", e.target.value as FormState["ring"])}>
+                <select
+                  value={form.ring}
+                  onChange={(e) => set("ring", e.target.value as FormState["ring"])}
+                >
                   <option value="2">2 · leaf (末端 / 既定)</option>
                   <option value="1">1 · infrastructure</option>
                   <option value="0">0 · gateway</option>
@@ -388,10 +424,18 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="hardware (summary)">
             <div className="f-grid">
               <Field label="cpu">
-                <input value={form.cpu} onChange={(e) => set("cpu", e.target.value)} placeholder="Intel N100 4C / 4T" />
+                <input
+                  value={form.cpu}
+                  onChange={(e) => set("cpu", e.target.value)}
+                  placeholder="Intel N100 4C / 4T"
+                />
               </Field>
               <Field label="memory">
-                <input value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
+                <input
+                  value={form.mem}
+                  onChange={(e) => set("mem", e.target.value)}
+                  placeholder="16 GB DDR4"
+                />
               </Field>
               <Field label="storage" full>
                 <input
@@ -406,7 +450,10 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="ownership">
             <div className="f-grid">
               <Field label="manufacturer">
-                <input value={form.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
+                <input
+                  value={form.manufacturer}
+                  onChange={(e) => set("manufacturer", e.target.value)}
+                />
               </Field>
               <Field label="model">
                 <input value={form.model} onChange={(e) => set("model", e.target.value)} />
@@ -415,16 +462,28 @@ export function EditView({ mode }: Props) {
                 <input value={form.location} onChange={(e) => set("location", e.target.value)} />
               </Field>
               <Field label="purchased">
-                <input value={form.purchased} onChange={(e) => set("purchased", e.target.value)} placeholder="2023-08-15" />
+                <input
+                  value={form.purchased}
+                  onChange={(e) => set("purchased", e.target.value)}
+                  placeholder="2023-08-15"
+                />
               </Field>
               <Field label="price">
-                <input value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="¥98,000" />
+                <input
+                  value={form.price}
+                  onChange={(e) => set("price", e.target.value)}
+                  placeholder="¥98,000"
+                />
               </Field>
               <Field label="warranty">
                 <input value={form.warranty} onChange={(e) => set("warranty", e.target.value)} />
               </Field>
               <Field label="tags" full hint="カンマ区切り（例 always-on, backup, critical）">
-                <input value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="always-on, critical" />
+                <input
+                  value={form.tags}
+                  onChange={(e) => set("tags", e.target.value)}
+                  placeholder="always-on, critical"
+                />
               </Field>
             </div>
           </div>
@@ -432,7 +491,11 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="notes">
             <div className="f-grid">
               <Field label="notes" full>
-                <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={5} />
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                  rows={5}
+                />
               </Field>
             </div>
           </div>
@@ -445,7 +508,12 @@ export function EditView({ mode }: Props) {
               cancel
             </Link>
             {mode === "edit" && (
-              <button type="button" className="f-btn danger f-spacer" onClick={onDelete} disabled={busy}>
+              <button
+                type="button"
+                className="f-btn danger f-spacer"
+                onClick={onDelete}
+                disabled={busy}
+              >
                 delete
               </button>
             )}

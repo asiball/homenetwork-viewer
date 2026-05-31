@@ -73,6 +73,7 @@ def meta() -> Meta:
 
 # ─── Devices ──────────────────────────────────────────────────────────────
 
+
 @app.get("/api/devices", response_model=list[Device])
 def get_devices() -> list[dict]:
     return storage.list_devices()
@@ -82,18 +83,18 @@ def get_devices() -> list[dict]:
 def get_device(device_id: str) -> dict:
     try:
         return storage.get_device(device_id)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+    except storage.NotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from e
 
 
 @app.post("/api/devices", response_model=Device, status_code=201)
 def create_device(payload: DeviceCreate) -> dict:
     try:
         return storage.create_device(payload.model_dump(exclude_none=True))
-    except storage.ConflictError:
+    except storage.ConflictError as e:
         raise HTTPException(
             status_code=409, detail=f"device id already exists: {payload.id}"
-        )
+        ) from e
 
 
 @app.put("/api/devices/{device_id}", response_model=Device)
@@ -102,20 +103,21 @@ def update_device(device_id: str, payload: DeviceUpdate) -> dict:
     body["id"] = device_id
     try:
         return storage.update_device(device_id, body)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+    except storage.NotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from e
 
 
 @app.delete("/api/devices/{device_id}", status_code=204)
 def delete_device(device_id: str) -> Response:
     try:
         storage.delete_device(device_id)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+    except storage.NotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from e
     return Response(status_code=204)
 
 
 # ─── Topology (read-only) ───────────────────────────────────────────────────
+
 
 @app.get("/api/switches", response_model=list[Switch])
 def get_switches() -> list[dict]:

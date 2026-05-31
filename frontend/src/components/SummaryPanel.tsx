@@ -68,19 +68,26 @@ export function SummaryPanel({ device }: Props) {
                   <span>{m.mem_pct}%</span>
                 </div>
                 <div className="bar">
-                  <div className="fill" style={{ width: `${m.mem_pct}%`, background: "var(--ok)" }} />
+                  <div
+                    className="fill"
+                    style={{ width: `${m.mem_pct}%`, background: "var(--ok)" }}
+                  />
                 </div>
               </>
             )}
           </div>
         )}
         <div className={`stale${device.online && m ? " live" : ""}`}>
-          {device.online
-            ? m
-              ? <span>agent · metrics live</span>
-              : <span>online · no agent</span>
-            : <span>offline · last seen {device.last ?? "—"}</span>}
-          <span>{device.online ? device.last ?? "" : ""}</span>
+          {device.online ? (
+            m ? (
+              <span>agent · metrics live</span>
+            ) : (
+              <span>online · no agent</span>
+            )
+          ) : (
+            <span>offline · last seen {device.last ?? "—"}</span>
+          )}
+          <span>{device.online ? (device.last ?? "") : ""}</span>
         </div>
       </div>
 

@@ -20,7 +20,9 @@ export function DetailView() {
 
   const footer = (
     <>
-      <span>view <b>detail</b></span>
+      <span>
+        view <b>detail</b>
+      </span>
       <span className="right">homenet v1.0 · {id}</span>
     </>
   );
@@ -32,7 +34,10 @@ export function DetailView() {
         onSelect={(did) => navigate(`/d/${did}`)}
         crumbs={
           <>
-            <Link className="d-back" to="/">← map</Link> &nbsp;<span>not found</span>
+            <Link className="d-back" to="/">
+              ← map
+            </Link>{" "}
+            &nbsp;<span>not found</span>
           </>
         }
         right={<RefreshControls />}
@@ -42,7 +47,9 @@ export function DetailView() {
           <div className="center-screen">
             <div className="big">device not found</div>
             <div>id · {id}</div>
-            <Link className="f-btn" to="/">← back to map</Link>
+            <Link className="f-btn" to="/">
+              ← back to map
+            </Link>
           </div>
         </div>
       </Shell>
@@ -64,7 +71,10 @@ export function DetailView() {
       onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to="/">← map</Link> &nbsp;<span>{device.host}</span>
+          <Link className="d-back" to="/">
+            ← map
+          </Link>{" "}
+          &nbsp;<span>{device.host}</span>
         </>
       }
       right={
@@ -166,7 +176,9 @@ export function DetailView() {
             ) : (
               <>
                 <div className="v dim">—</div>
-                <div className="sub">{device.online ? "no agent" : `offline · last ${device.last ?? "—"}`}</div>
+                <div className="sub">
+                  {device.online ? "no agent" : `offline · last ${device.last ?? "—"}`}
+                </div>
               </>
             )}
           </div>
@@ -339,7 +351,9 @@ export function DetailView() {
               })}
             </div>
             <div className="d-pool">
-              <span>avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%</span>
+              <span>
+                avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%
+              </span>
               <span>this week</span>
             </div>
           </div>

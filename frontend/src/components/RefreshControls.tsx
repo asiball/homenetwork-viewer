@@ -3,12 +3,7 @@
 // interval. Live ARP/ping scanning is the v1.1 collector (not wired yet), so
 // this polls the data source rather than faking metrics.
 
-import { useEffect, useRef, useState } from "react";
 import { useCatalog } from "../App";
-
-type Interval = "off" | "30s" | "5m";
-const MS: Record<Interval, number> = { off: 0, "30s": 30_000, "5m": 300_000 };
-const KEY = "homenet.poll";
 
 function fmtTime(d: Date | null): string {
   if (!d) return "—";
@@ -16,21 +11,7 @@ function fmtTime(d: Date | null): string {
 }
 
 export function RefreshControls() {
-  const { meta, lastSync, loading, refresh } = useCatalog();
-  const [interval, setInterval_] = useState<Interval>(
-    () => (localStorage.getItem(KEY) as Interval) || "5m"
-  );
-  const savedRefresh = useRef(refresh);
-  useEffect(() => {
-    savedRefresh.current = refresh;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(KEY, interval);
-    if (interval === "off") return;
-    const id = window.setInterval(() => void savedRefresh.current(), MS[interval]);
-    return () => window.clearInterval(id);
-  }, [interval]);
+  const { meta, lastSync, loading, refresh, pollInterval, setPollInterval } = useCatalog();
 
   return (
     <>
@@ -40,8 +21,8 @@ export function RefreshControls() {
       <select
         className="sel-interval"
         aria-label="auto-refresh interval"
-        value={interval}
-        onChange={(e) => setInterval_(e.target.value as Interval)}
+        value={pollInterval}
+        onChange={(e) => setPollInterval(e.target.value as "off" | "30s" | "5m")}
         title="auto-refresh interval"
       >
         <option value="off">poll · off</option>

@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../data/devices.schema.json",
   "devices": [
     {
       "id": "gw",

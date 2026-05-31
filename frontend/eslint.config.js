@@ -7,7 +7,9 @@ import prettierConfig from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: ["dist/**", "node_modules/**", "**/api-schema.ts"],
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.browser,

@@ -14,7 +14,10 @@ frontend/.vite/
 # ── runtime data (seeded on first run; edit via UI or by hand) ──
 data/*.json
 !data/.gitkeep
+!data/devices.schema.json
 
 # ── misc ────────────────────────────────────────────────
 *.log
 .DS_Store
+backend/openapi.json
+

@@ -1,13 +1,18 @@
 /* eslint-disable react-refresh/only-export-components */
 // App root: catalog data provider + router + toast host.
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";
 import { HomeView } from "./views/HomeView";
 import { DetailView } from "./views/DetailView";
 import { EditView } from "./views/EditView";
+
+type PollInterval = "off" | "30s" | "5m";
+const POLL_MS: Record<PollInterval, number> = { off: 0, "30s": 30_000, "5m": 300_000 };
+const POLL_KEY = "homenet.poll";
 
 interface CatalogValue {
   devices: Device[];
@@ -18,6 +23,8 @@ interface CatalogValue {
   loading: boolean;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
+  pollInterval: PollInterval;
+  setPollInterval: (interval: PollInterval) => void;
 }
 
 const CatalogContext = createContext<CatalogValue | null>(null);
@@ -30,14 +37,77 @@ export function useCatalog(): CatalogValue {
 
 const EMPTY_META: Meta = { total: 0, online: 0, offline: 0, updated_at: null };
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 export default function App() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [switches, setSwitches] = useState<Switch[]>([]);
-  const [cables, setCables] = useState<Cable[]>([]);
-  const [meta, setMeta] = useState<Meta>(EMPTY_META);
-  const [lastSync, setLastSync] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [bootError, setBootError] = useState<string | null>(null);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppInner />
+    </QueryClientProvider>
+  );
+}
+
+function AppInner() {
+  const qc = useQueryClient();
+  const [pollInterval, setPollIntervalState] = useState<PollInterval>(
+    () => (localStorage.getItem(POLL_KEY) as PollInterval) || "5m"
+  );
+
+  const setPollInterval = useCallback((val: PollInterval) => {
+    localStorage.setItem(POLL_KEY, val);
+    setPollIntervalState(val);
+  }, []);
+
+  const intervalMs = POLL_MS[pollInterval];
+
+  // Queries
+  const {
+    data: devices = [],
+    error: devicesError,
+    isLoading: devicesLoading,
+    dataUpdatedAt: devicesUpdatedAt,
+  } = useQuery({
+    queryKey: ["devices"],
+    queryFn: () => api.devices(),
+    refetchInterval: intervalMs || false,
+  });
+
+  const {
+    data: switches = [],
+    error: switchesError,
+    isLoading: switchesLoading,
+  } = useQuery({
+    queryKey: ["switches"],
+    queryFn: () => api.switches(),
+    staleTime: Infinity,
+  });
+
+  const {
+    data: cables = [],
+    error: cablesError,
+    isLoading: cablesLoading,
+  } = useQuery({
+    queryKey: ["cables"],
+    queryFn: () => api.cables(),
+    staleTime: Infinity,
+  });
+
+  const {
+    data: meta = EMPTY_META,
+    error: metaError,
+    isLoading: metaLoading,
+  } = useQuery({
+    queryKey: ["meta"],
+    queryFn: () => api.meta(),
+    refetchInterval: intervalMs || false,
+  });
 
   const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -48,53 +118,22 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // Lightweight refresh: devices + meta only (switches/cables are static).
   const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [d, m] = await Promise.all([api.devices(), api.meta()]);
-      setDevices(d);
-      setMeta(m);
-      setLastSync(new Date());
-      setBootError(null);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "failed to reach API";
-      setBootError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["devices"] }),
+      qc.invalidateQueries({ queryKey: ["meta"] }),
+    ]);
+  }, [qc]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const [d, s, c, m] = await Promise.all([
-          api.devices(),
-          api.switches(),
-          api.cables(),
-          api.meta(),
-        ]);
-        if (cancelled) return;
-        setDevices(d);
-        setSwitches(s);
-        setCables(c);
-        setMeta(m);
-        setLastSync(new Date());
-        setBootError(null);
-      } catch (e) {
-        if (!cancelled) {
-          setBootError(e instanceof Error ? e.message : "failed to reach API");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const loading = devicesLoading || switchesLoading || cablesLoading || metaLoading;
+
+  const bootError =
+    devicesError || switchesError || cablesError || metaError
+      ? (devicesError || switchesError || cablesError || metaError)?.message ||
+        "failed to load data"
+      : null;
+
+  const lastSync = devicesUpdatedAt ? new Date(devicesUpdatedAt) : null;
 
   // First load, nothing yet.
   if (loading && devices.length === 0 && !bootError) {
@@ -128,6 +167,8 @@ export default function App() {
     loading,
     refresh,
     notify,
+    pollInterval,
+    setPollInterval,
   };
 
   return (

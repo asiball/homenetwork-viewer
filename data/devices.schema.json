@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Home Network Config",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "host", "ip", "mac", "group", "type"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "host": { "type": "string", "minLength": 1 },
+          "ip": { "type": "string", "format": "ipv4" },
+          "mac": { "type": "string", "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$" },
+          "group": { "type": "string", "enum": ["Infra", "IoT", "Media", "Mobile", "Computer", "Misc"] },
+          "type": { "type": "string" },
+          "online": { "type": "boolean" },
+          "cpu": { "type": ["string", "null"] },
+          "mem": { "type": ["string", "null"] },
+          "storage": { "type": ["string", "null"] },
+          "conn": { "type": ["string", "null"], "enum": ["Wired 1G", "Wired 2.5G", "Wired 100M", "Wi-Fi 2.4 GHz", "Wi-Fi 5 GHz", "Wi-Fi 6 GHz", "—", null] },
+          "ring": { "type": ["integer", "null"], "enum": [0, 1, 2, null] },
+          "idx": { "type": ["integer", "null"] },
+          "last": { "type": ["string", "null"] },
+          "uptime": { "type": ["string", "null"] },
+          "notes": { "type": ["string", "null"] },
+          "detail": {
+            "type": ["object", "null"],
+            "properties": {
+              "net": {
+                "type": ["object", "null"],
+                "properties": {
+                  "ipv4": { "type": ["string", "null"] },
+                  "ipv6": { "type": ["string", "null"] },
+                  "gateway": { "type": ["string", "null"] },
+                  "dns": { "type": ["string", "null"] },
+                  "dhcp": { "type": ["string", "null"] },
+                  "vlan": { "type": ["string", "null"] },
+                  "rssi": { "type": ["string", "null"] }
+                }
+              },
+              "hw": {
+                "type": ["object", "null"],
+                "properties": {
+                  "cpu_full": { "type": ["string", "null"] },
+                  "arch": { "type": ["string", "null"] },
+                  "mem_full": { "type": ["string", "null"] },
+                  "chassis": { "type": ["string", "null"] },
+                  "bios": { "type": ["string", "null"] }
+                }
+              },
+              "metrics": {
+                "type": ["object", "null"],
+                "properties": {
+                  "cpu_pct": { "type": ["number", "null"] },
+                  "cpu_series": { "type": ["array", "null"], "items": { "type": "number" } },
+                  "mem_pct": { "type": ["number", "null"] },
+                  "mem_series": { "type": ["array", "null"], "items": { "type": "number" } },
+                  "net_in": { "type": ["number", "null"] },
+                  "net_out": { "type": ["number", "null"] },
+                  "net_in_series": { "type": ["array", "null"], "items": { "type": "number" } },
+                  "temp": { "type": ["number", "null"] }
+                }
+              },
+              "services": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "required": ["port"],
+                  "properties": {
+                    "port": { "type": "integer" },
+                    "proto": { "type": "string" },
+                    "svc": { "type": "string" },
+                    "banner": { "type": "string" }
+                  }
+                }
+              },
+              "storage": {
+                "type": ["object", "null"],
+                "properties": {
+                  "drives": {
+                    "type": ["array", "null"],
+                    "items": {
+                      "type": "object",
+                      "required": ["nm"],
+                      "properties": {
+                        "nm": { "type": "string" },
+                        "md": { "type": ["string", "null"] },
+                        "size": { "type": ["string", "null"] },
+                        "pct": { "type": "number" }
+                      }
+                    }
+                  },
+                  "pool": { "type": ["string", "null"] },
+                  "health": { "type": ["string", "null"] }
+                }
+              },
+              "hist7": { "type": ["array", "null"], "items": { "type": "number" } },
+              "own": {
+                "type": ["object", "null"],
+                "properties": {
+                  "manufacturer": { "type": ["string", "null"] },
+                  "model": { "type": ["string", "null"] },
+                  "purchased": { "type": ["string", "null"] },
+                  "price": { "type": ["string", "null"] },
+                  "warranty": { "type": ["string", "null"] },
+                  "location": { "type": ["string", "null"] },
+                  "tags": { "type": ["array", "null"], "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "switches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "model": { "type": ["string", "null"] },
+          "type": { "type": "string", "enum": ["switch", "hub"] },
+          "location": { "type": ["string", "null"] },
+          "portCount": { "type": ["integer", "null"] },
+          "speed": { "type": ["string", "null"] },
+          "managed": { "type": ["boolean", "null"] },
+          "online": { "type": "boolean" },
+          "notes": { "type": ["string", "null"] },
+          "radio": { "type": ["string", "null"] },
+          "portMap": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["object", "null"],
+              "required": ["device"],
+              "properties": {
+                "device": { "type": "string" },
+                "cable": { "type": ["string", "null"] },
+                "role": { "type": ["string", "null"], "enum": ["uplink", "downlink", null] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "fromDev", "toDev"],
+        "properties": {
+          "id": { "type": "string" },
+          "cat": { "type": ["string", "null"] },
+          "len": { "type": ["string", "null"] },
+          "color": { "type": ["string", "null"] },
+          "jacket": { "type": ["string", "null"] },
+          "fromDev": { "type": "string" },
+          "fromPort": { "type": ["string", "integer", "null"] },
+          "toDev": { "type": "string" },
+          "toPort": { "type": ["string", "integer", "null"] },
+          "notes": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

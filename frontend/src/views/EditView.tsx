@@ -187,7 +187,11 @@ export function EditView({ mode }: Props) {
       if (Object.keys(detail).length === 0) detail = undefined;
     }
 
+    // Spread the existing device first so fields the form doesn't edit
+    // (last, uptime, idx, …) survive the save; then overlay the form values,
+    // clearing optional ones to undefined when the user empties them.
     const payload: Device = {
+      ...(existing ?? {}),
       id: mode === "edit" ? id : form.id,
       name: form.name.trim(),
       host: form.host.trim(),
@@ -196,15 +200,14 @@ export function EditView({ mode }: Props) {
       group: form.group,
       type: form.type.trim(),
       online: form.online,
+      conn: form.conn || undefined,
+      ring: form.ring !== "" ? (Number(form.ring) as 0 | 1 | 2) : undefined,
+      cpu: form.cpu.trim() || undefined,
+      mem: form.mem.trim() || undefined,
+      storage: form.storage.trim() || undefined,
+      notes: form.notes.trim() ? form.notes : undefined,
+      detail: detail ?? undefined,
     };
-    if (form.conn) payload.conn = form.conn;
-    if (form.ring !== "") payload.ring = Number(form.ring) as 0 | 1 | 2;
-    if (existing?.idx != null) payload.idx = existing.idx;
-    if (form.cpu.trim()) payload.cpu = form.cpu.trim();
-    if (form.mem.trim()) payload.mem = form.mem.trim();
-    if (form.storage.trim()) payload.storage = form.storage.trim();
-    if (form.notes.trim()) payload.notes = form.notes;
-    if (detail) payload.detail = detail;
     return payload;
   }
 

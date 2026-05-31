@@ -116,7 +116,7 @@ export function DetailView() {
                   <span className="u">%</span>
                 </div>
                 {m.cpu_series && <Sparkline values={m.cpu_series} color="amber" />}
-                {m.cpu_series && (
+                {m.cpu_series && m.cpu_series.length > 0 && (
                   <div className="sub">
                     avg {mean(m.cpu_series)}% · peak {Math.max(...m.cpu_series)}%
                   </div>
@@ -139,7 +139,9 @@ export function DetailView() {
                   <span className="u">%</span>
                 </div>
                 {m.mem_series && <Sparkline values={m.mem_series} color="ok" />}
-                {m.mem_series && <div className="sub">avg {mean(m.mem_series)}%</div>}
+                {m.mem_series && m.mem_series.length > 0 && (
+                  <div className="sub">avg {mean(m.mem_series)}%</div>
+                )}
               </>
             ) : (
               <>
@@ -160,7 +162,8 @@ export function DetailView() {
                 {m.net_in_series && <Sparkline values={m.net_in_series} color="amber" />}
                 <div className="sub">
                   ↑ {m.net_out ?? "—"} Mbps
-                  {m.net_in_series && ` · peak ${Math.max(...m.net_in_series)}`}
+                  {m.net_in_series && m.net_in_series.length > 0 &&
+                    ` · peak ${Math.max(...m.net_in_series)}`}
                 </div>
               </>
             ) : (
@@ -189,7 +192,7 @@ export function DetailView() {
           <div className="d-card" data-title="network">
             <dl>
               <dt>ipv4</dt>
-              <dd>{detail?.net?.ipv4 ?? `${device.ip}/24`}</dd>
+              <dd>{detail?.net?.ipv4 ?? device.ip}</dd>
               <dt>ipv6</dt>
               <dd>{detail?.net?.ipv6 ?? "—"}</dd>
               <dt>mac</dt>
@@ -197,13 +200,13 @@ export function DetailView() {
               <dt>link</dt>
               <dd>{device.conn ?? "—"}</dd>
               <dt>gateway</dt>
-              <dd>{detail?.net?.gateway ?? "192.168.1.1"}</dd>
+              <dd>{detail?.net?.gateway ?? "—"}</dd>
               <dt>dns</dt>
-              <dd>{detail?.net?.dns ?? "inherited"}</dd>
+              <dd>{detail?.net?.dns ?? "—"}</dd>
               <dt>dhcp</dt>
-              <dd>{detail?.net?.dhcp ?? "lease ok"}</dd>
+              <dd>{detail?.net?.dhcp ?? "—"}</dd>
               <dt>vlan</dt>
-              <dd>{detail?.net?.vlan ?? "default"}</dd>
+              <dd>{detail?.net?.vlan ?? "—"}</dd>
               {detail?.net?.rssi && (
                 <>
                   <dt>rssi</dt>

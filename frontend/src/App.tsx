@@ -120,7 +120,7 @@ export default function App() {
     return (
       <div className="center-screen">
         <div className="big">HOMENET / NOC</div>
-        <div>backend unreachable</div>
+        <div>couldn't load catalog</div>
         <div style={{ color: "var(--err)" }}>{bootError}</div>
         <button className="f-btn" onClick={() => void refresh()}>
           retry

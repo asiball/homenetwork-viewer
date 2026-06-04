@@ -38,6 +38,10 @@ class ConflictError(ValueError):
     """Raised when creating a device whose id already exists."""
 
 
+class DataFileError(RuntimeError):
+    """Raised when the data file exists but cannot be parsed as JSON."""
+
+
 def _empty_doc() -> dict[str, Any]:
     return {"devices": [], "switches": [], "cables": []}
 
@@ -59,7 +63,12 @@ def _read_doc() -> dict[str, Any]:
         if not DATA_FILE.exists():
             ensure_seeded()
         with DATA_FILE.open("r", encoding="utf-8") as fh:
-            doc = json.load(fh)
+            try:
+                doc = json.load(fh)
+            except json.JSONDecodeError as exc:
+                raise DataFileError(
+                    f"{DATA_FILE.name} is not valid JSON: {exc}"
+                ) from exc
     # Defensive: guarantee the three collections always exist.
     for key in ("devices", "switches", "cables"):
         doc.setdefault(key, [])

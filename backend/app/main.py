@@ -12,8 +12,9 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from . import storage
 from .models import (
@@ -52,6 +53,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(storage.DataFileError)
+async def _data_file_error(_request: Request, exc: storage.DataFileError) -> JSONResponse:
+    # A hand-edited devices.json with a syntax error should give a clear message
+    # ("not valid JSON: ...") instead of an opaque 500.
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 @app.get("/api/health")

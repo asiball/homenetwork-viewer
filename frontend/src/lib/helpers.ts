@@ -1,9 +1,29 @@
 // Lookup + formatting helpers, ported from the prototype's data.jsx.
 
-import type { Cable, Device, Switch } from "../types";
+import { GROUP_ORDER, type Cable, type Device, type Group, type Switch } from "../types";
 
 export function countOnline(devs: Device[]): number {
   return devs.filter((d) => d.online).length;
+}
+
+export interface DeviceGroup {
+  group: Group;
+  items: Device[];
+}
+
+// Bucket devices by category in GROUP_ORDER, dropping empty groups. Single
+// source of truth for both the sidebar order and the keyboard-nav order, so
+// the list you see and the ↑/↓ traversal can never drift apart.
+export function groupByOrder(devices: Device[]): DeviceGroup[] {
+  return GROUP_ORDER.map((group) => ({
+    group,
+    items: devices.filter((d) => d.group === group),
+  })).filter((g) => g.items.length > 0);
+}
+
+// The same devices flattened into display order (for ↑/↓ keyboard navigation).
+export function orderedByGroup(devices: Device[]): Device[] {
+  return groupByOrder(devices).flatMap((g) => g.items);
 }
 
 // Find a cable whose end terminates at this device (to-end preferred).
@@ -57,15 +77,19 @@ export function shortHost(host: string): string {
 
 // Generate a kebab-case id suggestion from a free-text name.
 export function kebabId(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
+    .replace(/^-+|-+$/g, "");
+  // Non-Latin names (e.g. Japanese) reduce to empty — fall back to a usable base.
+  return slug.slice(0, 24).replace(/-+$/, "") || "device";
 }
 
 export const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
+// Reject leading-zero octets (00, 08, .04) so the form matches Python's
+// ipaddress.IPv4Address on the backend — otherwise the client says "valid"
+// and the user gets a 422 instead of an inline error.
 export const IPV4_RE =
-  /^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/;
+  /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/;

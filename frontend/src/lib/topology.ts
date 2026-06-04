@@ -58,13 +58,18 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
   const r2 = compact ? 215 : 240;
   const leaves = visible.filter((d) => d.ring === 2);
   const total = Math.max(1, leaves.length);
+  const infra = visible.filter((d) => d.ring === 1);
   const positions: Record<string, Pos> = {};
 
   visible.forEach((d) => {
     if (d.ring === 0) {
       positions[d.id] = { x: cx, y: cy };
     } else if (d.ring === 1) {
-      const a = d.idx === 0 ? 45 : 315;
+      // 2 infra keep the classic top-right / top-left look; 3+ spread evenly,
+      // and we key off list position (not d.idx) so unset idx never collides.
+      const i = infra.findIndex((x) => x.id === d.id);
+      const a =
+        infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
       positions[d.id] = polar(a, r1, cx, cy);
     } else {
       const idx = leaves.findIndex((x) => x.id === d.id);
@@ -95,7 +100,9 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
 
   const infra = visible.filter((d) => d.ring === 1);
   infra.forEach((d, i) => {
-    const y = busY + (i === 0 ? -55 : 55);
+    // alternate above/below the bus with a growing offset so 3+ infra never overlap
+    const above = i % 2 === 0;
+    const y = busY + (above ? -1 : 1) * (55 + Math.floor(i / 2) * 40);
     const x = startX + 60;
     positions[d.id] = { x, y, labelOffset: { x: x + 14, y, anchor: "start" } };
   });

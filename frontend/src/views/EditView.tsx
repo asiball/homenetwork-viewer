@@ -6,6 +6,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
+import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { ApiError, api } from "../api";
 import {
   CONN_OPTIONS,
@@ -187,7 +188,11 @@ export function EditView({ mode }: Props) {
       if (Object.keys(detail).length === 0) detail = undefined;
     }
 
+    // Spread the existing device first so fields the form doesn't edit
+    // (last, uptime, idx, …) survive the save; then overlay the form values,
+    // clearing optional ones to undefined when the user empties them.
     const payload: Device = {
+      ...(existing ?? {}),
       id: mode === "edit" ? id : form.id,
       name: form.name.trim(),
       host: form.host.trim(),
@@ -196,15 +201,14 @@ export function EditView({ mode }: Props) {
       group: form.group,
       type: form.type.trim(),
       online: form.online,
+      conn: form.conn || undefined,
+      ring: form.ring !== "" ? (Number(form.ring) as 0 | 1 | 2) : undefined,
+      cpu: form.cpu.trim() || undefined,
+      mem: form.mem.trim() || undefined,
+      storage: form.storage.trim() || undefined,
+      notes: form.notes.trim() ? form.notes : undefined,
+      detail: detail ?? undefined,
     };
-    if (form.conn) payload.conn = form.conn;
-    if (form.ring !== "") payload.ring = Number(form.ring) as 0 | 1 | 2;
-    if (existing?.idx != null) payload.idx = existing.idx;
-    if (form.cpu.trim()) payload.cpu = form.cpu.trim();
-    if (form.mem.trim()) payload.mem = form.mem.trim();
-    if (form.storage.trim()) payload.storage = form.storage.trim();
-    if (form.notes.trim()) payload.notes = form.notes;
-    if (detail) payload.detail = detail;
     return payload;
   }
 
@@ -244,33 +248,10 @@ export function EditView({ mode }: Props) {
     }
   }
 
-  const footer = (
-    <>
-      <span>view <b>{mode === "add" ? "add" : "edit"}</b></span>
-      <span className="right">homenet v1.0 · {mode === "add" ? "new device" : id}</span>
-    </>
-  );
-
   // Edit mode but device not found.
-  if (mode === "edit" && !existing) {
-    return (
-      <Shell
-        devices={devices}
-        onSelect={(did) => navigate(`/d/${did}`)}
-        crumbs={<><Link className="d-back" to="/">← map</Link> &nbsp;<span>not found</span></>}
-        right={<span />}
-        footer={footer}
-      >
-        <div className="f-main">
-          <div className="center-screen">
-            <div className="big">device not found</div>
-            <Link className="f-btn" to="/">← back to map</Link>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
+  if (mode === "edit" && !existing) return <DeviceNotFound devices={devices} id={id} />;
 
+  const footer = <ViewFooter view={mode === "add" ? "add" : "edit"} tail={mode === "add" ? "new device" : id} />;
   const backTo = mode === "edit" ? `/d/${id}` : "/";
 
   return (

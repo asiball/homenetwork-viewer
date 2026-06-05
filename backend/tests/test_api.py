@@ -140,3 +140,11 @@ def test_wrong_shape_data_file_returns_clear_error(client):
     r = client.get("/api/devices")
     assert r.status_code == 503
     assert "JSON object" in r.json()["detail"]
+
+
+def test_non_array_collection_returns_clear_error(client):
+    """An object root whose 'devices' isn't an array -> 503, not a crash."""
+    storage.DATA_FILE.write_text('{"devices": {}}', encoding="utf-8")
+    r = client.get("/api/devices")
+    assert r.status_code == 503
+    assert "must be a JSON array" in r.json()["detail"]

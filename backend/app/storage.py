@@ -76,9 +76,12 @@ def _read_doc() -> dict[str, Any]:
             f"{DATA_FILE.name} must be a JSON object with "
             "devices / switches / cables arrays"
         )
-    # Defensive: guarantee the three collections always exist.
+    # Defensive: guarantee the three collections always exist and are arrays
+    # (a hand-edit like {"devices": {}} would otherwise crash the iterators).
     for key in ("devices", "switches", "cables"):
         doc.setdefault(key, [])
+        if not isinstance(doc[key], list):
+            raise DataFileError(f"{DATA_FILE.name}: '{key}' must be a JSON array")
     return doc
 
 

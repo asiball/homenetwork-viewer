@@ -132,3 +132,11 @@ def test_corrupt_data_file_returns_clear_error(client):
     assert "not valid JSON" in r.json()["detail"]
     # /api/health does not read the data file, so it stays up.
     assert client.get("/api/health").status_code == 200
+
+
+def test_wrong_shape_data_file_returns_clear_error(client):
+    """Valid JSON of the wrong shape (e.g. a top-level array) also -> 503."""
+    storage.DATA_FILE.write_text("[1, 2, 3]", encoding="utf-8")
+    r = client.get("/api/devices")
+    assert r.status_code == 503
+    assert "JSON object" in r.json()["detail"]

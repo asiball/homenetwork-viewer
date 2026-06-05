@@ -69,6 +69,13 @@ def _read_doc() -> dict[str, Any]:
                 raise DataFileError(
                     f"{DATA_FILE.name} is not valid JSON: {exc}"
                 ) from exc
+    # Valid JSON but the wrong shape (e.g. a top-level array) would otherwise
+    # blow up on .setdefault below — surface it as a clear DataFileError too.
+    if not isinstance(doc, dict):
+        raise DataFileError(
+            f"{DATA_FILE.name} must be a JSON object with "
+            "devices / switches / cables arrays"
+        )
     # Defensive: guarantee the three collections always exist.
     for key in ("devices", "switches", "cables"):
         doc.setdefault(key, [])

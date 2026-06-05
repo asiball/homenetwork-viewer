@@ -56,7 +56,11 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
   const cy = MAP_H / 2 + 4;
   const r1 = compact ? 90 : 105;
   const r2 = compact ? 215 : 240;
-  const leaves = visible.filter((d) => d.ring === 2);
+  // Outer ring = everything that isn't the gateway (ring 0) or infra (ring 1),
+  // including devices added with no ring set — so this matches the leaf branch
+  // below and findIndex() always resolves (otherwise unset-ring nodes get -1
+  // and land at a bogus angle).
+  const leaves = visible.filter((d) => d.ring !== 0 && d.ring !== 1);
   const total = Math.max(1, leaves.length);
   const infra = visible.filter((d) => d.ring === 1);
   const positions: Record<string, Pos> = {};

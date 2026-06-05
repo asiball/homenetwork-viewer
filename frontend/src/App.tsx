@@ -22,6 +22,7 @@ interface CatalogValue {
   meta: Meta;
   lastSync: Date | null;
   loading: boolean;
+  syncError: string | null;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
 }
@@ -44,6 +45,7 @@ export default function App() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -63,9 +65,11 @@ export default function App() {
       setMeta(m);
       setLastSync(new Date());
       setBootError(null);
+      setSyncError(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "failed to reach API";
       setBootError(msg);
+      setSyncError(msg);
     } finally {
       setLoading(false);
     }
@@ -116,7 +120,7 @@ export default function App() {
     return (
       <div className="center-screen">
         <div className="big">HOMENET / NOC</div>
-        <div>backend unreachable</div>
+        <div>couldn't load catalog</div>
         <div style={{ color: "var(--err)" }}>{bootError}</div>
         <button className="f-btn" onClick={() => void refresh()}>
           retry
@@ -132,6 +136,7 @@ export default function App() {
     meta,
     lastSync,
     loading,
+    syncError,
     refresh,
     notify,
   };

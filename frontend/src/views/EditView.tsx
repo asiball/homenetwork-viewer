@@ -136,6 +136,19 @@ export function EditView({ mode }: Props) {
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Reset the form when the route switches to a different device id (browser
+  // back/forward or a hand-edited URL between two edit pages keeps this same
+  // component instance, so the useState initializer would otherwise hold the
+  // previous device). React's "adjust state during render" pattern.
+  const [loadedId, setLoadedId] = useState(id);
+  if (id !== loadedId) {
+    setLoadedId(id);
+    setForm(existing ? formFromDevice(existing) : emptyForm());
+    setIdTouched(false);
+    setErrors({});
+    setSubmitErr(null);
+  }
+
   const existingIds = useMemo(() => new Set(devices.map((d) => d.id)), [devices]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {

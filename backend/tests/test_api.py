@@ -1,5 +1,7 @@
 """API tests for the homenet backend."""
 
+from app import storage
+
 
 def _sample_device(**overrides):
     d = {
@@ -120,3 +122,29 @@ def test_persistence_across_reads(client):
     client.post("/api/devices", json=_sample_device(notes="hello"))
     again = client.get("/api/devices/test-pi").json()
     assert again["notes"] == "hello"
+
+
+def test_corrupt_data_file_returns_clear_error(client):
+    """A hand-edited devices.json with bad JSON gives a clear 503, not a 500."""
+    storage.DATA_FILE.write_text("{ not valid json", encoding="utf-8")
+    r = client.get("/api/devices")
+    assert r.status_code == 503
+    assert "not valid JSON" in r.json()["detail"]
+    # /api/health does not read the data file, so it stays up.
+    assert client.get("/api/health").status_code == 200
+
+
+def test_wrong_shape_data_file_returns_clear_error(client):
+    """Valid JSON of the wrong shape (e.g. a top-level array) also -> 503."""
+    storage.DATA_FILE.write_text("[1, 2, 3]", encoding="utf-8")
+    r = client.get("/api/devices")
+    assert r.status_code == 503
+    assert "JSON object" in r.json()["detail"]
+
+
+def test_non_array_collection_returns_clear_error(client):
+    """An object root whose 'devices' isn't an array -> 503, not a crash."""
+    storage.DATA_FILE.write_text('{"devices": {}}', encoding="utf-8")
+    r = client.get("/api/devices")
+    assert r.status_code == 503
+    assert "must be a JSON array" in r.json()["detail"]

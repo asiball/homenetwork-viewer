@@ -65,8 +65,8 @@ export function HomeView() {
   // ↑↓ move selection, Enter opens detail (spec §5.6).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const t = e.target as HTMLElement;
-      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag && /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const i = ordered.findIndex((d) => d.id === selId);
@@ -75,6 +75,8 @@ export function HomeView() {
         const wrapped = (next + ordered.length) % ordered.length;
         setSelId(ordered[wrapped].id);
       } else if (e.key === "Enter" && selected) {
+        // Let a focused button/link handle its own Enter (don't double-fire).
+        if (tag === "BUTTON" || tag === "A") return;
         navigate(`/d/${selected.id}`);
       }
     }

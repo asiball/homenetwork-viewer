@@ -19,7 +19,7 @@ homenetwork-viewer/data/devices.json
 1. **画面から**（おすすめ・安全）: ブラウザの追加/編集フォーム（[04 使い方](04-usage.md#追加編集フォーム-adddidedit)）。形式チェック付き。
 2. **ファイルを直接**（一括編集向き）: `data/devices.json` をテキストエディタで開いて書き換え、保存。ブラウザで **⟳ refresh**（または再読み込み）すれば反映されます（**再ビルド不要**）。
 
-> ⚠️ 直接編集するときは **JSON の文法**（カンマ・引用符・括弧）を崩さないよう注意。保存後に画面が真っ白なら文法ミスの可能性大。エディタの JSON チェック機能や、`python3 -m json.tool data/devices.json` で検証できます。
+> ⚠️ 直接編集するときは **JSON の文法**（カンマ・引用符・括弧）を崩さないよう注意。崩れていると、画面に **`devices.json is not valid JSON: …`** という具体的なエラーが出ます（その行を直せばOK・再起動不要で自動回復）。エディタの JSON チェック機能や `python3 -m json.tool data/devices.json` でも検証できます。
 
 > 🔰 **Docker で動かしていると `data/devices.json` の持ち主が `root` になり、手編集時に管理者権限を求められる**ことがあります。対処は [06 運用](06-operations.md#dataの所有者がrootで編集できない) を参照。画面からの編集だけなら気にする必要はありません。
 

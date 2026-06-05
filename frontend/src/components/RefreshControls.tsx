@@ -16,7 +16,7 @@ function fmtTime(d: Date | null): string {
 }
 
 export function RefreshControls() {
-  const { meta, lastSync, loading, refresh } = useCatalog();
+  const { meta, lastSync, loading, syncError, refresh } = useCatalog();
   const [interval, setInterval_] = useState<Interval>(
     () => (localStorage.getItem(KEY) as Interval) || "5m",
   );
@@ -47,7 +47,13 @@ export function RefreshControls() {
         <option value="30s">poll · 30s</option>
         <option value="5m">poll · 5m</option>
       </select>
-      <span title="last catalog sync">synced {fmtTime(lastSync)}</span>
+      {syncError ? (
+        <span title={syncError} style={{ color: "var(--err)" }}>
+          ⚠ sync failed
+        </span>
+      ) : (
+        <span title="last catalog sync">synced {fmtTime(lastSync)}</span>
+      )}
       <button
         className="btn"
         onClick={() => void refresh()}

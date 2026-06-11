@@ -148,3 +148,23 @@ def test_non_array_collection_returns_clear_error(client):
     r = client.get("/api/devices")
     assert r.status_code == 503
     assert "must be a JSON array" in r.json()["detail"]
+
+
+# ─── whoami ─────────────────────────────────────────────────────────────────
+
+def test_whoami_uses_real_ip_header(client):
+    r = client.get("/api/whoami", headers={"X-Real-IP": "192.168.1.21"})
+    assert r.status_code == 200
+    assert r.json() == {"ip": "192.168.1.21"}
+
+
+def test_whoami_falls_back_to_forwarded_for(client):
+    r = client.get("/api/whoami", headers={"X-Forwarded-For": "192.168.1.30, 10.0.0.2"})
+    assert r.json() == {"ip": "192.168.1.30"}
+
+
+def test_whoami_without_proxy_headers(client):
+    # TestClient still has a socket peer, so we just require the key.
+    r = client.get("/api/whoami")
+    assert r.status_code == 200
+    assert "ip" in r.json()

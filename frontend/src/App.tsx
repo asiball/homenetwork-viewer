@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -20,6 +21,8 @@ interface CatalogValue {
   switches: Switch[];
   cables: Cable[];
   meta: Meta;
+  /** id of the catalog device whose IP matches the browser's client IP. */
+  selfId: string | null;
   lastSync: Date | null;
   loading: boolean;
   syncError: string | null;
@@ -42,6 +45,7 @@ export default function App() {
   const [switches, setSwitches] = useState<Switch[]>([]);
   const [cables, setCables] = useState<Cable[]>([]);
   const [meta, setMeta] = useState<Meta>(EMPTY_META);
+  const [clientIp, setClientIp] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -101,6 +105,13 @@ export default function App() {
         if (!cancelled) setLoading(false);
       }
     })();
+    // Best-effort: lets the UI tag "this device". Never blocks the catalog.
+    api
+      .whoami()
+      .then((w) => {
+        if (!cancelled) setClientIp(w.ip);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -129,11 +140,17 @@ export default function App() {
     );
   }
 
+  const selfId = useMemo(
+    () => (clientIp ? (devices.find((d) => d.ip === clientIp)?.id ?? null) : null),
+    [clientIp, devices],
+  );
+
   const value: CatalogValue = {
     devices,
     switches,
     cables,
     meta,
+    selfId,
     lastSync,
     loading,
     syncError,

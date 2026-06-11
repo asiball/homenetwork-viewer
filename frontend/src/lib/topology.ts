@@ -1,13 +1,13 @@
-// Topology layout calculators — radial + spine (spec §5.2).
+// Topology layout calculators — radial + spine (spec §5.2) + wiring tree.
 // Ported from the prototype variant-noc.jsx (computeRadial / computeSpine).
 // Returns plain geometry; TopologyMap.tsx renders it.
 
-import { GROUP_ORDER, type Device, type Group } from "../types";
+import { GROUP_ORDER, type Device, type Group, type Switch } from "../types";
 
 export const MAP_W = 800;
 export const MAP_H = 560;
 
-export type LayoutKind = "radial" | "spine";
+export type LayoutKind = "radial" | "spine" | "tree";
 
 export interface LabelOffset {
   x: number;
@@ -35,14 +35,24 @@ export interface SpineTap {
   labelBelow: boolean;
 }
 
+/** Non-device infrastructure (switches/hubs) drawn on the wiring tree. */
+export interface PseudoNode {
+  id: string;
+  x: number;
+  y: number;
+  label: string;
+}
+
 export type Deco =
   | { kind: "radial"; cx: number; cy: number; r1: number; r2: number }
-  | { kind: "spine"; busY: number; startX: number; endX: number; taps: SpineTap[] };
+  | { kind: "spine"; busY: number; startX: number; endX: number; taps: SpineTap[] }
+  | { kind: "tree" };
 
 export interface Layout {
   positions: Record<string, Pos>;
   edges: Edge[];
   deco: Deco;
+  pseudo?: PseudoNode[];
 }
 
 // Polar → Cartesian. angle: 0=top, 90=right (clockwise).
@@ -147,11 +157,131 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
   return { positions, edges, deco: { kind: "spine", busY, startX, endX, taps } };
 }
 
+// ─── Wiring tree ────────────────────────────────────────────────────────────
+// Physical topology from the switch/cable ledger: gateway → switches → ports,
+// with Wi-Fi clients hanging off the access point. Falls back gracefully when
+// the ledger is empty (everything attaches straight to the gateway).
+
+function computeTree(visible: Device[], switches: Switch[], compact: boolean): Layout {
+  const deviceIds = new Set(visible.map((d) => d.id));
+  const root = visible.find((d) => d.ring === 0) ?? visible[0];
+  if (!root) return { positions: {}, edges: [], deco: { kind: "tree" }, pseudo: [] };
+
+  // Switch/hub entities that are not themselves catalog devices (e.g. dumb
+  // switches) become pseudo nodes; ledger entries that double as devices
+  // (a Hue bridge) are drawn as their device node.
+  const pseudoSwitches = switches.filter((s) => !deviceIds.has(s.id));
+  const pseudoIds = new Set(pseudoSwitches.map((s) => s.id));
+  const known = (id: string) => deviceIds.has(id) || pseudoIds.has(id);
+
+  // parent → children, child → placed (single parent, no cycles).
+  const children = new Map<string, string[]>();
+  const placed = new Set<string>([root.id]);
+  const addChild = (parent: string, child: string) => {
+    if (parent === child || placed.has(child) || !known(parent)) return;
+    const list = children.get(parent) ?? [];
+    if (!children.has(parent)) children.set(parent, list);
+    list.push(child);
+    placed.add(child);
+  };
+
+  // 1) Each switch hangs off whatever its uplink port names.
+  for (const sw of switches) {
+    if (!known(sw.id)) continue;
+    for (const slot of Object.values(sw.portMap ?? {})) {
+      if (slot && slot.role === "uplink" && known(slot.device)) {
+        addChild(slot.device, sw.id);
+        break;
+      }
+    }
+  }
+  // 2) Devices hang off the switch ports they are patched into.
+  for (const sw of switches) {
+    if (!known(sw.id)) continue;
+    for (const slot of Object.values(sw.portMap ?? {})) {
+      if (!slot || slot.role === "uplink") continue;
+      if (known(slot.device)) addChild(sw.id, slot.device);
+    }
+  }
+  // 2.5) A pseudo switch with children but no uplink joins the root directly,
+  //      so its subtree is never orphaned off-canvas.
+  for (const sw of pseudoSwitches) {
+    if (!placed.has(sw.id) && (children.get(sw.id) ?? []).length > 0) {
+      addChild(root.id, sw.id);
+    }
+  }
+  // 3) Everything still unplaced: Wi-Fi devices hang off the access point,
+  //    the rest straight off the gateway.
+  const ap = visible.find((d) => d.type === "ap" && placed.has(d.id));
+  for (const d of visible) {
+    if (placed.has(d.id)) continue;
+    const wifi = d.conn != null && d.conn.startsWith("Wi-Fi");
+    addChild(wifi && ap ? ap.id : root.id, d.id);
+  }
+
+  // Tidy left→right tree: leaves take consecutive rows, parents centre on
+  // their children.
+  let nextRow = 0;
+  let maxDepth = 0;
+  const depthOf = new Map<string, number>();
+  const rowOf = new Map<string, number>();
+  const assign = (id: string, depth: number): number => {
+    depthOf.set(id, depth);
+    if (depth > maxDepth) maxDepth = depth;
+    const kids = children.get(id) ?? [];
+    if (kids.length === 0) {
+      const r = nextRow++;
+      rowOf.set(id, r);
+      return r;
+    }
+    const rows = kids.map((k) => assign(k, depth + 1));
+    const mid = (rows[0] + rows[rows.length - 1]) / 2;
+    rowOf.set(id, mid);
+    return mid;
+  };
+  assign(root.id, 0);
+
+  const top = 46;
+  const bottom = 40;
+  const left = 80;
+  const right = 170; // room for leaf labels on the right edge
+  const rowH = Math.min(compact ? 26 : 32, (MAP_H - top - bottom) / Math.max(1, nextRow));
+  const colW = (MAP_W - left - right) / Math.max(1, maxDepth);
+
+  const positions: Record<string, Pos> = {};
+  for (const id of depthOf.keys()) {
+    const x = left + (depthOf.get(id) ?? 0) * colW;
+    const y = top + (rowOf.get(id) ?? 0) * rowH + rowH / 2;
+    const isLeaf = (children.get(id) ?? []).length === 0;
+    positions[id] = {
+      x,
+      y,
+      labelOffset: isLeaf
+        ? { x: x + 12, y, anchor: "start" }
+        : { x: x + 10, y: y - 14, anchor: "start" },
+    };
+  }
+
+  const offline = new Map(visible.map((d) => [d.id, !d.online] as const));
+  const edges: Edge[] = [];
+  for (const [parent, kids] of children) {
+    for (const k of kids) edges.push({ from: parent, to: k, off: offline.get(k) ?? false });
+  }
+
+  const pseudo: PseudoNode[] = pseudoSwitches
+    .filter((s) => positions[s.id])
+    .map((s) => ({ id: s.id, x: positions[s.id].x, y: positions[s.id].y, label: s.name }));
+
+  return { positions, edges, deco: { kind: "tree" }, pseudo };
+}
+
 export function computeLayout(
   layout: LayoutKind,
   visible: Device[],
   compact: boolean,
+  switches: Switch[] = [],
 ): Layout {
+  if (layout === "tree") return computeTree(visible, switches, compact);
   return layout === "spine"
     ? computeSpine(visible, compact)
     : computeRadial(visible, compact);

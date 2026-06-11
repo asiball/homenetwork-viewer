@@ -1,6 +1,7 @@
 // Right-hand summary panel on the home screen (spec §5.5).
 
 import { Link } from "react-router-dom";
+import { useCatalog } from "../App";
 import type { Device } from "../types";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function SummaryPanel({ device }: Props) {
+  const { selfId } = useCatalog();
   const m = device.detail?.metrics ?? null;
 
   return (
@@ -19,6 +21,7 @@ export function SummaryPanel({ device }: Props) {
           </span>
           <span className="pill">{device.group}</span>
           <span className="pill">{device.type}</span>
+          {device.id === selfId && <span className="pill you">this device</span>}
         </div>
         <div className="dname">{device.name}</div>
         <div className="dhost">{device.host}</div>

@@ -1,5 +1,6 @@
 // Topology map SVG (radial / spine). Ported from variant-noc.jsx render.
 
+import { useCatalog } from "../App";
 import type { Device } from "../types";
 import { lastOctet, shortHost } from "../lib/helpers";
 import {
@@ -21,6 +22,7 @@ interface Props {
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
   radial: "radial",
   spine: "spine / bus",
+  tree: "wiring tree",
 };
 
 export function TopologyMap({
@@ -30,9 +32,11 @@ export function TopologyMap({
   onSelect,
   compact = false,
 }: Props) {
-  const { positions, edges, deco } = computeLayout(layout, devices, compact);
+  const { switches, selfId } = useCatalog();
+  const { positions, edges, deco, pseudo } = computeLayout(layout, devices, compact, switches);
   const getPos = (id: string): Pos => positions[id] ?? { x: 0, y: 0 };
   const selPos = getPos(selectedId);
+  const selfPos = selfId && positions[selfId] ? positions[selfId] : null;
 
   return (
     <div className="n-map">
@@ -106,6 +110,27 @@ export function TopologyMap({
 
         {/* selection pulse */}
         <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />
+
+        {/* dashed ring around the device this browser is running on */}
+        {selfPos && <circle className="self-ring" cx={selfPos.x} cy={selfPos.y} r={11} />}
+
+        {/* infrastructure pseudo nodes (switch/hub ledger, wiring tree only) */}
+        {(pseudo ?? []).map((p) => (
+          <g key={p.id}>
+            <rect className="node-box sw" x={p.x - 6} y={p.y - 6} width={12} height={12}>
+              <title>{p.label}</title>
+            </rect>
+            <text
+              className="node-label dim"
+              x={p.x + 10}
+              y={p.y - 14}
+              textAnchor="start"
+              dy={3}
+            >
+              {p.label}
+            </text>
+          </g>
+        ))}
 
         {/* nodes */}
         {devices.map((d) => {

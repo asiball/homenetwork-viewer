@@ -14,9 +14,11 @@ const LAYOUT_KEY = "homenet.layout";
 const OFFLINE_KEY = "homenet.showOffline";
 
 function initialLayout(urlLayout: string | null): LayoutKind {
-  if (urlLayout === "spine" || urlLayout === "radial") return urlLayout;
+  if (urlLayout === "spine" || urlLayout === "radial" || urlLayout === "tree") {
+    return urlLayout;
+  }
   const stored = localStorage.getItem(LAYOUT_KEY);
-  return stored === "spine" ? "spine" : "radial";
+  return stored === "spine" || stored === "tree" ? stored : "radial";
 }
 
 export function HomeView() {
@@ -84,7 +86,8 @@ export function HomeView() {
     return () => window.removeEventListener("keydown", onKey);
   }, [ordered, selId, selected, navigate]);
 
-  const layoutLabel = layout === "spine" ? "spine / bus" : "radial";
+  const layoutLabel =
+    layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";
 
   return (
     <Shell
@@ -103,12 +106,15 @@ export function HomeView() {
       }
       right={
         <>
-          <div className="layout-tog" title="レイアウト切替 (radial / spine)">
+          <div className="layout-tog" title="レイアウト切替 (radial / spine / tree)">
             <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
               ◎ radial
             </button>
             <button className={layout === "spine" ? "sel" : ""} onClick={() => changeLayout("spine")}>
               ─ spine
+            </button>
+            <button className={layout === "tree" ? "sel" : ""} onClick={() => changeLayout("tree")}>
+              ⑂ tree
             </button>
           </div>
           <RefreshControls />

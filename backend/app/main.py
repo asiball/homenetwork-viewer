@@ -67,6 +67,24 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/whoami")
+def whoami(request: Request) -> dict[str, str | None]:
+    """Best-effort client IP so the UI can highlight "this device".
+
+    In docker, nginx forwards the LAN client address in X-Real-IP /
+    X-Forwarded-For; direct access (vite dev / tests) falls back to the
+    socket peer. Returns null when nothing sensible is available.
+    """
+    ip = request.headers.get("x-real-ip")
+    if not ip:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+    if not ip and request.client:
+        ip = request.client.host
+    return {"ip": ip or None}
+
+
 @app.get("/api/meta", response_model=Meta)
 def meta() -> Meta:
     devices = storage.list_devices()

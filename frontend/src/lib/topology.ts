@@ -48,7 +48,7 @@ export interface PseudoNode {
 export type Deco =
   | { kind: "radial"; cx: number; cy: number; r1: number; r2: number }
   | { kind: "spine"; busY: number; startX: number; endX: number; taps: SpineTap[] }
-  | { kind: "tree"; rowH: number };
+  | { kind: "tree"; rowH: number; width: number; height: number };
 
 export interface Layout {
   positions: Record<string, Pos>;
@@ -167,7 +167,14 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
 function computeTree(visible: Device[], switches: Switch[], compact: boolean): Layout {
   const deviceIds = new Set(visible.map((d) => d.id));
   const root = visible.find((d) => d.ring === 0) ?? visible[0];
-  if (!root) return { positions: {}, edges: [], deco: { kind: "tree", rowH: 24 }, pseudo: [] };
+  if (!root) {
+    return {
+      positions: {},
+      edges: [],
+      deco: { kind: "tree", rowH: 24, width: MAP_W, height: MAP_H },
+      pseudo: [],
+    };
+  }
 
   // Switch/hub entities that are not themselves catalog devices (e.g. dumb
   // switches) become pseudo nodes; ledger entries that double as devices
@@ -234,11 +241,15 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
   };
   walk(root.id, 0);
 
+  // Fixed scale: the tree renders at its natural size and the map pane
+  // scrolls/pans instead of squeezing everything into the viewport.
   const top = 44;
-  const bottom = 32;
+  const bottom = 28;
   const left = 64;
-  const rowH = Math.min(compact ? 22 : 26, (MAP_H - top - bottom) / Math.max(1, order.length));
-  const indent = Math.min(95, (MAP_W - left - 240) / Math.max(1, maxDepth));
+  const rowH = compact ? 22 : 26;
+  const indent = 95;
+  const height = Math.max(MAP_H, top + order.length * rowH + bottom);
+  const width = left + maxDepth * indent + 260; // room for labels on the right
 
   const positions: Record<string, Pos> = {};
   order.forEach((id, row) => {
@@ -268,7 +279,7 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
     .filter((s) => positions[s.id])
     .map((s) => ({ id: s.id, x: positions[s.id].x, y: positions[s.id].y, label: s.name }));
 
-  return { positions, edges, deco: { kind: "tree", rowH }, pseudo };
+  return { positions, edges, deco: { kind: "tree", rowH, width, height }, pseudo };
 }
 
 export function computeLayout(

@@ -1,5 +1,8 @@
-// Topology map SVG (radial / spine). Ported from variant-noc.jsx render.
+// Topology map SVG (radial / spine / wiring tree). Ported from
+// variant-noc.jsx render. The tree renders at fixed scale inside a
+// scroll/pan pane; radial & spine scale to fit as before.
 
+import { useRef } from "react";
 import { useCatalog } from "../App";
 import type { Device } from "../types";
 import { lastOctet, shortHost } from "../lib/helpers";
@@ -16,6 +19,9 @@ interface Props {
   layout: LayoutKind;
   selectedId: string;
   onSelect: (id: string) => void;
+  /** Wiring-tree only: ledger switches are selectable too. */
+  selectedSwitchId?: string | null;
+  onSelectSwitch?: (id: string) => void;
   compact?: boolean;
 }
 
@@ -30,6 +36,8 @@ export function TopologyMap({
   layout,
   selectedId,
   onSelect,
+  selectedSwitchId = null,
+  onSelectSwitch,
   compact = false,
 }: Props) {
   const { switches, selfId } = useCatalog();
@@ -38,9 +46,37 @@ export function TopologyMap({
   const selPos = getPos(selectedId);
   const selfPos = selfId && positions[selfId] ? positions[selfId] : null;
 
-  return (
-    <div className="n-map">
-      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} preserveAspectRatio="xMidYMid meet">
+  const vbW = deco.kind === "tree" ? deco.width : MAP_W;
+  const vbH = deco.kind === "tree" ? deco.height : MAP_H;
+  const isTree = deco.kind === "tree";
+
+  // Drag-to-pan for the fixed-scale tree (background only — rows keep their
+  // click). Wheel / trackpad scrolling works natively via overflow: auto.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; sl: number; st: number } | null>(null);
+  function onPanDown(e: React.PointerEvent) {
+    const el = scrollRef.current;
+    if (!el) return;
+    if ((e.target as Element).closest?.(".node-hit")) return;
+    drag.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop };
+    el.setPointerCapture?.(e.pointerId);
+  }
+  function onPanMove(e: React.PointerEvent) {
+    const el = scrollRef.current;
+    if (!el || !drag.current) return;
+    el.scrollLeft = drag.current.sl - (e.clientX - drag.current.x);
+    el.scrollTop = drag.current.st - (e.clientY - drag.current.y);
+  }
+  function onPanEnd() {
+    drag.current = null;
+  }
+
+  const svgEl = (
+    <svg
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={isTree ? { width: vbW, height: vbH } : undefined}
+    >
         {/* decorations */}
         {deco.kind === "radial" && (
           <>
@@ -114,14 +150,19 @@ export function TopologyMap({
         {/* dashed ring around the device this browser is running on */}
         {selfPos && <circle className="self-ring" cx={selfPos.x} cy={selfPos.y} r={11} />}
 
-        {/* infrastructure pseudo nodes (switch/hub ledger, wiring tree only) */}
+        {/* infrastructure pseudo nodes (switch/hub ledger, wiring tree only).
+            Clicking one shows the ledger info in the side panel. */}
         {(pseudo ?? []).map((p) => (
           <g key={p.id}>
-            <rect className="node-box sw" x={p.x - 6} y={p.y - 6} width={12} height={12}>
-              <title>{p.label}</title>
-            </rect>
+            <rect
+              className={`node-box sw ${p.id === selectedSwitchId ? "sel" : ""}`}
+              x={p.x - 6}
+              y={p.y - 6}
+              width={12}
+              height={12}
+            />
             <text
-              className="node-label dim"
+              className={`node-label ${p.id === selectedSwitchId ? "" : "dim"}`}
               x={p.x + 14}
               y={p.y}
               textAnchor="start"
@@ -129,6 +170,18 @@ export function TopologyMap({
             >
               {p.label}
             </text>
+            {deco.kind === "tree" && onSelectSwitch && (
+              <rect
+                className="node-hit"
+                x={p.x - 14}
+                y={p.y - deco.rowH / 2}
+                width={230}
+                height={deco.rowH}
+                onClick={() => onSelectSwitch(p.id)}
+              >
+                <title>{p.label}</title>
+              </rect>
+            )}
           </g>
         ))}
 
@@ -208,12 +261,32 @@ export function TopologyMap({
             </g>
           );
         })}
-      </svg>
+    </svg>
+  );
+
+  return (
+    <div className="n-map">
+      {isTree ? (
+        <div
+          className="map-scroll"
+          ref={scrollRef}
+          onPointerDown={onPanDown}
+          onPointerMove={onPanMove}
+          onPointerUp={onPanEnd}
+          onPointerCancel={onPanEnd}
+        >
+          {svgEl}
+        </div>
+      ) : (
+        svgEl
+      )}
       <div className="map-corner tl">
         map · <b>{LAYOUT_LABEL[layout]}</b>
       </div>
       <div className="map-corner tr">{devices.length} nodes</div>
-      <div className="map-corner bl">↳ click node for detail</div>
+      <div className="map-corner bl">
+        {isTree ? "↳ click row to select · drag to pan" : "↳ click node for detail"}
+      </div>
     </div>
   );
 }

@@ -1167,6 +1167,10 @@ body {
   color: var(--fg);
 }
 .f-check input {
+  /* Undo the .f-field input "appearance: none" reset — without a native
+     appearance the :checked state has no visual at all (the box always
+     looks unchecked even when the device is online). */
+  appearance: auto;
   width: 14px;
   height: 14px;
   accent-color: var(--amber);

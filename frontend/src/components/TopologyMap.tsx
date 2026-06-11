@@ -59,7 +59,7 @@ export function TopologyMap({
             />
             <text
               x={deco.startX - 12}
-              y={deco.busY - 10}
+              y={deco.busY - 18}
               textAnchor="start"
               style={{
                 fontFamily: "var(--mono)",

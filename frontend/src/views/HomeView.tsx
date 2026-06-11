@@ -6,6 +6,7 @@ import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
 import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
+import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
 import { countOnline, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
@@ -33,6 +34,14 @@ export function HomeView() {
   const [selId, setSelId] = useState<string>(
     () => (devices.some((d) => d.id === "nas") ? "nas" : devices[0]?.id) ?? "",
   );
+  // Ledger switch selected on the wiring tree (side panel shows its ports).
+  const [selSwId, setSelSwId] = useState<string | null>(null);
+
+  // Selecting a device always takes the side panel back from a switch.
+  function selectDevice(id: string) {
+    setSelId(id);
+    setSelSwId(null);
+  }
 
   const visible = useMemo(
     () => devices.filter((d) => showOffline || d.online),
@@ -52,6 +61,7 @@ export function HomeView() {
   }, [layout, visible, switches]);
 
   const selected = visible.find((d) => d.id === selId) ?? visible[0];
+  const selSw = selSwId ? (switches.find((s) => s.id === selSwId) ?? null) : null;
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
@@ -60,6 +70,7 @@ export function HomeView() {
 
   function changeLayout(next: LayoutKind) {
     setLayout(next);
+    setSelSwId(null);
     localStorage.setItem(LAYOUT_KEY, next);
     const p = new URLSearchParams(params);
     p.set("layout", next);
@@ -84,7 +95,7 @@ export function HomeView() {
         if (i === -1) return;
         const next = e.key === "ArrowDown" ? i + 1 : i - 1;
         const wrapped = (next + ordered.length) % ordered.length;
-        setSelId(ordered[wrapped].id);
+        selectDevice(ordered[wrapped].id);
       } else if (e.key === "Enter" && selected) {
         // Let a focused button/link handle its own Enter (don't double-fire).
         if (tag === "BUTTON" || tag === "A") return;
@@ -102,7 +113,7 @@ export function HomeView() {
     <Shell
       devices={visible}
       selectedId={selected?.id}
-      onSelect={setSelId}
+      onSelect={selectDevice}
       crumbs={
         <>
           net <span>192.168.1.0/24</span>
@@ -154,9 +165,11 @@ export function HomeView() {
             devices={visible}
             layout={layout}
             selectedId={selected.id}
-            onSelect={setSelId}
+            onSelect={selectDevice}
+            selectedSwitchId={selSwId}
+            onSelectSwitch={setSelSwId}
           />
-          <SummaryPanel device={selected} />
+          {selSw ? <SwitchPanel sw={selSw} /> : <SummaryPanel device={selected} />}
         </>
       ) : (
         <div className="n-map">

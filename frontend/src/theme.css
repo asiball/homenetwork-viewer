@@ -1395,3 +1395,22 @@ body {
   color: var(--fg-faint);
   font-style: italic;
 }
+
+/* ─── Wiring tree: fixed-scale scroll/pan pane + switch panel bits ─────── */
+.n-map .map-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  cursor: grab;
+  scrollbar-width: thin;
+}
+.n-map .map-scroll:active {
+  cursor: grabbing;
+}
+.n-map .map-scroll svg {
+  display: block;
+}
+.dim-note {
+  color: var(--fg-faint);
+  font-size: 9.5px;
+}

@@ -8,9 +8,23 @@ import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
 import { cableForDevice, cableSwatch, switchForDevice } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
+import { Copyable } from "../components/Copyable";
+import type { ServiceRow } from "../types";
 
 function mean(xs: number[]): number {
   return Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+}
+
+// Open-in-browser link for HTTP-ish scanned services (best effort).
+function serviceUrl(ip: string, s: ServiceRow): string | null {
+  if (s.proto !== "tcp") return null;
+  if (s.port === 443 || s.port === 8443) return `https://${ip}:${s.port}`;
+  if (s.port === 80) return `http://${ip}`;
+  const httpish = new Set([3000, 5000, 8080, 8081, 9090, 32400]);
+  if (httpish.has(s.port) || s.svc.toUpperCase().includes("HTTP")) {
+    return `http://${ip}:${s.port}`;
+  }
+  return null;
 }
 
 export function DetailView() {
@@ -59,11 +73,11 @@ export function DetailView() {
             </div>
             <div className="name">{device.name}</div>
             <div className="host">
-              {device.host}
+              <Copyable text={device.host} />
               <span className="sep">·</span>
-              {device.ip}
+              <Copyable text={device.ip} />
               <span className="sep">·</span>
-              {device.mac}
+              <Copyable text={device.mac} />
             </div>
           </div>
           <div className="badges">
@@ -73,6 +87,11 @@ export function DetailView() {
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
             {device.online && m && <span className="pill live">live agent</span>}
+            {device.url && (
+              <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
+                ↗ open
+              </a>
+            )}
             <Link className="d-edit" to={`/d/${device.id}/edit`}>
               ✎ edit
             </Link>
@@ -166,11 +185,15 @@ export function DetailView() {
           <div className="d-card" data-title="network">
             <dl>
               <dt>ipv4</dt>
-              <dd>{detail?.net?.ipv4 ?? device.ip}</dd>
+              <dd>
+                <Copyable text={detail?.net?.ipv4 ?? device.ip} />
+              </dd>
               <dt>ipv6</dt>
               <dd>{detail?.net?.ipv6 ?? "—"}</dd>
               <dt>mac</dt>
-              <dd>{device.mac}</dd>
+              <dd>
+                <Copyable text={device.mac} />
+              </dd>
               <dt>link</dt>
               <dd>{device.conn ?? "—"}</dd>
               <dt>gateway</dt>
@@ -181,6 +204,16 @@ export function DetailView() {
               <dd>{detail?.net?.dhcp ?? "—"}</dd>
               <dt>vlan</dt>
               <dd>{detail?.net?.vlan ?? "—"}</dd>
+              {device.url && (
+                <>
+                  <dt>web ui</dt>
+                  <dd>
+                    <a className="weblink" href={device.url} target="_blank" rel="noreferrer">
+                      {device.url}
+                    </a>
+                  </dd>
+                </>
+              )}
               {detail?.net?.rssi && (
                 <>
                   <dt>rssi</dt>
@@ -243,14 +276,25 @@ export function DetailView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {detail.services.map((s) => (
-                      <tr key={`${s.proto}-${s.port}`}>
-                        <td className="port">{s.port}</td>
-                        <td className="proto">{s.proto}</td>
-                        <td>{s.svc}</td>
-                        <td className="banner">{s.banner}</td>
-                      </tr>
-                    ))}
+                    {detail.services.map((s) => {
+                      const link = serviceUrl(device.ip, s);
+                      return (
+                        <tr key={`${s.proto}-${s.port}`}>
+                          <td className="port">
+                            {link ? (
+                              <a className="weblink" href={link} target="_blank" rel="noreferrer">
+                                {s.port} ↗
+                              </a>
+                            ) : (
+                              s.port
+                            )}
+                          </td>
+                          <td className="proto">{s.proto}</td>
+                          <td>{s.svc}</td>
+                          <td className="banner">{s.banner}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 <div className="d-pool">

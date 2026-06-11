@@ -2,6 +2,7 @@
 
 import { Link } from "react-router-dom";
 import { useCatalog } from "../App";
+import { Copyable } from "./Copyable";
 import type { Device } from "../types";
 
 interface Props {
@@ -30,15 +31,29 @@ export function SummaryPanel({ device }: Props) {
       <div className="panel" data-title="network">
         <dl>
           <dt>ipv4</dt>
-          <dd>{device.ip}</dd>
+          <dd>
+            <Copyable text={device.ip} />
+          </dd>
           <dt>mac</dt>
-          <dd>{device.mac}</dd>
+          <dd>
+            <Copyable text={device.mac} />
+          </dd>
           <dt>link</dt>
           <dd>{device.conn ?? "—"}</dd>
           <dt>last</dt>
           <dd>{device.last ?? "—"}</dd>
           <dt>up</dt>
           <dd>{device.uptime ?? "—"}</dd>
+          {device.url && (
+            <>
+              <dt>web</dt>
+              <dd>
+                <a className="weblink" href={device.url} target="_blank" rel="noreferrer">
+                  open ↗
+                </a>
+              </dd>
+            </>
+          )}
         </dl>
       </div>
 

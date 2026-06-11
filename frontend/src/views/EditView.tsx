@@ -30,6 +30,7 @@ interface FormState {
   online: boolean;
   conn: Conn | "";
   ring: "" | "0" | "1" | "2";
+  url: string;
   cpu: string;
   mem: string;
   storage: string;
@@ -55,6 +56,7 @@ function emptyForm(): FormState {
     online: true,
     conn: "",
     ring: "2",
+    url: "",
     cpu: "",
     mem: "",
     storage: "",
@@ -82,6 +84,7 @@ function formFromDevice(d: Device): FormState {
     online: d.online,
     conn: d.conn ?? "",
     ring: d.ring != null ? (String(d.ring) as "0" | "1" | "2") : "",
+    url: d.url ?? "",
     cpu: d.cpu ?? "",
     mem: d.mem ?? "",
     storage: d.storage ?? "",
@@ -173,6 +176,9 @@ export function EditView({ mode }: Props) {
     if (!IPV4_RE.test(form.ip)) e.ip = "IPv4 形式（例 192.168.1.10）";
     if (!MAC_RE.test(form.mac)) e.mac = "MAC 形式（XX:XX:XX:XX:XX:XX）";
     if (!form.type.trim()) e.type = "必須です";
+    if (form.url.trim() && !/^https?:\/\//.test(form.url.trim())) {
+      e.url = "http:// または https:// で始まるURL";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -216,6 +222,7 @@ export function EditView({ mode }: Props) {
       online: form.online,
       conn: form.conn || undefined,
       ring: form.ring !== "" ? (Number(form.ring) as 0 | 1 | 2) : undefined,
+      url: form.url.trim() || undefined,
       cpu: form.cpu.trim() || undefined,
       mem: form.mem.trim() || undefined,
       storage: form.storage.trim() || undefined,
@@ -375,6 +382,18 @@ export function EditView({ mode }: Props) {
                   <option value="0">0 · gateway</option>
                   <option value="">— (未設定)</option>
                 </select>
+              </Field>
+              <Field
+                label="web ui (url)"
+                full
+                error={errors.url}
+                hint="管理画面のURL · 詳細/サマリーから別タブで開けます"
+              >
+                <input
+                  value={form.url}
+                  onChange={(e) => set("url", e.target.value)}
+                  placeholder="http://192.168.1.1"
+                />
               </Field>
             </div>
           </div>

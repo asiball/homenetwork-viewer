@@ -25,7 +25,8 @@ export function DetailView() {
   const m = detail?.metrics ?? null;
   const sw = switchForDevice(switches, device.id);
   const cbl = cableForDevice(cables, device.id);
-  const hist = detail?.hist7 ?? [1, 1, 1, 1, 1, 1, 1];
+  // §6.4: never invent data — no hist7 means "no history", not a perfect week.
+  const hist = detail?.hist7 ?? null;
   const days = ["M", "T", "W", "T", "F", "S", "S"];
   const uptimeParts = (device.uptime ?? "").split(" ");
 
@@ -299,24 +300,30 @@ export function DetailView() {
           </div>
 
           <div className="d-card" data-title="connection · last 7 days">
-            <div className="d-hist">
-              {hist.map((p, i) => {
-                const cls = p > 0.95 ? "" : p > 0.7 ? "partial" : "poor";
-                return (
-                  <div key={i} className="day">
-                    <div className="bar">
-                      <div className={`fill ${cls}`} style={{ height: `${p * 100}%` }} />
-                    </div>
-                    <div className="pct">{Math.round(p * 100)}%</div>
-                    <div className="lbl">{days[i]}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="d-pool">
-              <span>avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%</span>
-              <span>this week</span>
-            </div>
+            {hist && hist.length > 0 ? (
+              <>
+                <div className="d-hist">
+                  {hist.map((p, i) => {
+                    const cls = p > 0.95 ? "" : p > 0.7 ? "partial" : "poor";
+                    return (
+                      <div key={i} className="day">
+                        <div className="bar">
+                          <div className={`fill ${cls}`} style={{ height: `${p * 100}%` }} />
+                        </div>
+                        <div className="pct">{Math.round(p * 100)}%</div>
+                        <div className="lbl">{days[i]}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="d-pool">
+                  <span>avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%</span>
+                  <span>this week</span>
+                </div>
+              </>
+            ) : (
+              <div className="d-sparse">no uptime history · collector not wired yet</div>
+            )}
           </div>
 
           <div className="d-card" data-title="ownership">

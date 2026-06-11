@@ -8,7 +8,7 @@ import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
 import { RefreshControls } from "../components/RefreshControls";
 import { countOnline, orderedByGroup } from "../lib/helpers";
-import type { LayoutKind } from "../lib/topology";
+import { computeLayout, type LayoutKind } from "../lib/topology";
 
 const LAYOUT_KEY = "homenet.layout";
 const OFFLINE_KEY = "homenet.showOffline";
@@ -22,7 +22,7 @@ function initialLayout(urlLayout: string | null): LayoutKind {
 }
 
 export function HomeView() {
-  const { devices } = useCatalog();
+  const { devices, switches } = useCatalog();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -39,8 +39,17 @@ export function HomeView() {
     [devices, showOffline],
   );
 
-  // Display order matches the grouped sidebar — used for keyboard nav.
-  const ordered = useMemo(() => orderedByGroup(visible), [visible]);
+  // Keyboard-nav order matches what's on screen: grouped-sidebar order for
+  // radial/spine, top-to-bottom row order for the wiring tree.
+  const ordered = useMemo(() => {
+    if (layout === "tree") {
+      const { positions } = computeLayout("tree", visible, false, switches);
+      return [...visible].sort(
+        (a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0),
+      );
+    }
+    return orderedByGroup(visible);
+  }, [layout, visible, switches]);
 
   const selected = visible.find((d) => d.id === selId) ?? visible[0];
 

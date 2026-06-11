@@ -16,7 +16,7 @@ function mean(xs: number[]): number {
 export function DetailView() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { devices, switches, cables } = useCatalog();
+  const { devices, switches, cables, selfId } = useCatalog();
   const device = devices.find((d) => d.id === id);
 
   if (!device) return <DeviceNotFound devices={devices} id={id} />;
@@ -71,6 +71,7 @@ export function DetailView() {
               {device.online ? "ONLINE" : "OFFLINE"}
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
+            {device.id === selfId && <span className="pill you">this device</span>}
             {device.online && m && <span className="pill live">live agent</span>}
             <Link className="d-edit" to={`/d/${device.id}/edit`}>
               ✎ edit

@@ -47,6 +47,7 @@ export const api = {
   switches: () => req<Switch[]>("/switches"),
   cables: () => req<Cable[]>("/cables"),
   meta: () => req<Meta>("/meta"),
+  whoami: () => req<{ ip: string | null }>("/whoami"),
   create: (d: Device) =>
     req<Device>("/devices", { method: "POST", body: JSON.stringify(d) }),
   update: (id: string, d: Device) =>

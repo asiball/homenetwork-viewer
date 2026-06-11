@@ -1319,3 +1319,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Self-device (YOU) + wiring-tree additions ────────────────────────── */
+.lyou {
+  font-size: 8px;
+  padding: 1px 4px;
+  border: 1px dashed var(--ok);
+  border-radius: 2px;
+  color: var(--ok);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.pill.you {
+  color: var(--ok);
+  border-style: dashed;
+  border-color: rgba(121, 221, 176, 0.5);
+}
+.self-ring {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+.node-box.sw {
+  fill: var(--bg-3);
+  stroke: var(--fg-soft);
+  stroke-dasharray: 4 2;
+}

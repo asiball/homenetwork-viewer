@@ -1,6 +1,7 @@
 // Left sidebar device list, grouped by category (spec §5.4).
 
 import { Link } from "react-router-dom";
+import { useCatalog } from "../App";
 import type { Device } from "../types";
 import { groupByOrder, lastOctet } from "../lib/helpers";
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function DeviceList({ devices, selectedId, onSelect }: Props) {
+  const { selfId } = useCatalog();
   const grouped = groupByOrder(devices);
 
   return (
@@ -31,6 +33,7 @@ export function DeviceList({ devices, selectedId, onSelect }: Props) {
             >
               <span className={`lstat ${d.online ? "on" : "off"}`} />
               <span className="lname">{d.name}</span>
+              {d.id === selfId && <span className="lyou">YOU</span>}
               <span className="lip">.{lastOctet(d.ip)}</span>
             </button>
           ))}

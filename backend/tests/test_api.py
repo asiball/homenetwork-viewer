@@ -168,3 +168,16 @@ def test_whoami_without_proxy_headers(client):
     r = client.get("/api/whoami")
     assert r.status_code == 200
     assert "ip" in r.json()
+
+
+# ─── url field ──────────────────────────────────────────────────────────────
+
+def test_create_device_with_valid_url(client):
+    r = client.post("/api/devices", json=_sample_device(url="http://192.168.1.99"))
+    assert r.status_code == 201
+    assert r.json()["url"] == "http://192.168.1.99"
+
+
+def test_create_device_rejects_non_http_url(client):
+    r = client.post("/api/devices", json=_sample_device(url="ftp://192.168.1.99"))
+    assert r.status_code == 422

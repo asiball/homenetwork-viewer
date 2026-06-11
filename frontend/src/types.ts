@@ -145,6 +145,8 @@ export interface Device {
   last?: string;
   uptime?: string;
   notes?: string;
+  /** Admin / web UI, opened in a new tab. */
+  url?: string;
   detail?: DeviceDetail | null;
 }
 

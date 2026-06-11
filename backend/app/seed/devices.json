@@ -17,7 +17,8 @@
       "cpu": "Quad ARM Cortex-A53 @ 1.5 GHz",
       "mem": "1 GB DDR3",
       "storage": "128 MB NOR",
-      "notes": "Fiber gateway. Bridged to ONU. Hands out 192.168.1.0/24."
+      "notes": "Fiber gateway. Bridged to ONU. Hands out 192.168.1.0/24.",
+      "url": "http://192.168.1.1"
     },
     {
       "id": "ap",
@@ -36,7 +37,8 @@
       "cpu": "Dual MIPS @ 880 MHz",
       "mem": "512 MB",
       "storage": "256 MB",
-      "notes": "Backhaul: wired. Channels 36 / 149. 14 clients."
+      "notes": "Backhaul: wired. Channels 36 / 149. 14 clients.",
+      "url": "http://192.168.1.2"
     },
     {
       "id": "nas",
@@ -75,35 +77,142 @@
         },
         "metrics": {
           "cpu_pct": 18,
-          "cpu_series": [12, 16, 14, 18, 22, 17, 14, 16, 20, 24, 19, 18],
+          "cpu_series": [
+            12,
+            16,
+            14,
+            18,
+            22,
+            17,
+            14,
+            16,
+            20,
+            24,
+            19,
+            18
+          ],
           "mem_pct": 62,
-          "mem_series": [60, 61, 60, 62, 64, 63, 61, 62, 62, 64, 63, 62],
+          "mem_series": [
+            60,
+            61,
+            60,
+            62,
+            64,
+            63,
+            61,
+            62,
+            62,
+            64,
+            63,
+            62
+          ],
           "net_in": 3.2,
           "net_out": 0.4,
-          "net_in_series": [1.2, 2.1, 8.4, 6.0, 3.1, 2.5, 3.2, 4.0, 2.9, 3.2, 3.5, 3.2],
+          "net_in_series": [
+            1.2,
+            2.1,
+            8.4,
+            6.0,
+            3.1,
+            2.5,
+            3.2,
+            4.0,
+            2.9,
+            3.2,
+            3.5,
+            3.2
+          ],
           "temp": 48
         },
         "services": [
-          { "port": 22, "proto": "tcp", "svc": "SSH", "banner": "OpenSSH 9.0 (Debian)" },
-          { "port": 80, "proto": "tcp", "svc": "HTTP", "banner": "nginx 1.24 · DSM redirect" },
-          { "port": 443, "proto": "tcp", "svc": "HTTPS", "banner": "nginx · self-signed" },
-          { "port": 445, "proto": "tcp", "svc": "SMB", "banner": "Samba 4.17" },
-          { "port": 548, "proto": "tcp", "svc": "AFP", "banner": "Time Machine target" },
-          { "port": 5000, "proto": "tcp", "svc": "DSM", "banner": "Synology DSM 7" },
-          { "port": 32400, "proto": "tcp", "svc": "Plex", "banner": "Plex Media Server" }
+          {
+            "port": 22,
+            "proto": "tcp",
+            "svc": "SSH",
+            "banner": "OpenSSH 9.0 (Debian)"
+          },
+          {
+            "port": 80,
+            "proto": "tcp",
+            "svc": "HTTP",
+            "banner": "nginx 1.24 · DSM redirect"
+          },
+          {
+            "port": 443,
+            "proto": "tcp",
+            "svc": "HTTPS",
+            "banner": "nginx · self-signed"
+          },
+          {
+            "port": 445,
+            "proto": "tcp",
+            "svc": "SMB",
+            "banner": "Samba 4.17"
+          },
+          {
+            "port": 548,
+            "proto": "tcp",
+            "svc": "AFP",
+            "banner": "Time Machine target"
+          },
+          {
+            "port": 5000,
+            "proto": "tcp",
+            "svc": "DSM",
+            "banner": "Synology DSM 7"
+          },
+          {
+            "port": 32400,
+            "proto": "tcp",
+            "svc": "Plex",
+            "banner": "Plex Media Server"
+          }
         ],
         "storage": {
           "drives": [
-            { "nm": "sda", "md": "WD Red Pro 8TB · WD8003FFBX", "size": "8 TB", "pct": 65 },
-            { "nm": "sdb", "md": "WD Red Pro 8TB · WD8003FFBX", "size": "8 TB", "pct": 65 },
-            { "nm": "sdc", "md": "WD Red Pro 8TB · WD8003FFBX", "size": "8 TB", "pct": 65 },
-            { "nm": "sdd", "md": "WD Red Pro 8TB · WD8003FFBX", "size": "8 TB", "pct": 65 },
-            { "nm": "nvme0", "md": "WD Black SN770 1TB (cache)", "size": "1 TB", "pct": 12 }
+            {
+              "nm": "sda",
+              "md": "WD Red Pro 8TB · WD8003FFBX",
+              "size": "8 TB",
+              "pct": 65
+            },
+            {
+              "nm": "sdb",
+              "md": "WD Red Pro 8TB · WD8003FFBX",
+              "size": "8 TB",
+              "pct": 65
+            },
+            {
+              "nm": "sdc",
+              "md": "WD Red Pro 8TB · WD8003FFBX",
+              "size": "8 TB",
+              "pct": 65
+            },
+            {
+              "nm": "sdd",
+              "md": "WD Red Pro 8TB · WD8003FFBX",
+              "size": "8 TB",
+              "pct": 65
+            },
+            {
+              "nm": "nvme0",
+              "md": "WD Black SN770 1TB (cache)",
+              "size": "1 TB",
+              "pct": 12
+            }
           ],
           "pool": "raid5 · 24 TB usable · 15.6 TB used",
           "health": "ok · last scrub 2026-05-12"
         },
-        "hist7": [1.0, 1.0, 0.998, 1.0, 0.992, 1.0, 1.0],
+        "hist7": [
+          1.0,
+          1.0,
+          0.998,
+          1.0,
+          0.992,
+          1.0,
+          1.0
+        ],
         "own": {
           "manufacturer": "Custom build",
           "model": "mini-ITX · ASRock N100M",
@@ -111,9 +220,15 @@
           "price": "¥98,000",
           "warranty": "parts only · n/a",
           "location": "Office shelf, top",
-          "tags": ["always-on", "backup", "media", "critical"]
+          "tags": [
+            "always-on",
+            "backup",
+            "media",
+            "critical"
+          ]
         }
-      }
+      },
+      "url": "http://192.168.1.10:5000"
     },
     {
       "id": "pod",
@@ -363,12 +478,25 @@
         "services": null,
         "storage": {
           "drives": [
-            { "nm": "ufs0", "md": "UFS 3.1 · 128 GB", "size": "128 GB", "pct": 41 }
+            {
+              "nm": "ufs0",
+              "md": "UFS 3.1 · 128 GB",
+              "size": "128 GB",
+              "pct": 41
+            }
           ],
           "pool": "single volume · 75 GB used",
           "health": "last reported 12h ago"
         },
-        "hist7": [1.0, 0.91, 1.0, 0.84, 0.62, 0.78, 0.48],
+        "hist7": [
+          1.0,
+          0.91,
+          1.0,
+          0.84,
+          0.62,
+          0.78,
+          0.48
+        ],
         "own": {
           "manufacturer": "Google",
           "model": "Pixel 8 · GA04803",
@@ -376,7 +504,11 @@
           "price": "¥112,800",
           "warranty": "2025-01-09 (expired)",
           "location": "Dev/test bench",
-          "tags": ["dev", "test-device", "BYOD"]
+          "tags": [
+            "dev",
+            "test-device",
+            "BYOD"
+          ]
         }
       }
     },
@@ -527,13 +659,36 @@
       "online": true,
       "notes": "Star center. Port 1 is the gateway uplink.",
       "portMap": {
-        "1": { "device": "gw", "cable": "CBL-01", "role": "uplink" },
-        "2": { "device": "nas", "cable": "CBL-02" },
-        "3": { "device": "ap", "cable": "CBL-03" },
-        "4": { "device": "sw-desk", "cable": "CBL-04", "role": "downlink" },
-        "5": { "device": "atv", "cable": "CBL-05" },
-        "6": { "device": "tv", "cable": "CBL-06" },
-        "7": { "device": "hue", "cable": "CBL-07" },
+        "1": {
+          "device": "gw",
+          "cable": "CBL-01",
+          "role": "uplink"
+        },
+        "2": {
+          "device": "nas",
+          "cable": "CBL-02"
+        },
+        "3": {
+          "device": "ap",
+          "cable": "CBL-03"
+        },
+        "4": {
+          "device": "sw-desk",
+          "cable": "CBL-04",
+          "role": "downlink"
+        },
+        "5": {
+          "device": "atv",
+          "cable": "CBL-05"
+        },
+        "6": {
+          "device": "tv",
+          "cable": "CBL-06"
+        },
+        "7": {
+          "device": "hue",
+          "cable": "CBL-07"
+        },
         "8": null
       }
     },
@@ -549,9 +704,19 @@
       "online": true,
       "notes": "Workstation cluster. Uplink on port 1 from sw-main.",
       "portMap": {
-        "1": { "device": "sw-main", "cable": "CBL-04", "role": "uplink" },
-        "2": { "device": "rig", "cable": "CBL-08" },
-        "3": { "device": "mini", "cable": "CBL-09" },
+        "1": {
+          "device": "sw-main",
+          "cable": "CBL-04",
+          "role": "uplink"
+        },
+        "2": {
+          "device": "rig",
+          "cable": "CBL-08"
+        },
+        "3": {
+          "device": "mini",
+          "cable": "CBL-09"
+        },
         "4": null,
         "5": null
       }
@@ -569,7 +734,11 @@
       "notes": "Zigbee 3.0 hub. 18 bulbs paired. LAN side terminates here.",
       "radio": "Zigbee · ch 15",
       "portMap": {
-        "1": { "device": "sw-main", "cable": "CBL-07", "role": "uplink" }
+        "1": {
+          "device": "sw-main",
+          "cable": "CBL-07",
+          "role": "uplink"
+        }
       }
     },
     {
@@ -589,48 +758,111 @@
   ],
   "cables": [
     {
-      "id": "CBL-01", "cat": "Cat6", "len": "0.5 m", "color": "gray", "jacket": "UTP",
-      "fromDev": "gw", "fromPort": "lan1", "toDev": "sw-main", "toPort": 1,
+      "id": "CBL-01",
+      "cat": "Cat6",
+      "len": "0.5 m",
+      "color": "gray",
+      "jacket": "UTP",
+      "fromDev": "gw",
+      "fromPort": "lan1",
+      "toDev": "sw-main",
+      "toPort": 1,
       "notes": "Rack uplink. Pre-bundled with router."
     },
     {
-      "id": "CBL-02", "cat": "Cat6a", "len": "1 m", "color": "blue", "jacket": "STP",
-      "fromDev": "sw-main", "fromPort": 2, "toDev": "nas", "toPort": "eth0",
+      "id": "CBL-02",
+      "cat": "Cat6a",
+      "len": "1 m",
+      "color": "blue",
+      "jacket": "STP",
+      "fromDev": "sw-main",
+      "fromPort": 2,
+      "toDev": "nas",
+      "toPort": "eth0",
       "notes": "High-bandwidth pair for SMB / Plex."
     },
     {
-      "id": "CBL-03", "cat": "Cat6", "len": "8 m", "color": "white", "jacket": "UTP",
-      "fromDev": "sw-main", "fromPort": 3, "toDev": "ap", "toPort": "PoE",
+      "id": "CBL-03",
+      "cat": "Cat6",
+      "len": "8 m",
+      "color": "white",
+      "jacket": "UTP",
+      "fromDev": "sw-main",
+      "fromPort": 3,
+      "toDev": "ap",
+      "toPort": "PoE",
       "notes": "In-wall run to living room mesh AP."
     },
     {
-      "id": "CBL-04", "cat": "Cat6", "len": "6 m", "color": "white", "jacket": "UTP",
-      "fromDev": "sw-main", "fromPort": 4, "toDev": "sw-desk", "toPort": 1,
+      "id": "CBL-04",
+      "cat": "Cat6",
+      "len": "6 m",
+      "color": "white",
+      "jacket": "UTP",
+      "fromDev": "sw-main",
+      "fromPort": 4,
+      "toDev": "sw-desk",
+      "toPort": 1,
       "notes": "In-wall run to desk switch."
     },
     {
-      "id": "CBL-05", "cat": "Cat6", "len": "7 m", "color": "white", "jacket": "UTP",
-      "fromDev": "sw-main", "fromPort": 5, "toDev": "atv", "toPort": "eth",
+      "id": "CBL-05",
+      "cat": "Cat6",
+      "len": "7 m",
+      "color": "white",
+      "jacket": "UTP",
+      "fromDev": "sw-main",
+      "fromPort": 5,
+      "toDev": "atv",
+      "toPort": "eth",
       "notes": "TV cluster ─ Apple TV."
     },
     {
-      "id": "CBL-06", "cat": "Cat6", "len": "7 m", "color": "white", "jacket": "UTP",
-      "fromDev": "sw-main", "fromPort": 6, "toDev": "tv", "toPort": "lan",
+      "id": "CBL-06",
+      "cat": "Cat6",
+      "len": "7 m",
+      "color": "white",
+      "jacket": "UTP",
+      "fromDev": "sw-main",
+      "fromPort": 6,
+      "toDev": "tv",
+      "toPort": "lan",
       "notes": "TV cluster ─ BRAVIA."
     },
     {
-      "id": "CBL-07", "cat": "Cat5e", "len": "2 m", "color": "gray", "jacket": "UTP",
-      "fromDev": "sw-main", "fromPort": 7, "toDev": "hue", "toPort": "lan",
+      "id": "CBL-07",
+      "cat": "Cat5e",
+      "len": "2 m",
+      "color": "gray",
+      "jacket": "UTP",
+      "fromDev": "sw-main",
+      "fromPort": 7,
+      "toDev": "hue",
+      "toPort": "lan",
       "notes": "Bundled with Hue Bridge."
     },
     {
-      "id": "CBL-08", "cat": "Cat6a", "len": "2 m", "color": "black", "jacket": "STP",
-      "fromDev": "sw-desk", "fromPort": 2, "toDev": "rig", "toPort": "eth0",
+      "id": "CBL-08",
+      "cat": "Cat6a",
+      "len": "2 m",
+      "color": "black",
+      "jacket": "STP",
+      "fromDev": "sw-desk",
+      "fromPort": 2,
+      "toDev": "rig",
+      "toPort": "eth0",
       "notes": "Aftermarket braided. Snagless."
     },
     {
-      "id": "CBL-09", "cat": "Cat6", "len": "1 m", "color": "gray", "jacket": "UTP",
-      "fromDev": "sw-desk", "fromPort": 3, "toDev": "mini", "toPort": "eth0",
+      "id": "CBL-09",
+      "cat": "Cat6",
+      "len": "1 m",
+      "color": "gray",
+      "jacket": "UTP",
+      "fromDev": "sw-desk",
+      "fromPort": 3,
+      "toDev": "mini",
+      "toPort": "eth0",
       "notes": "OEM cable from Mac mini."
     }
   ]

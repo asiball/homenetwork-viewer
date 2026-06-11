@@ -133,6 +133,8 @@ class DeviceBase(BaseModel):
     last: Optional[str] = None
     uptime: Optional[str] = None
     notes: Optional[str] = None
+    # Admin / web UI of the device, opened in a new tab by the frontend.
+    url: Optional[str] = None
 
     detail: Optional[DeviceDetail] = None
 
@@ -157,6 +159,17 @@ class DeviceBase(BaseModel):
     def _not_blank(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("must not be blank")
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def _valid_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        if not v.startswith(("http://", "https://")):
+            raise ValueError(
+                f"invalid url: {v!r} (must start with http:// or https://)"
+            )
         return v
 
 

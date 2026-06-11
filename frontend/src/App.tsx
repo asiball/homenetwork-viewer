@@ -117,6 +117,11 @@ export default function App() {
     };
   }, []);
 
+  const selfId = useMemo(
+    () => (clientIp ? (devices.find((d) => d.ip === clientIp)?.id ?? null) : null),
+    [clientIp, devices],
+  );
+
   // First load, nothing yet.
   if (loading && devices.length === 0 && !bootError) {
     return (
@@ -139,11 +144,6 @@ export default function App() {
       </div>
     );
   }
-
-  const selfId = useMemo(
-    () => (clientIp ? (devices.find((d) => d.ip === clientIp)?.id ?? null) : null),
-    [clientIp, devices],
-  );
 
   const value: CatalogValue = {
     devices,

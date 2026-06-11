@@ -24,7 +24,7 @@
 | サービス | 技術 | 役割 |
 |---|---|---|
 | **frontend** | Vite + React + TypeScript（nginx配信） | ホーム（トポロジーマップ）・詳細・編集の SPA。`/api` を backend へリバースプロキシ |
-| **backend** | FastAPI（Python 3.11） | devices / switches / cables の取得 + 機器の追加・編集・削除。`devices.json` に永続化 |
+| **backend** | FastAPI（Python 3.11 / uv 管理） | devices / switches / cables の取得 + 機器の追加・編集・削除。`devices.json` に永続化 |
 
 データは単一の JSON ファイル（`data/devices.json`）が正。UI から編集でき、手で直接編集することもできます
 （バインドマウント）。書き込みはアトミック（temp + `os.replace`）です。
@@ -34,6 +34,8 @@ homenetwork-viewer/
 ├── docker-compose.yml          # frontend + backend の2サービス
 ├── data/                       # 実行時データ（devices.json を bind-mount・gitignore）
 ├── backend/
+│   ├── pyproject.toml          # 依存管理（uv / PEP 621）
+│   ├── uv.lock                 # 依存バージョンロックファイル
 │   ├── app/
 │   │   ├── main.py             # FastAPI ルート（/api/...）
 │   │   ├── models.py           # Pydantic モデル（spec §3 準拠・IP/MAC/id 検証）
@@ -80,10 +82,9 @@ docker compose logs -f       # ログ追跡
 
 ```bash
 cd backend
-python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt
-uvicorn app.main:app --reload --port 8000      # http://localhost:8000/api/health
-pytest -q                                       # テスト
+uv sync                                         # 仮想環境作成 + 依存インストール（dev含む）
+uv run uvicorn app.main:app --reload --port 8000 # http://localhost:8000/api/health
+uv run pytest -q                                 # テスト
 ```
 
 **frontend**

@@ -122,8 +122,8 @@ export function TopologyMap({
             </rect>
             <text
               className="node-label dim"
-              x={p.x + 10}
-              y={p.y - 14}
+              x={p.x + 14}
+              y={p.y}
               textAnchor="start"
               dy={3}
             >
@@ -177,18 +177,34 @@ export function TopologyMap({
                   )}
                 </>
               )}
-              {/* generous transparent hit target + hover tooltip */}
-              <circle
-                className="node-hit"
-                cx={p.x}
-                cy={p.y}
-                r={isCenter ? 20 : 13}
-                onClick={() => onSelect(d.id)}
-              >
-                <title>
-                  {d.name} · {d.ip}
-                </title>
-              </circle>
+              {/* generous transparent hit target + hover tooltip; the tree
+                  makes the whole row (node + label) clickable */}
+              {deco.kind === "tree" ? (
+                <rect
+                  className="node-hit"
+                  x={p.x - (isCenter ? 30 : 14)}
+                  y={p.y - deco.rowH / 2}
+                  width={230}
+                  height={deco.rowH}
+                  onClick={() => onSelect(d.id)}
+                >
+                  <title>
+                    {d.name} · {d.ip}
+                  </title>
+                </rect>
+              ) : (
+                <circle
+                  className="node-hit"
+                  cx={p.x}
+                  cy={p.y}
+                  r={isCenter ? 20 : 13}
+                  onClick={() => onSelect(d.id)}
+                >
+                  <title>
+                    {d.name} · {d.ip}
+                  </title>
+                </circle>
+              )}
             </g>
           );
         })}

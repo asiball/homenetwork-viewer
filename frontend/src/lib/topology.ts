@@ -48,7 +48,7 @@ export interface PseudoNode {
 export type Deco =
   | { kind: "radial"; cx: number; cy: number; r1: number; r2: number }
   | { kind: "spine"; busY: number; startX: number; endX: number; taps: SpineTap[] }
-  | { kind: "tree" };
+  | { kind: "tree"; rowH: number };
 
 export interface Layout {
   positions: Record<string, Pos>;
@@ -167,7 +167,7 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
 function computeTree(visible: Device[], switches: Switch[], compact: boolean): Layout {
   const deviceIds = new Set(visible.map((d) => d.id));
   const root = visible.find((d) => d.ring === 0) ?? visible[0];
-  if (!root) return { positions: {}, edges: [], deco: { kind: "tree" }, pseudo: [] };
+  if (!root) return { positions: {}, edges: [], deco: { kind: "tree", rowH: 24 }, pseudo: [] };
 
   // Switch/hub entities that are not themselves catalog devices (e.g. dumb
   // switches) become pseudo nodes; ledger entries that double as devices
@@ -221,64 +221,46 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
     addChild(wifi && ap ? ap.id : root.id, d.id);
   }
 
-  // Tidy left→right tree: leaves take consecutive rows, parents centre on
-  // their children.
-  let nextRow = 0;
-  let maxDepth = 0;
+  // tree-command style: every node on its own row, root on the top row,
+  // pre-order DFS so children sit directly under their parent.
+  const order: string[] = [];
   const depthOf = new Map<string, number>();
-  const rowOf = new Map<string, number>();
-  const assign = (id: string, depth: number): number => {
+  let maxDepth = 0;
+  const walk = (id: string, depth: number) => {
+    order.push(id);
     depthOf.set(id, depth);
     if (depth > maxDepth) maxDepth = depth;
-    const kids = children.get(id) ?? [];
-    if (kids.length === 0) {
-      const r = nextRow++;
-      rowOf.set(id, r);
-      return r;
-    }
-    const rows = kids.map((k) => assign(k, depth + 1));
-    const mid = (rows[0] + rows[rows.length - 1]) / 2;
-    rowOf.set(id, mid);
-    return mid;
+    for (const k of children.get(id) ?? []) walk(k, depth + 1);
   };
-  assign(root.id, 0);
+  walk(root.id, 0);
 
-  const top = 46;
-  const bottom = 40;
-  const left = 80;
-  const right = 170; // room for leaf labels on the right edge
-  const rowH = Math.min(compact ? 26 : 32, (MAP_H - top - bottom) / Math.max(1, nextRow));
-  const colW = (MAP_W - left - right) / Math.max(1, maxDepth);
+  const top = 44;
+  const bottom = 32;
+  const left = 64;
+  const rowH = Math.min(compact ? 22 : 26, (MAP_H - top - bottom) / Math.max(1, order.length));
+  const indent = Math.min(95, (MAP_W - left - 240) / Math.max(1, maxDepth));
 
   const positions: Record<string, Pos> = {};
-  for (const id of depthOf.keys()) {
-    const x = left + (depthOf.get(id) ?? 0) * colW;
-    const y = top + (rowOf.get(id) ?? 0) * rowH + rowH / 2;
-    const isLeaf = (children.get(id) ?? []).length === 0;
+  order.forEach((id, row) => {
+    const x = left + (depthOf.get(id) ?? 0) * indent;
+    const y = top + row * rowH + rowH / 2;
     // below:true doubles as "skip the .octet meta line" in TopologyMap —
     // the per-node octet row is what made the tree feel cluttered.
     positions[id] = {
       x,
       y,
-      labelOffset: isLeaf
-        ? { x: x + 12, y, anchor: "start", below: true }
-        : { x: x + 10, y: y - 12, anchor: "start", below: true },
+      labelOffset: { x: x + 14, y, anchor: "start", below: true },
     };
-  }
+  });
 
   const offline = new Map(visible.map((d) => [d.id, !d.online] as const));
   const edges: Edge[] = [];
   for (const [parent, kids] of children) {
     const px = positions[parent]?.x ?? left;
     for (const k of kids) {
-      const kx = positions[k]?.x ?? px;
-      edges.push({
-        from: parent,
-        to: k,
-        off: offline.get(k) ?? false,
-        // Shared trunk halfway between the columns → tidy right angles.
-        bendX: px + (kx - px) / 2,
-      });
+      // Drop straight down the parent's column, then turn right into the
+      // child — the same elbow the tree command draws with │ └─.
+      edges.push({ from: parent, to: k, off: offline.get(k) ?? false, bendX: px });
     }
   }
 
@@ -286,7 +268,7 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
     .filter((s) => positions[s.id])
     .map((s) => ({ id: s.id, x: positions[s.id].x, y: positions[s.id].y, label: s.name }));
 
-  return { positions, edges, deco: { kind: "tree" }, pseudo };
+  return { positions, edges, deco: { kind: "tree", rowH }, pseudo };
 }
 
 export function computeLayout(

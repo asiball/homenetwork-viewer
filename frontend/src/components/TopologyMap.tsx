@@ -91,20 +91,20 @@ export function TopologyMap({
           </>
         )}
 
-        {/* edges */}
+        {/* edges — straight for radial/spine, right-angled for the tree */}
         {edges.map((e, i) => {
           const p1 = getPos(e.from);
           const p2 = getPos(e.to);
           const onSel = e.to === selectedId || e.from === selectedId;
-          return (
-            <line
+          const cls = `link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}`;
+          return e.bendX != null ? (
+            <path
               key={`e${i}`}
-              className={`link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}`}
-              x1={p1.x}
-              y1={p1.y}
-              x2={p2.x}
-              y2={p2.y}
+              className={cls}
+              d={`M ${p1.x} ${p1.y} H ${e.bendX} V ${p2.y} H ${p2.x}`}
             />
+          ) : (
+            <line key={`e${i}`} className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
           );
         })}
 

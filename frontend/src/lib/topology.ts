@@ -26,6 +26,8 @@ export interface Edge {
   from: string;
   to: string;
   off: boolean;
+  /** When set, route orthogonally: H to bendX → V to the child row → H. */
+  bendX?: number;
 }
 
 export interface SpineTap {
@@ -253,19 +255,31 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
     const x = left + (depthOf.get(id) ?? 0) * colW;
     const y = top + (rowOf.get(id) ?? 0) * rowH + rowH / 2;
     const isLeaf = (children.get(id) ?? []).length === 0;
+    // below:true doubles as "skip the .octet meta line" in TopologyMap —
+    // the per-node octet row is what made the tree feel cluttered.
     positions[id] = {
       x,
       y,
       labelOffset: isLeaf
-        ? { x: x + 12, y, anchor: "start" }
-        : { x: x + 10, y: y - 14, anchor: "start" },
+        ? { x: x + 12, y, anchor: "start", below: true }
+        : { x: x + 10, y: y - 12, anchor: "start", below: true },
     };
   }
 
   const offline = new Map(visible.map((d) => [d.id, !d.online] as const));
   const edges: Edge[] = [];
   for (const [parent, kids] of children) {
-    for (const k of kids) edges.push({ from: parent, to: k, off: offline.get(k) ?? false });
+    const px = positions[parent]?.x ?? left;
+    for (const k of kids) {
+      const kx = positions[k]?.x ?? px;
+      edges.push({
+        from: parent,
+        to: k,
+        off: offline.get(k) ?? false,
+        // Shared trunk halfway between the columns → tidy right angles.
+        bendX: px + (kx - px) / 2,
+      });
+    }
   }
 
   const pseudo: PseudoNode[] = pseudoSwitches

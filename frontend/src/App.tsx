@@ -15,6 +15,7 @@ import type { Cable, Device, Meta, Switch } from "./types";
 import { HomeView } from "./views/HomeView";
 import { DetailView } from "./views/DetailView";
 import { EditView } from "./views/EditView";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 interface CatalogValue {
   devices: Device[];
@@ -57,16 +58,35 @@ export default function App() {
   const notify = useCallback((message: string, kind: "ok" | "err" = "ok") => {
     setToast({ msg: message, kind });
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3200);
+    if (kind === "ok") {
+      toastTimer.current = window.setTimeout(() => setToast(null), 3200);
+    }
   }, []);
 
-  // Lightweight refresh: devices + meta only (switches/cables are static).
+  useEffect(() => {
+    return () => window.clearTimeout(toastTimer.current);
+  }, []);
+
+  // Lightweight refresh: devices + meta only, unless boot failed
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, m] = await Promise.all([api.devices(), api.meta()]);
-      setDevices(d);
-      setMeta(m);
+      if (bootError) {
+        const [d, s, c, m] = await Promise.all([
+          api.devices(),
+          api.switches(),
+          api.cables(),
+          api.meta(),
+        ]);
+        setDevices(d);
+        setSwitches(s);
+        setCables(c);
+        setMeta(m);
+      } else {
+        const [d, m] = await Promise.all([api.devices(), api.meta()]);
+        setDevices(d);
+        setMeta(m);
+      }
       setLastSync(new Date());
       setBootError(null);
       setSyncError(null);
@@ -77,7 +97,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bootError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,14 +180,21 @@ export default function App() {
 
   return (
     <CatalogContext.Provider value={value}>
-      <Routes>
-        <Route path="/" element={<HomeView />} />
-        <Route path="/d/:id" element={<DetailView />} />
-        <Route path="/d/:id/edit" element={<EditView mode="edit" />} />
-        <Route path="/add" element={<EditView mode="add" />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      {toast && <div className={`toast ${toast.kind === "err" ? "err" : ""}`}>{toast.msg}</div>}
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<HomeView />} />
+          <Route path="/d/:id" element={<DetailView />} />
+          <Route path="/d/:id/edit" element={<EditView mode="edit" />} />
+          <Route path="/add" element={<EditView mode="add" />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
+      {toast && (
+        <div className={`toast ${toast.kind === "err" ? "err" : ""}`}>
+          <span>{toast.msg}</span>
+          <button className="toast-close" onClick={() => setToast(null)} aria-label="閉じる">×</button>
+        </div>
+      )}
     </CatalogContext.Provider>
   );
 }

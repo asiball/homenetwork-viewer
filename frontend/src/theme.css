@@ -1414,3 +1414,94 @@ body {
   color: var(--fg-faint);
   font-size: 10px;
 }
+
+/* ====== A11y & Modals ====== */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--bg-2);
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+
+.confirm-modal {
+  background: var(--bg-2);
+  color: var(--fg);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+}
+.confirm-modal::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+}
+.cm-content h3 {
+  margin-top: 0;
+  color: var(--fg);
+}
+.cm-content h3.err {
+  color: var(--err);
+}
+.cm-content p {
+  color: var(--fg-soft);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.cm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  margin-left: 12px;
+  opacity: 0.7;
+}
+.toast-close:hover {
+  opacity: 1;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.flash {
+  animation: flash 1s;
+}
+@keyframes flash {
+  0% { opacity: 1; color: var(--amber); }
+  30% { opacity: 0.3; }
+  100% { opacity: 1; color: inherit; }
+}
+
+/* Make offline dot distinct shape (hollow circle) */
+.lstat.off {
+  background: transparent;
+  border: 2px solid var(--err);
+}
+.lstat.on {
+  background: var(--ok);
+  border: 2px solid var(--ok);
+}

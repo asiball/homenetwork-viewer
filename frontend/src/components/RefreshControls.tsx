@@ -23,6 +23,11 @@ export function RefreshControls() {
   const savedRefresh = useRef(refresh);
   savedRefresh.current = refresh;
 
+  const [flashKey, setFlashKey] = useState(0);
+  useEffect(() => {
+    if (lastSync) setFlashKey((k) => k + 1);
+  }, [lastSync]);
+
   useEffect(() => {
     localStorage.setItem(KEY, interval);
     if (interval === "off") return;
@@ -52,15 +57,16 @@ export function RefreshControls() {
           ⚠ sync failed
         </span>
       ) : (
-        <span title="last catalog sync">synced {fmtTime(lastSync)}</span>
+        <span key={flashKey} className="flash" title="last catalog sync">synced {fmtTime(lastSync)}</span>
       )}
       <button
         className="btn"
         onClick={() => void refresh()}
         disabled={loading}
         title="re-fetch catalog now"
+        aria-label="refresh data"
       >
-        <span className={loading ? "spin" : ""}>⟳</span> refresh
+        <span className={loading ? "spin" : ""} style={{ display: "inline-block" }}>⟳</span> refresh
       </button>
     </>
   );

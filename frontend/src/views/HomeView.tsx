@@ -32,7 +32,7 @@ export function HomeView() {
     () => localStorage.getItem(OFFLINE_KEY) !== "false",
   );
   const [selId, setSelId] = useState<string>(
-    () => (devices.some((d) => d.id === "nas") ? "nas" : devices[0]?.id) ?? "",
+    () => devices[0]?.id ?? "",
   );
   // Ledger switch selected on the wiring tree (side panel shows its ports).
   const [selSwId, setSelSwId] = useState<string | null>(null);
@@ -116,10 +116,10 @@ export function HomeView() {
       onSelect={selectDevice}
       crumbs={
         <>
-          net <span>192.168.1.0/24</span>
+          net <span>{devices.find(d => d.type === "router" || d.ring === 0)?.detail?.net?.ipv4?.replace(/\.\d+\/\d+$/, ".0/24") || "192.168.1.0/24"}</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>br-lan</span> &nbsp;·&nbsp; layout{" "}
+            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span> &nbsp;·&nbsp; layout{" "}
             <span>{layoutLabel}</span>
           </span>
         </>

@@ -2,7 +2,7 @@
 // variant-noc.jsx render. The tree renders at fixed scale inside a
 // scroll/pan pane; radial & spine scale to fit as before.
 
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useCatalog } from "../App";
 import type { Device } from "../types";
 import { lastOctet, shortHost } from "../lib/helpers";
@@ -41,7 +41,10 @@ export function TopologyMap({
   compact = false,
 }: Props) {
   const { switches, selfId } = useCatalog();
-  const { positions, edges, deco, pseudo } = computeLayout(layout, devices, compact, switches);
+  const { positions, edges, deco, pseudo } = useMemo(
+    () => computeLayout(layout, devices, compact, switches),
+    [layout, devices, compact, switches]
+  );
   const getPos = (id: string): Pos => positions[id] ?? { x: 0, y: 0 };
   const selPos = getPos(selectedId);
   const selfPos = selfId && positions[selfId] ? positions[selfId] : null;
@@ -178,6 +181,15 @@ export function TopologyMap({
                 width={230}
                 height={deco.rowH}
                 onClick={() => onSelectSwitch(p.id)}
+                role="button"
+                tabIndex={0}
+                aria-label={p.label}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectSwitch(p.id);
+                  }
+                }}
               >
                 <title>{p.label}</title>
               </rect>
@@ -240,6 +252,15 @@ export function TopologyMap({
                   width={230}
                   height={deco.rowH}
                   onClick={() => onSelect(d.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${d.name} ${d.ip}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(d.id);
+                    }
+                  }}
                 >
                   <title>
                     {d.name} · {d.ip}
@@ -252,6 +273,15 @@ export function TopologyMap({
                   cy={p.y}
                   r={isCenter ? 20 : 13}
                   onClick={() => onSelect(d.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${d.name} ${d.ip}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(d.id);
+                    }
+                  }}
                 >
                   <title>
                     {d.name} · {d.ip}
@@ -265,7 +295,7 @@ export function TopologyMap({
   );
 
   return (
-    <div className="n-map">
+    <div className="n-map" id="main-content" tabIndex={-1}>
       {isTree ? (
         <div
           className="map-scroll"

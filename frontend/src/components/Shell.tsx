@@ -32,6 +32,7 @@ export function Shell({
 
   return (
     <div className={`noc ${leftOpen ? "left-open" : "left-collapsed"}`}>
+      <a href="#main-content" className="skip-link">メインコンテンツへ</a>
       <header className="n-head">
         <button
           type="button"

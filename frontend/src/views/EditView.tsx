@@ -2,8 +2,9 @@
 // Edits the user-owned fields (§4.2); preserves any auto-collected detail
 // blocks (net/hw/metrics/services/storage/hist7) untouched on update.
 
-import { type ReactNode, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
+import { Link, useNavigate, useParams, useBlocker, type Location } from "react-router-dom";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
@@ -127,9 +128,13 @@ interface Props {
 export function EditView({ mode }: Props) {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { devices, refresh, notify } = useCatalog();
+  const { devices, refresh, notify, loading } = useCatalog();
 
   const existing = mode === "edit" ? devices.find((d) => d.id === id) : undefined;
+
+  if (loading && mode === "edit" && !existing) {
+    return <div className="center-screen"><div className="spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid var(--fg-faint)", borderTopColor: "var(--amber)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><div style={{ marginTop: 12 }}>読み込み中...</div></div>;
+  }
 
   const [form, setForm] = useState<FormState>(() =>
     existing ? formFromDevice(existing) : emptyForm(),
@@ -144,13 +149,35 @@ export function EditView({ mode }: Props) {
   // component instance, so the useState initializer would otherwise hold the
   // previous device). React's "adjust state during render" pattern.
   const [loadedId, setLoadedId] = useState(id);
+  const initialForm = useRef<FormState>(existing ? formFromDevice(existing) : emptyForm());
+
   if (id !== loadedId) {
     setLoadedId(id);
-    setForm(existing ? formFromDevice(existing) : emptyForm());
+    const newForm = existing ? formFromDevice(existing) : emptyForm();
+    setForm(newForm);
+    initialForm.current = newForm;
     setIdTouched(false);
     setErrors({});
     setSubmitErr(null);
   }
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }: { currentLocation: Location; nextLocation: Location }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const existingIds = useMemo(() => new Set(devices.map((d) => d.id)), [devices]);
 
@@ -241,6 +268,7 @@ export function EditView({ mode }: Props) {
     try {
       if (mode === "add") await api.create(payload);
       else await api.update(id, payload);
+      initialForm.current = payload as any; // Trick to avoid dirty modal on navigate
       await refresh();
       notify(mode === "add" ? `added · ${payload.name}` : `saved · ${payload.name}`);
       navigate(`/d/${payload.id}`);
@@ -252,9 +280,14 @@ export function EditView({ mode }: Props) {
     }
   }
 
-  async function onDelete() {
+  function onDelete() {
     if (!existing) return;
-    if (!window.confirm(`「${existing.name}」を削除します。よろしいですか？`)) return;
+    setDeleteModalOpen(true);
+  }
+
+  async function performDelete() {
+    if (!existing) return;
+    setDeleteModalOpen(false);
     setBusy(true);
     try {
       await api.remove(existing.id);
@@ -288,7 +321,26 @@ export function EditView({ mode }: Props) {
       right={<span />}
       footer={footer}
     >
-      <div className="f-main">
+      <ConfirmModal
+        open={deleteModalOpen}
+        title="デバイスの削除"
+        message={`「${existing?.name}」を削除します。よろしいですか？`}
+        danger
+        confirmLabel="削除"
+        onConfirm={performDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
+      <ConfirmModal
+        open={blocker.state === "blocked"}
+        title="未保存の変更"
+        message="未保存の変更があります。このページを離れますか？"
+        confirmLabel="離れる"
+        cancelLabel="留まる"
+        danger
+        onConfirm={() => blocker.proceed?.()}
+        onCancel={() => blocker.reset?.()}
+      />
+      <div className="f-main" id="main-content" tabIndex={-1}>
         <form className="f-form" onSubmit={onSubmit} noValidate>
           <div className="f-head">
             <div>
@@ -299,7 +351,7 @@ export function EditView({ mode }: Props) {
 
           {submitErr && <div className="f-error">⚠ {submitErr}</div>}
 
-          <div className="f-section" data-title="identity">
+          <div className="f-section" data-title="identity" aria-label="identity">
             <div className="f-grid">
               <Field label="id" required={mode === "add"} error={errors.id} hint="kebab-case · 不変">
                 <input
@@ -363,7 +415,7 @@ export function EditView({ mode }: Props) {
             </div>
           </div>
 
-          <div className="f-section" data-title="placement & link">
+          <div className="f-section" data-title="placement & link" aria-label="placement & link">
             <div className="f-grid">
               <Field label="connection">
                 <select value={form.conn} onChange={(e) => set("conn", e.target.value as Conn | "")}>
@@ -398,7 +450,7 @@ export function EditView({ mode }: Props) {
             </div>
           </div>
 
-          <div className="f-section" data-title="hardware (summary)">
+          <div className="f-section" data-title="hardware (summary)" aria-label="hardware (summary)">
             <div className="f-grid">
               <Field label="cpu">
                 <input value={form.cpu} onChange={(e) => set("cpu", e.target.value)} placeholder="Intel N100 4C / 4T" />
@@ -416,7 +468,7 @@ export function EditView({ mode }: Props) {
             </div>
           </div>
 
-          <div className="f-section" data-title="ownership">
+          <div className="f-section" data-title="ownership" aria-label="ownership">
             <div className="f-grid">
               <Field label="manufacturer">
                 <input value={form.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
@@ -442,7 +494,7 @@ export function EditView({ mode }: Props) {
             </div>
           </div>
 
-          <div className="f-section" data-title="notes">
+          <div className="f-section" data-title="notes" aria-label="notes">
             <div className="f-grid">
               <Field label="notes" full>
                 <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={5} />

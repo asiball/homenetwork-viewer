@@ -30,9 +30,10 @@ function serviceUrl(ip: string, s: ServiceRow): string | null {
 export function DetailView() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { devices, switches, cables, selfId } = useCatalog();
+  const { devices, switches, cables, selfId, loading } = useCatalog();
   const device = devices.find((d) => d.id === id);
 
+  if (loading && !device) return <div className="center-screen"><div className="spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid var(--fg-faint)", borderTopColor: "var(--amber)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><div style={{ marginTop: 12 }}>読み込み中...</div></div>;
   if (!device) return <DeviceNotFound devices={devices} id={id} />;
 
   const detail = device.detail ?? null;
@@ -64,7 +65,7 @@ export function DetailView() {
       }
       footer={<ViewFooter view="detail" tail={id} />}
     >
-      <div className="d-main">
+      <div className="d-main" id="main-content" tabIndex={-1}>
         {/* identity */}
         <div className="d-id">
           <div>
@@ -182,7 +183,7 @@ export function DetailView() {
 
         {/* content grid */}
         <div className="d-grid">
-          <div className="d-card" data-title="network">
+          <div className="d-card" data-title="network" aria-label="network">
             <dl>
               <dt>ipv4</dt>
               <dd>
@@ -248,7 +249,7 @@ export function DetailView() {
             </dl>
           </div>
 
-          <div className="d-card" data-title="hardware">
+          <div className="d-card" data-title="hardware" aria-label="hardware">
             <dl>
               <dt>cpu</dt>
               <dd>{detail?.hw?.cpu_full ?? device.cpu ?? "—"}</dd>
@@ -263,7 +264,7 @@ export function DetailView() {
             </dl>
           </div>
 
-          <div className="d-card" data-title="services / open ports">
+          <div className="d-card" data-title="services / open ports" aria-label="services / open ports">
             {detail?.services && detail.services.length > 0 ? (
               <>
                 <table className="d-table">
@@ -309,7 +310,7 @@ export function DetailView() {
             )}
           </div>
 
-          <div className="d-card" data-title="storage / volumes">
+          <div className="d-card" data-title="storage / volumes" aria-label="storage / volumes">
             {detail?.storage && detail.storage.drives && detail.storage.drives.length > 0 ? (
               <>
                 <div className="d-drives">
@@ -344,7 +345,7 @@ export function DetailView() {
             )}
           </div>
 
-          <div className="d-card" data-title="connection · last 7 days">
+          <div className="d-card" data-title="connection · last 7 days" aria-label="connection · last 7 days">
             {hist && hist.length > 0 ? (
               <>
                 <div className="d-hist">
@@ -371,7 +372,7 @@ export function DetailView() {
             )}
           </div>
 
-          <div className="d-card" data-title="ownership">
+          <div className="d-card" data-title="ownership" aria-label="ownership">
             <dl>
               <dt>maker</dt>
               <dd>{detail?.own?.manufacturer ?? "—"}</dd>
@@ -398,7 +399,7 @@ export function DetailView() {
             </div>
           </div>
 
-          <div className="d-card full" data-title="notes">
+          <div className="d-card full" data-title="notes" aria-label="notes">
             <div className="d-notes">
               <div className="pen">
                 {device.notes ? `${device.notes.length} chars` : "no notes"}

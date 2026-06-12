@@ -102,12 +102,18 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 ## 使い方
 
-- **ホーム** `/` — トポロジーマップ。ヘッダーの **◎ radial / ─ spine** で配置を切替（URL `?layout=spine` と同期）。
+- **ホーム** `/` — トポロジーマップ。ヘッダーの **◎ radial / ─ spine / ⑂ tree** で配置を切替
+  （URL `?layout=...` と同期）。**tree** は switches / cables 台帳の portMap から実配線の階層を
+  表示します（固定スケール・ホイールスクロール / 背景ドラッグでパン、スイッチ行をクリックすると
+  右パネルにポートマップ）。左リスト上部のフィルタで名前 / IP / type を部分一致で絞り込み。
   左リストやノードをクリックで選択 → 右に概要。`↑ ↓` で選択移動、`Enter` で詳細へ。`+ add` で機器登録。
   フッターの **show offline** でオフライン機器の表示/非表示。
+  閲覧中の端末の IP がカタログの機器と一致すると **YOU** バッジ・破線リングが付きます（`/api/whoami`）。
 - **詳細** `/d/:id` — identity / CPU・メモリ・帯域・稼働 / network / hardware / services / storage /
   接続履歴 / ownership / notes の構成。データが無い項目は推測せず `—` や `no agent` と表示します（spec §6.4）。
-- **編集 / 追加** `/d/:id/edit`, `/add` — 識別情報・配置・スペック概要・所有情報・メモを編集。
+  host / IP / MAC はクリックでコピー。`url` を設定した機器は **↗ open** から管理画面を別タブで開け、
+  ポートスキャン結果（services）の HTTP 系ポートも自動でリンクになります。
+- **編集 / 追加** `/d/:id/edit`, `/add` — 識別情報・配置（web ui の `url` 含む）・スペック概要・所有情報・メモを編集。
   保存すると `devices.json` に書き戻されます。`id` は不変（追加時のみ設定、名前から kebab-case を自動提案）。
   自動収集系の詳細（メトリクス/ポート等）は編集対象外で、編集時もそのまま保持されます。
 
@@ -125,6 +131,7 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 |---|---|---|
 | GET | `/api/health` | ヘルスチェック |
 | GET | `/api/meta` | 件数サマリー（total / online / offline / updated_at） |
+| GET | `/api/whoami` | クライアントIP（X-Real-IP / X-Forwarded-For 優先・自端末ハイライト用） |
 | GET | `/api/devices` | 機器一覧 |
 | GET | `/api/devices/{id}` | 機器1件 |
 | POST | `/api/devices` | 追加（`id` 重複は 409、検証エラーは 422） |
@@ -139,7 +146,8 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 ## データモデル（要点・spec §3）
 
 機器（Device）の必須フィールド: `id, name, host, ip, mac, group, type, online`。
-任意: `cpu, mem, storage, conn, ring, last, uptime, notes` と、詳細ビュー専用の `detail`
+任意: `cpu, mem, storage, conn, ring, last, uptime, notes, url`（管理画面URL・http/https のみ）と、
+詳細ビュー専用の `detail`
 （`net / hw / metrics / services / storage / hist7 / own`）。`group` は
 `Infra | IoT | Media | Mobile | Computer | Misc`。`ip` は IPv4、`mac` は `XX:XX:XX:XX:XX:XX`、
 `id` は kebab-case を検証します。

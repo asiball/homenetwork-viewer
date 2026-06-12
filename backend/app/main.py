@@ -10,11 +10,21 @@ SPA and the API from one origin in production.
 
 from __future__ import annotations
 
+import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# ─── Structured logging ────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s level=%(levelname)s logger=%(name)s %(message)s',
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
 
 from . import storage
 from .models import (
@@ -29,13 +39,16 @@ from .models import (
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    logger.info("app.startup action=seed")
     storage.ensure_seeded()
+    logger.info("app.startup action=ready")
     yield
+    logger.info("app.shutdown")
 
 
 app = FastAPI(
     title="homenet API",
-    version="1.0.0",
+    version="1.1.0",
     description="家庭ネットワーク機器カタログ — devices / switches / cables.",
     lifespan=lifespan,
 )
@@ -53,6 +66,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log every HTTP request with method, path, status and duration."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        'http method=%s path=%s status=%d duration_ms=%.1f',
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
 
 @app.exception_handler(storage.DataFileError)
@@ -116,10 +145,8 @@ def get_device(device_id: str) -> dict:
 def create_device(payload: DeviceCreate) -> dict:
     try:
         return storage.create_device(payload.model_dump(exclude_none=True))
-    except storage.ConflictError:
-        raise HTTPException(
-            status_code=409, detail=f"device id already exists: {payload.id}"
-        )
+    except storage.ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.put("/api/devices/{device_id}", response_model=Device)
@@ -130,6 +157,8 @@ def update_device(device_id: str, payload: DeviceUpdate) -> dict:
         return storage.update_device(device_id, body)
     except storage.NotFoundError:
         raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+    except storage.ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.delete("/api/devices/{device_id}", status_code=204)

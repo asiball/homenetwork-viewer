@@ -13,7 +13,7 @@
   --bg-3: #161a22;
   --fg: #d9e0e8;
   --fg-soft: #8a93a0;
-  --fg-faint: #525a66;
+  --fg-faint: #6b7280;
   --rule: #1d222b;
   --rule-2: #2a313d;
   --ok: #79ddb0;
@@ -237,7 +237,7 @@ body {
 }
 .n-left .ltitle {
   padding: 4px 16px 8px;
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -294,7 +294,7 @@ body {
   color: var(--amber);
 }
 .n-left .lrow .lip {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
 }
 .n-left .ladd {
@@ -330,7 +330,7 @@ body {
 }
 .n-map .map-corner {
   position: absolute;
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -371,7 +371,7 @@ body {
 }
 .group-title {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 10px;
   fill: var(--amber);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -422,7 +422,7 @@ body {
 }
 .node-label {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 10px;
   fill: var(--fg);
   letter-spacing: 0.04em;
   pointer-events: none;
@@ -465,7 +465,7 @@ body {
   left: 10px;
   background: var(--bg-2);
   padding: 0 6px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--amber);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -477,7 +477,7 @@ body {
   flex-wrap: wrap;
 }
 .pill {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
   border: 1px solid var(--rule-2);
   letter-spacing: 0.08em;
@@ -516,7 +516,7 @@ body {
   color: var(--fg-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 9.5px;
+  font-size: 10px;
 }
 .n-side dd {
   margin: 0;
@@ -551,13 +551,13 @@ body {
 .n-side .meter-cap {
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .n-side .stale {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   margin-top: 6px;
   display: flex;
@@ -726,7 +726,7 @@ body {
   gap: 4px;
 }
 .d-stat .l {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -775,7 +775,7 @@ body {
   opacity: 0.08;
 }
 .d-stat .sub {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   margin-top: 2px;
   letter-spacing: 0.04em;
@@ -799,7 +799,7 @@ body {
   left: 12px;
   background: var(--bg-2);
   padding: 0 6px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--amber);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -819,7 +819,7 @@ body {
   color: var(--fg-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 9.5px;
+  font-size: 10px;
   padding-top: 1px;
 }
 .d-card dd {
@@ -838,7 +838,7 @@ body {
 .d-table th {
   text-align: left;
   padding: 4px 8px 6px;
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -857,11 +857,11 @@ body {
   color: var(--fg-faint);
   width: 36px;
   text-transform: uppercase;
-  font-size: 9.5px;
+  font-size: 10px;
 }
 .d-table td.banner {
   color: var(--fg-soft);
-  font-size: 9.5px;
+  font-size: 10px;
 }
 
 .d-drives {
@@ -882,7 +882,7 @@ body {
 }
 .d-drive .md {
   color: var(--fg-soft);
-  font-size: 9.5px;
+  font-size: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -890,7 +890,7 @@ body {
 .d-drive .pct {
   text-align: right;
   color: var(--fg-faint);
-  font-size: 9.5px;
+  font-size: 10px;
 }
 .d-drive .meter {
   height: 6px;
@@ -914,7 +914,7 @@ body {
   border-top: 1px dotted var(--rule);
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -955,12 +955,12 @@ body {
   background: var(--err);
 }
 .d-hist .lbl {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.08em;
 }
 .d-hist .pct {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--fg);
   font-family: var(--mono);
 }
@@ -974,7 +974,7 @@ body {
   border-top: 1px dotted var(--rule);
 }
 .d-tag {
-  font-size: 9.5px;
+  font-size: 10px;
   padding: 2px 7px;
   border: 1px solid var(--rule-2);
   color: var(--fg-soft);
@@ -1001,7 +1001,7 @@ body {
 }
 .d-notes .pen {
   color: var(--fg-faint);
-  font-size: 9.5px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -1088,7 +1088,7 @@ body {
   left: 12px;
   background: var(--bg-2);
   padding: 0 6px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--amber);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1107,7 +1107,7 @@ body {
   grid-column: 1 / -1;
 }
 .f-field label {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1146,7 +1146,7 @@ body {
   cursor: not-allowed;
 }
 .f-field .hint {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--fg-faint);
   letter-spacing: 0.02em;
 }
@@ -1155,7 +1155,7 @@ body {
   border-color: var(--err);
 }
 .f-field .err {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--err);
   letter-spacing: 0.02em;
 }
@@ -1412,5 +1412,5 @@ body {
 }
 .dim-note {
   color: var(--fg-faint);
-  font-size: 9.5px;
+  font-size: 10px;
 }

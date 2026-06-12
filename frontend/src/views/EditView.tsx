@@ -132,10 +132,6 @@ export function EditView({ mode }: Props) {
 
   const existing = mode === "edit" ? devices.find((d) => d.id === id) : undefined;
 
-  if (loading && mode === "edit" && !existing) {
-    return <div className="center-screen"><div className="spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid var(--fg-faint)", borderTopColor: "var(--amber)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><div style={{ marginTop: 12 }}>読み込み中...</div></div>;
-  }
-
   const [form, setForm] = useState<FormState>(() =>
     existing ? formFromDevice(existing) : emptyForm(),
   );
@@ -268,7 +264,7 @@ export function EditView({ mode }: Props) {
     try {
       if (mode === "add") await api.create(payload);
       else await api.update(id, payload);
-      initialForm.current = payload as any; // Trick to avoid dirty modal on navigate
+      initialForm.current = form; // 保存済み → dirty 解除 (FormState 同士で比較する)
       await refresh();
       notify(mode === "add" ? `added · ${payload.name}` : `saved · ${payload.name}`);
       navigate(`/d/${payload.id}`);
@@ -288,6 +284,7 @@ export function EditView({ mode }: Props) {
   async function performDelete() {
     if (!existing) return;
     setDeleteModalOpen(false);
+    initialForm.current = form; // 削除確定後の遷移で離脱ガードを出さない
     setBusy(true);
     try {
       await api.remove(existing.id);
@@ -301,8 +298,31 @@ export function EditView({ mode }: Props) {
     }
   }
 
-  // Edit mode but device not found.
-  if (mode === "edit" && !existing) return <DeviceNotFound devices={devices} id={id} />;
+  // Edit mode but device not (yet) found. This guard must stay BELOW every
+  // hook — an early return above them changes the hook count between renders
+  // (React error #310).
+  if (mode === "edit" && !existing) {
+    if (loading) {
+      return (
+        <div className="center-screen">
+          <div
+            className="spin"
+            style={{
+              display: "inline-block",
+              width: "16px",
+              height: "16px",
+              border: "2px solid var(--fg-faint)",
+              borderTopColor: "var(--amber)",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+          <div style={{ marginTop: 12 }}>読み込み中...</div>
+        </div>
+      );
+    }
+    return <DeviceNotFound devices={devices} id={id} />;
+  }
 
   const footer = <ViewFooter view={mode === "add" ? "add" : "edit"} tail={mode === "add" ? "new device" : id} />;
   const backTo = mode === "edit" ? `/d/${id}` : "/";

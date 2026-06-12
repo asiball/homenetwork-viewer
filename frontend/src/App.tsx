@@ -9,12 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";
-import { HomeView } from "./views/HomeView";
-import { DetailView } from "./views/DetailView";
-import { EditView } from "./views/EditView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 interface CatalogValue {
@@ -181,13 +178,7 @@ export default function App() {
   return (
     <CatalogContext.Provider value={value}>
       <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<HomeView />} />
-          <Route path="/d/:id" element={<DetailView />} />
-          <Route path="/d/:id/edit" element={<EditView mode="edit" />} />
-          <Route path="/add" element={<EditView mode="add" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Outlet />
       </ErrorBoundary>
       {toast && (
         <div className={`toast ${toast.kind === "err" ? "err" : ""}`}>

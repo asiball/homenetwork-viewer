@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import type { Device } from "../types";
 import { Shell } from "./Shell";
 import { RefreshControls } from "./RefreshControls";
+import { APP_VERSION } from "../version";
 
 // Footer used by the detail and edit screens (the home footer is richer and
 // stays bespoke). One place owns the version string and layout.
@@ -14,7 +15,7 @@ export function ViewFooter({ view, tail }: { view: string; tail: string }) {
       <span>
         view <b>{view}</b>
       </span>
-      <span className="right">homenet v1.0 · {tail}</span>
+      <span className="right">homenet {APP_VERSION} · {tail}</span>
     </>
   );
 }

@@ -10,6 +10,7 @@ import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
 import { countOnline, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
+import { APP_VERSION } from "../version";
 
 const LAYOUT_KEY = "homenet.layout";
 const OFFLINE_KEY = "homenet.showOffline";
@@ -155,7 +156,7 @@ export function HomeView() {
           <button className={`tg ${showOffline ? "on" : ""}`} onClick={toggleOffline}>
             show offline · <b>{showOffline ? "on" : "off"}</b>
           </button>
-          <span className="right">homenet v1.0 · {layoutLabel}</span>
+          <span className="right">homenet {APP_VERSION} · {layoutLabel}</span>
         </>
       }
     >

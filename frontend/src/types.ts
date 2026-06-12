@@ -150,6 +150,23 @@ export interface Device {
   detail?: DeviceDetail | null;
 }
 
+// Body for POST/PUT. Clearable optional fields may be `null` to erase a stored
+// value (the backend merge treats an explicit null as "clear", an omitted key
+// as "keep"). `detail.own` is already nullable on DeviceDetail.
+export type DeviceWrite = Omit<
+  Device,
+  "conn" | "ring" | "url" | "cpu" | "mem" | "storage" | "notes" | "detail"
+> & {
+  conn?: Conn | null;
+  ring?: 0 | 1 | 2 | null;
+  url?: string | null;
+  cpu?: string | null;
+  mem?: string | null;
+  storage?: string | null;
+  notes?: string | null;
+  detail?: DeviceDetail | null;
+};
+
 export interface PortSlot {
   device: string;
   cable?: string | null;

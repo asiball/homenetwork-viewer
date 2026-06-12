@@ -280,3 +280,56 @@ def test_update_to_non_conflicting_ip_mac_works(client):
     assert r.status_code == 200
     assert r.json()["ip"] == "192.168.1.200"
     assert r.json()["mac"] == "DE:AD:BE:EF:99:99"
+
+
+# ─── Clearing optional fields via PUT (null = clear, absent = keep) ─────────
+
+def test_put_clears_optional_scalar_fields(client):
+    """Sending an optional field as null erases it; omitted fields are kept."""
+    client.post("/api/devices", json=_sample_device(notes="keep me", conn="Wired 1G"))
+
+    update = {
+        "name": "Test Pi",
+        "host": "pi.home.arpa",
+        "ip": "192.168.1.99",
+        "mac": "DE:AD:BE:EF:00:01",
+        "group": "Computer",
+        "type": "desktop",
+        "online": True,
+        # explicitly clear both optional fields
+        "notes": None,
+        "conn": None,
+    }
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    stored = client.get("/api/devices/test-pi").json()
+    assert stored.get("notes") is None
+    assert stored.get("conn") is None
+
+
+def test_put_clears_ownership_but_keeps_other_detail(client):
+    """Clearing detail.own must not wipe sibling detail blocks (e.g. metrics)."""
+    dev = _sample_device(
+        detail={
+            "own": {"manufacturer": "Acme", "tags": ["critical"]},
+            "metrics": {"cpu_pct": 42},
+        },
+    )
+    client.post("/api/devices", json=dev)
+
+    update = {
+        "name": "Test Pi",
+        "host": "pi.home.arpa",
+        "ip": "192.168.1.99",
+        "mac": "DE:AD:BE:EF:00:01",
+        "group": "Computer",
+        "type": "desktop",
+        "online": True,
+        # keep metrics, clear ownership
+        "detail": {"metrics": {"cpu_pct": 42}, "own": None},
+    }
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    detail = client.get("/api/devices/test-pi").json()["detail"]
+    assert detail["own"] is None
+    assert detail["metrics"]["cpu_pct"] == 42

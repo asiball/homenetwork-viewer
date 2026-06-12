@@ -56,12 +56,11 @@ docker-compose.yml
 | 4 | Integration & Verification | Full build, all tests, docker verification, GitHub issues (R4.5) | M1, M2, M3 | PLANNED |
 
 ## Interface Contracts
-### Backend API (unchanged endpoints, new PATCH added)
+### Backend API
 - GET /api/devices — list all devices
 - GET /api/devices/{id} — get single device
 - POST /api/devices — create device (IP/MAC uniqueness enforced)
-- PUT /api/devices/{id} — update device (merges detail field)
-- PATCH /api/devices/{id} — partial update (merges all fields)
+- PUT /api/devices/{id} — update device (partial: omitted keys kept, null clears; merges detail)
 - DELETE /api/devices/{id} — delete device
 - GET /api/switches, /api/cables — topology data
 - GET /api/meta — catalog summary

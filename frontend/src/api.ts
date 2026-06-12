@@ -1,6 +1,6 @@
 // Thin API client. Same-origin /api (nginx proxy in prod, vite proxy in dev).
 
-import type { Cable, Device, Meta, Switch } from "./types";
+import type { Cable, Device, DeviceWrite, Meta, Switch } from "./types";
 
 const BASE = "/api";
 
@@ -48,9 +48,9 @@ export const api = {
   cables: () => req<Cable[]>("/cables"),
   meta: () => req<Meta>("/meta"),
   whoami: () => req<{ ip: string | null }>("/whoami"),
-  create: (d: Device) =>
+  create: (d: DeviceWrite) =>
     req<Device>("/devices", { method: "POST", body: JSON.stringify(d) }),
-  update: (id: string, d: Device) =>
+  update: (id: string, d: DeviceWrite) =>
     req<Device>(`/devices/${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(d),

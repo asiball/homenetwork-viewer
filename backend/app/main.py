@@ -151,7 +151,11 @@ def create_device(payload: DeviceCreate) -> dict:
 
 @app.put("/api/devices/{device_id}", response_model=Device)
 def update_device(device_id: str, payload: DeviceUpdate) -> dict:
-    body = payload.model_dump(exclude_none=True)
+    # exclude_unset (not exclude_none): keys the client omits are left untouched
+    # by the storage merge, while keys sent explicitly as null overwrite (clear)
+    # the stored value. This lets the edit form erase optional fields without
+    # wiping auto-collected `detail` blocks the form never sends.
+    body = payload.model_dump(exclude_unset=True)
     body["id"] = device_id
     try:
         return storage.update_device(device_id, body)

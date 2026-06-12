@@ -13,6 +13,8 @@ import {
   CONN_OPTIONS,
   type Conn,
   type Device,
+  type DeviceDetail,
+  type DeviceWrite,
   GROUP_ORDER,
   type Group,
   type Ownership,
@@ -206,7 +208,7 @@ export function EditView({ mode }: Props) {
     return Object.keys(e).length === 0;
   }
 
-  function buildPayload(): Device {
+  function buildPayload(): DeviceWrite {
     const own: Ownership = {};
     if (form.manufacturer.trim()) own.manufacturer = form.manufacturer.trim();
     if (form.model.trim()) own.model = form.model.trim();
@@ -222,18 +224,22 @@ export function EditView({ mode }: Props) {
     const ownHasAny = Object.keys(own).length > 0;
 
     // Preserve auto-collected detail blocks on edit; ownership is form-owned.
-    let detail = existing?.detail ? { ...existing.detail } : undefined;
+    // When the user empties ownership, send `own: null` so the backend clears it
+    // (and keeps the other detail blocks) rather than silently retaining it.
+    let detail: DeviceDetail | undefined = existing?.detail
+      ? { ...existing.detail }
+      : undefined;
     if (ownHasAny) {
       detail = { ...(detail ?? {}), own };
-    } else if (detail) {
-      delete detail.own;
-      if (Object.keys(detail).length === 0) detail = undefined;
+    } else if (detail && detail.own) {
+      detail = { ...detail, own: null };
     }
 
     // Spread the existing device first so fields the form doesn't edit
-    // (last, uptime, idx, …) survive the save; then overlay the form values,
-    // clearing optional ones to undefined when the user empties them.
-    const payload: Device = {
+    // (last, uptime, idx, …) survive the save; then overlay the form values.
+    // Emptied optional fields are sent as `null` (not undefined) so they reach
+    // the API and the PUT merge clears them instead of keeping the old value.
+    const payload: DeviceWrite = {
       ...(existing ?? {}),
       id: mode === "edit" ? id : form.id,
       name: form.name.trim(),
@@ -243,13 +249,13 @@ export function EditView({ mode }: Props) {
       group: form.group,
       type: form.type.trim(),
       online: form.online,
-      conn: form.conn || undefined,
-      ring: form.ring !== "" ? (Number(form.ring) as 0 | 1 | 2) : undefined,
-      url: form.url.trim() || undefined,
-      cpu: form.cpu.trim() || undefined,
-      mem: form.mem.trim() || undefined,
-      storage: form.storage.trim() || undefined,
-      notes: form.notes.trim() ? form.notes : undefined,
+      conn: form.conn || null,
+      ring: form.ring !== "" ? (Number(form.ring) as 0 | 1 | 2) : null,
+      url: form.url.trim() || null,
+      cpu: form.cpu.trim() || null,
+      mem: form.mem.trim() || null,
+      storage: form.storage.trim() || null,
+      notes: form.notes.trim() ? form.notes : null,
       detail: detail ?? undefined,
     };
     return payload;

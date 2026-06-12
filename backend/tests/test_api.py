@@ -181,3 +181,102 @@ def test_create_device_with_valid_url(client):
 def test_create_device_rejects_non_http_url(client):
     r = client.post("/api/devices", json=_sample_device(url="ftp://192.168.1.99"))
     assert r.status_code == 422
+
+
+# ─── B1: PUT merge tests ───────────────────────────────────────────────────
+
+def test_put_preserves_detail_when_not_in_payload(client):
+    """PUT without `detail` in the body must not erase existing detail data."""
+    # The seed NAS device already has rich detail data.
+    nas_before = client.get("/api/devices/nas").json()
+    assert nas_before["detail"] is not None
+
+    # Send an update that changes only the name — no detail field at all.
+    update = {
+        "name": "NAS renamed",
+        "host": nas_before["host"],
+        "ip": nas_before["ip"],
+        "mac": nas_before["mac"],
+        "group": nas_before["group"],
+        "type": nas_before["type"],
+        "online": nas_before["online"],
+    }
+    r = client.put("/api/devices/nas", json=update)
+    assert r.status_code == 200
+    assert r.json()["name"] == "NAS renamed"
+    # detail must be preserved
+    assert r.json()["detail"] == nas_before["detail"]
+
+
+def test_put_merges_fields_correctly(client):
+    """PUT should deep-merge: update supplied keys, keep existing ones."""
+    # Create a device with notes and detail
+    dev = _sample_device(
+        notes="original note",
+        detail={
+            "net": {"ipv4": "192.168.1.99/24", "gateway": "192.168.1.1"},
+            "hw": {"cpu_full": "ARM Cortex-A53"},
+        },
+    )
+    client.post("/api/devices", json=dev)
+
+    # Update only some fields
+    update = {
+        "name": "Merged Pi",
+        "host": "pi.home.arpa",
+        "ip": "192.168.1.99",
+        "mac": "DE:AD:BE:EF:00:01",
+        "group": "Computer",
+        "type": "desktop",
+        "online": False,
+    }
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    body = r.json()
+    # Updated field
+    assert body["name"] == "Merged Pi"
+    assert body["online"] is False
+    # Preserved fields (not in update payload)
+    assert body["notes"] == "original note"
+    assert body["detail"]["net"]["ipv4"] == "192.168.1.99/24"
+    assert body["detail"]["hw"]["cpu_full"] == "ARM Cortex-A53"
+
+
+# ─── C3: IP/MAC uniqueness ────────────────────────────────────────────────
+
+def test_create_duplicate_ip_returns_409(client):
+    """Creating a device whose IP matches an existing device should return 409."""
+    # Use the gateway's IP (192.168.1.1) which exists in the seed data.
+    dev = _sample_device(ip="192.168.1.1")
+    r = client.post("/api/devices", json=dev)
+    assert r.status_code == 409
+    assert "ip already in use" in r.json()["detail"]
+
+
+def test_create_duplicate_mac_returns_409(client):
+    """Creating a device whose MAC matches an existing device should return 409."""
+    # Use the gateway's MAC (AA:BB:CC:00:01:01) which exists in the seed data.
+    dev = _sample_device(mac="AA:BB:CC:00:01:01")
+    r = client.post("/api/devices", json=dev)
+    assert r.status_code == 409
+    assert "mac already in use" in r.json()["detail"]
+
+
+def test_update_to_non_conflicting_ip_mac_works(client):
+    """Updating a device's IP/MAC to unused values should succeed."""
+    client.post("/api/devices", json=_sample_device())
+
+    update = {
+        "name": "Test Pi",
+        "host": "pi.home.arpa",
+        "ip": "192.168.1.200",
+        "mac": "DE:AD:BE:EF:99:99",
+        "group": "Computer",
+        "type": "desktop",
+        "online": True,
+        "conn": "Wired 1G",
+    }
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    assert r.json()["ip"] == "192.168.1.200"
+    assert r.json()["mac"] == "DE:AD:BE:EF:99:99"

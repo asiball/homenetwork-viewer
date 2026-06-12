@@ -11,6 +11,7 @@ so concurrent edits from the single-user UI never corrupt the file.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -18,6 +19,8 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 APP_DIR = Path(__file__).resolve().parent
 SEED_FILE = APP_DIR / "seed" / "devices.json"
@@ -54,8 +57,10 @@ def ensure_seeded() -> None:
         DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
         if SEED_FILE.exists():
             shutil.copyfile(SEED_FILE, DATA_FILE)
+            logger.info("storage.seed action=copy src=%s dst=%s", SEED_FILE, DATA_FILE)
         else:  # pragma: no cover - seed is shipped with the image
             _write_doc(_empty_doc())
+            logger.info("storage.seed action=empty dst=%s", DATA_FILE)
 
 
 def _read_doc() -> dict[str, Any]:
@@ -66,12 +71,14 @@ def _read_doc() -> dict[str, Any]:
             try:
                 doc = json.load(fh)
             except json.JSONDecodeError as exc:
+                logger.error("storage.read error=invalid_json file=%s", DATA_FILE.name)
                 raise DataFileError(
                     f"{DATA_FILE.name} is not valid JSON: {exc}"
                 ) from exc
     # Valid JSON but the wrong shape (e.g. a top-level array) would otherwise
     # blow up on .setdefault below — surface it as a clear DataFileError too.
     if not isinstance(doc, dict):
+        logger.error("storage.read error=wrong_shape file=%s", DATA_FILE.name)
         raise DataFileError(
             f"{DATA_FILE.name} must be a JSON object with "
             "devices / switches / cables arrays"
@@ -81,7 +88,9 @@ def _read_doc() -> dict[str, Any]:
     for key in ("devices", "switches", "cables"):
         doc.setdefault(key, [])
         if not isinstance(doc[key], list):
+            logger.error("storage.read error=bad_collection key=%s file=%s", key, DATA_FILE.name)
             raise DataFileError(f"{DATA_FILE.name}: '{key}' must be a JSON array")
+    logger.debug("storage.read action=read file=%s", DATA_FILE.name)
     return doc
 
 
@@ -99,21 +108,63 @@ def _write_doc(doc: dict[str, Any]) -> None:
                 fh.flush()
                 os.fsync(fh.fileno())
             os.replace(tmp, DATA_FILE)
+            logger.debug("storage.write action=write file=%s", DATA_FILE.name)
         finally:
             if os.path.exists(tmp):
                 os.unlink(tmp)
 
 
+# ─── Helpers ────────────────────────────────────────────────────────────────
+
+def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge *overlay* into *base*, returning the merged result.
+
+    For keys present in both dicts whose values are themselves dicts, the merge
+    recurses. All other overlay values overwrite the base. Keys in *base* that
+    are absent from *overlay* are preserved.
+    """
+    merged = dict(base)
+    for key, value in overlay.items():
+        if (
+            key in merged
+            and isinstance(merged[key], dict)
+            and isinstance(value, dict)
+        ):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _check_ip_mac_unique(
+    devices: list[dict[str, Any]],
+    ip: str | None,
+    mac: str | None,
+    exclude_id: str | None = None,
+) -> None:
+    """Raise `ConflictError` if *ip* or *mac* already belong to another device."""
+    for d in devices:
+        if exclude_id is not None and d.get("id") == exclude_id:
+            continue
+        if ip and d.get("ip") == ip:
+            raise ConflictError(f"ip already in use: {ip} (device {d.get('id')})")
+        if mac and d.get("mac") and mac.upper() == d["mac"].upper():
+            raise ConflictError(f"mac already in use: {mac} (device {d.get('id')})")
+
+
 # ─── Reads ──────────────────────────────────────────────────────────────────
 
 def list_devices() -> list[dict[str, Any]]:
+    logger.debug("storage.op action=list_devices")
     return _read_doc()["devices"]
 
 
 def get_device(device_id: str) -> dict[str, Any]:
     for d in _read_doc()["devices"]:
         if d.get("id") == device_id:
+            logger.debug("storage.op action=get_device id=%s", device_id)
             return d
+    logger.warning("storage.op action=get_device id=%s error=not_found", device_id)
     raise NotFoundError(device_id)
 
 
@@ -139,8 +190,10 @@ def create_device(device: dict[str, Any]) -> dict[str, Any]:
         doc = _read_doc()
         if any(d.get("id") == device["id"] for d in doc["devices"]):
             raise ConflictError(device["id"])
+        _check_ip_mac_unique(doc["devices"], device.get("ip"), device.get("mac"))
         doc["devices"].append(device)
         _write_doc(doc)
+        logger.info("storage.op action=create_device id=%s", device.get("id"))
         return device
 
 
@@ -149,10 +202,17 @@ def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
         doc = _read_doc()
         for i, d in enumerate(doc["devices"]):
             if d.get("id") == device_id:
-                device["id"] = device_id  # id is immutable
-                doc["devices"][i] = device
+                _check_ip_mac_unique(
+                    doc["devices"], device.get("ip"), device.get("mac"),
+                    exclude_id=device_id,
+                )
+                merged = _deep_merge(d, device)
+                merged["id"] = device_id  # id is immutable
+                doc["devices"][i] = merged
                 _write_doc(doc)
-                return device
+                logger.info("storage.op action=update_device id=%s", device_id)
+                return merged
+        logger.warning("storage.op action=update_device id=%s error=not_found", device_id)
         raise NotFoundError(device_id)
 
 
@@ -162,5 +222,7 @@ def delete_device(device_id: str) -> None:
         before = len(doc["devices"])
         doc["devices"] = [d for d in doc["devices"] if d.get("id") != device_id]
         if len(doc["devices"]) == before:
+            logger.warning("storage.op action=delete_device id=%s error=not_found", device_id)
             raise NotFoundError(device_id)
         _write_doc(doc)
+        logger.info("storage.op action=delete_device id=%s", device_id)

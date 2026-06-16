@@ -118,6 +118,7 @@ function formFromDevice(d: Device): FormState {
 }
 
 function Field(props: {
+  id: string;
   label: string;
   required?: boolean;
   error?: string;
@@ -127,13 +128,13 @@ function Field(props: {
 }) {
   return (
     <div className={`f-field ${props.full ? "full" : ""} ${props.error ? "bad" : ""}`}>
-      <label>
+      <label htmlFor={props.id} aria-required={props.required || undefined}>
         {props.label}
         {props.required && <span className="req">*</span>}
       </label>
       {props.children}
       {props.hint && !props.error && <span className="hint">{props.hint}</span>}
-      {props.error && <span className="err">{props.error}</span>}
+      {props.error && <span className="err" id={`${props.id}-err`}>{props.error}</span>}
     </div>
   );
 }
@@ -415,10 +416,13 @@ export function EditView({ mode }: Props) {
 
           <div className="f-section" data-title="identity" aria-label="identity">
             <div className="f-grid">
-              <Field label="id" required={mode === "add"} error={errors.id} hint="kebab-case · 不変">
+              <Field id="f-id" label="id" required={mode === "add"} error={errors.id} hint="kebab-case · 不変">
                 <input
+                  id="f-id"
                   value={form.id}
                   readOnly={mode === "edit"}
+                  aria-invalid={errors.id ? true : undefined}
+                  aria-describedby={errors.id ? "f-id-err" : undefined}
                   onChange={(e) => {
                     setIdTouched(true);
                     set("id", e.target.value);
@@ -426,26 +430,53 @@ export function EditView({ mode }: Props) {
                   placeholder="nas"
                 />
               </Field>
-              <Field label="display name" required error={errors.name}>
-                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="NAS" />
-              </Field>
-              <Field label="host (fqdn)" required error={errors.host}>
-                <input value={form.host} onChange={(e) => set("host", e.target.value)} placeholder="nas.home.arpa" />
-              </Field>
-              <Field label="ipv4" required error={errors.ip}>
-                <input value={form.ip} onChange={(e) => set("ip", e.target.value)} placeholder="192.168.1.10" />
-              </Field>
-              <Field label="mac" required error={errors.mac}>
+              <Field id="f-name" label="display name" required error={errors.name}>
                 <input
+                  id="f-name"
+                  value={form.name}
+                  aria-invalid={errors.name ? true : undefined}
+                  aria-describedby={errors.name ? "f-name-err" : undefined}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="NAS"
+                />
+              </Field>
+              <Field id="f-host" label="host (fqdn)" required error={errors.host}>
+                <input
+                  id="f-host"
+                  value={form.host}
+                  aria-invalid={errors.host ? true : undefined}
+                  aria-describedby={errors.host ? "f-host-err" : undefined}
+                  onChange={(e) => set("host", e.target.value)}
+                  placeholder="nas.home.arpa"
+                />
+              </Field>
+              <Field id="f-ip" label="ipv4" required error={errors.ip}>
+                <input
+                  id="f-ip"
+                  value={form.ip}
+                  aria-invalid={errors.ip ? true : undefined}
+                  aria-describedby={errors.ip ? "f-ip-err" : undefined}
+                  onChange={(e) => set("ip", e.target.value)}
+                  placeholder="192.168.1.10"
+                />
+              </Field>
+              <Field id="f-mac" label="mac" required error={errors.mac}>
+                <input
+                  id="f-mac"
                   value={form.mac}
+                  aria-invalid={errors.mac ? true : undefined}
+                  aria-describedby={errors.mac ? "f-mac-err" : undefined}
                   onChange={(e) => set("mac", e.target.value)}
                   placeholder="AA:BB:CC:00:0A:11"
                 />
               </Field>
-              <Field label="type" required error={errors.type} hint="アイコン・分類に使用">
+              <Field id="f-type" label="type" required error={errors.type} hint="アイコン・分類に使用">
                 <input
+                  id="f-type"
                   value={form.type}
                   list="type-options"
+                  aria-invalid={errors.type ? true : undefined}
+                  aria-describedby={errors.type ? "f-type-err" : undefined}
                   onChange={(e) => set("type", e.target.value)}
                   placeholder="nas"
                 />
@@ -455,8 +486,8 @@ export function EditView({ mode }: Props) {
                   ))}
                 </datalist>
               </Field>
-              <Field label="group" required>
-                <select value={form.group} onChange={(e) => set("group", e.target.value as Group)}>
+              <Field id="f-group" label="group" required>
+                <select id="f-group" value={form.group} onChange={(e) => set("group", e.target.value as Group)}>
                   {GROUP_ORDER.map((g) => (
                     <option key={g} value={g}>
                       {g}
@@ -464,9 +495,10 @@ export function EditView({ mode }: Props) {
                   ))}
                 </select>
               </Field>
-              <Field label="status">
+              <Field id="f-online" label="status">
                 <label className="f-check">
                   <input
+                    id="f-online"
                     type="checkbox"
                     checked={form.online}
                     onChange={(e) => set("online", e.target.checked)}
@@ -479,8 +511,8 @@ export function EditView({ mode }: Props) {
 
           <div className="f-section" data-title="placement & link" aria-label="placement & link">
             <div className="f-grid">
-              <Field label="connection">
-                <select value={form.conn} onChange={(e) => set("conn", e.target.value as Conn | "")}>
+              <Field id="f-conn" label="connection">
+                <select id="f-conn" value={form.conn} onChange={(e) => set("conn", e.target.value as Conn | "")}>
                   <option value="">— (未設定)</option>
                   {CONN_OPTIONS.map((c) => (
                     <option key={c} value={c}>
@@ -489,8 +521,8 @@ export function EditView({ mode }: Props) {
                   ))}
                 </select>
               </Field>
-              <Field label="topology ring" hint="マップ上の配置層">
-                <select value={form.ring} onChange={(e) => set("ring", e.target.value as FormState["ring"])}>
+              <Field id="f-ring" label="topology ring" hint="マップ上の配置層">
+                <select id="f-ring" value={form.ring} onChange={(e) => set("ring", e.target.value as FormState["ring"])}>
                   <option value="2">2 · leaf (末端 / 既定)</option>
                   <option value="1">1 · infrastructure</option>
                   <option value="0">0 · gateway</option>
@@ -498,13 +530,17 @@ export function EditView({ mode }: Props) {
                 </select>
               </Field>
               <Field
+                id="f-url"
                 label="web ui (url)"
                 full
                 error={errors.url}
                 hint="管理画面のURL · 詳細/サマリーから別タブで開けます"
               >
                 <input
+                  id="f-url"
                   value={form.url}
+                  aria-invalid={errors.url ? true : undefined}
+                  aria-describedby={errors.url ? "f-url-err" : undefined}
                   onChange={(e) => set("url", e.target.value)}
                   placeholder="http://192.168.1.1"
                 />
@@ -514,67 +550,68 @@ export function EditView({ mode }: Props) {
 
           <div className="f-section" data-title="hardware (summary)" aria-label="hardware (summary)">
             <div className="f-grid">
-              <Field label="cpu">
-                <input value={form.cpu} onChange={(e) => set("cpu", e.target.value)} placeholder="Intel N100 4C / 4T" />
+              <Field id="f-cpu" label="cpu">
+                <input id="f-cpu" value={form.cpu} onChange={(e) => set("cpu", e.target.value)} placeholder="Intel N100 4C / 4T" />
               </Field>
-              <Field label="memory">
-                <input value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
+              <Field id="f-mem" label="memory">
+                <input id="f-mem" value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
               </Field>
-              <Field label="motherboard">
-                <input value={form.motherboard} onChange={(e) => set("motherboard", e.target.value)} placeholder="ASUS B550M" />
+              <Field id="f-motherboard" label="motherboard">
+                <input id="f-motherboard" value={form.motherboard} onChange={(e) => set("motherboard", e.target.value)} placeholder="ASUS B550M" />
               </Field>
-              <Field label="gpu 1">
-                <input value={form.gpu1} onChange={(e) => set("gpu1", e.target.value)} placeholder="NVIDIA RTX 4070" />
+              <Field id="f-gpu1" label="gpu 1">
+                <input id="f-gpu1" value={form.gpu1} onChange={(e) => set("gpu1", e.target.value)} placeholder="NVIDIA RTX 4070" />
               </Field>
-              <Field label="gpu 2">
-                <input value={form.gpu2} onChange={(e) => set("gpu2", e.target.value)} placeholder="(optional)" />
+              <Field id="f-gpu2" label="gpu 2">
+                <input id="f-gpu2" value={form.gpu2} onChange={(e) => set("gpu2", e.target.value)} placeholder="(optional)" />
               </Field>
-              <Field label="storage" full>
+              <Field id="f-storage" label="storage" full>
                 <input
+                  id="f-storage"
                   value={form.storage}
                   onChange={(e) => set("storage", e.target.value)}
                   placeholder="4 × 8 TB HDD · RAID5"
                 />
               </Field>
-              <Field label="drive 1">
-                <input value={form.storeDrive1} onChange={(e) => set("storeDrive1", e.target.value)} placeholder="Samsung 990 Pro 2TB NVMe" />
+              <Field id="f-drive1" label="drive 1">
+                <input id="f-drive1" value={form.storeDrive1} onChange={(e) => set("storeDrive1", e.target.value)} placeholder="Samsung 990 Pro 2TB NVMe" />
               </Field>
-              <Field label="drive 2">
-                <input value={form.storeDrive2} onChange={(e) => set("storeDrive2", e.target.value)} placeholder="WD Red 4TB HDD" />
+              <Field id="f-drive2" label="drive 2">
+                <input id="f-drive2" value={form.storeDrive2} onChange={(e) => set("storeDrive2", e.target.value)} placeholder="WD Red 4TB HDD" />
               </Field>
             </div>
           </div>
 
           <div className="f-section" data-title="ownership" aria-label="ownership">
             <div className="f-grid">
-              <Field label="manufacturer">
-                <input value={form.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
+              <Field id="f-manufacturer" label="manufacturer">
+                <input id="f-manufacturer" value={form.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
               </Field>
-              <Field label="model">
-                <input value={form.model} onChange={(e) => set("model", e.target.value)} />
+              <Field id="f-model" label="model">
+                <input id="f-model" value={form.model} onChange={(e) => set("model", e.target.value)} />
               </Field>
-              <Field label="location">
-                <input value={form.location} onChange={(e) => set("location", e.target.value)} />
+              <Field id="f-location" label="location">
+                <input id="f-location" value={form.location} onChange={(e) => set("location", e.target.value)} />
               </Field>
-              <Field label="purchased">
-                <input value={form.purchased} onChange={(e) => set("purchased", e.target.value)} placeholder="2023-08-15" />
+              <Field id="f-purchased" label="purchased">
+                <input id="f-purchased" value={form.purchased} onChange={(e) => set("purchased", e.target.value)} placeholder="2023-08-15" />
               </Field>
-              <Field label="price">
-                <input value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="¥98,000" />
+              <Field id="f-price" label="price">
+                <input id="f-price" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="¥98,000" />
               </Field>
-              <Field label="warranty">
-                <input value={form.warranty} onChange={(e) => set("warranty", e.target.value)} />
+              <Field id="f-warranty" label="warranty">
+                <input id="f-warranty" value={form.warranty} onChange={(e) => set("warranty", e.target.value)} />
               </Field>
-              <Field label="tags" full hint="カンマ区切り（例 always-on, backup, critical）">
-                <input value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="always-on, critical" />
+              <Field id="f-tags" label="tags" full hint="カンマ区切り（例 always-on, backup, critical）">
+                <input id="f-tags" value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="always-on, critical" />
               </Field>
             </div>
           </div>
 
           <div className="f-section" data-title="notes" aria-label="notes">
             <div className="f-grid">
-              <Field label="notes" full>
-                <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={5} />
+              <Field id="f-notes" label="notes" full>
+                <textarea id="f-notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={5} />
               </Field>
             </div>
           </div>

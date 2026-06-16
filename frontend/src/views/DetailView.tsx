@@ -106,7 +106,7 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill live">live agent</span>}
+            {device.online && m && <span className="pill">catalog metrics</span>}
             {!device.online && device.conn && !device.conn.startsWith("Wi-Fi") && (
               <button
                 className="d-edit"

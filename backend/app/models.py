@@ -192,7 +192,20 @@ class DeviceCreate(DeviceBase):
 
 
 class DeviceUpdate(DeviceBase):
-    """Body for PUT /api/devices/{id} — id is immutable, taken from the path."""
+    """Body for PUT /api/devices/{id} — id is immutable, taken from the path.
+
+    `online` is overridden to Optional[bool] = None so that omitting it from
+    the PUT body leaves None as the unset sentinel.  Combined with
+    ``model_dump(exclude_unset=True)`` in the route handler, omitting `online`
+    means "keep the stored value" rather than silently writing False.
+    (Fixes issue #12.)
+    """
+
+    # DeviceBase defines `online: bool = False`.  That default is fine for
+    # POST (DeviceCreate) but wrong for PUT: an omitted field should not
+    # overwrite the stored value.  Declaring it Optional here makes the
+    # distinction explicit and prevents future regressions.
+    online: Optional[bool] = None
 
 
 class Device(DeviceCreate):

@@ -264,7 +264,14 @@ export function EditView({ mode }: Props) {
   async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     setSubmitErr(null);
-    if (!validate()) return;
+    if (!validate()) {
+      requestAnimationFrame(() => {
+        const firstBad = document.querySelector<HTMLElement>('.f-field.bad input, .f-field.bad select');
+        firstBad?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstBad?.focus();
+      });
+      return;
+    }
     const payload = buildPayload();
     setBusy(true);
     try {

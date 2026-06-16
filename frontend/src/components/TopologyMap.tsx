@@ -150,8 +150,8 @@ export function TopologyMap({
           );
         });})()}
 
-        {/* selection pulse */}
-        <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />
+        {/* selection pulse — only when the selected device is visible in this layout */}
+        {positions[selectedId] && <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />}
 
         {/* dashed ring around the device this browser is running on */}
         {selfPos && <circle className="self-ring" cx={selfPos.x} cy={selfPos.y} r={11} />}

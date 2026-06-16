@@ -18,6 +18,12 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Copy application code.
 COPY app ./app
 
+# Run as a non-root user so the bind-mounted /data volume is owned by UID 1000,
+# matching a typical Linux desktop user and allowing hand-editing without sudo.
+RUN groupadd -r homenet && useradd -r -g homenet -u 1000 homenet \
+    && mkdir -p /data && chown homenet:homenet /data
+USER homenet
+
 # Runtime data lives on a mounted volume; seeded on first start.
 VOLUME ["/data"]
 EXPOSE 8000

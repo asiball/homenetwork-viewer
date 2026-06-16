@@ -23,6 +23,7 @@ from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import Response as FastAPIResponse
+from pydantic import BaseModel
 
 from . import collector, storage
 from .models import (
@@ -250,10 +251,37 @@ def export_catalog() -> FastAPIResponse:
     )
 
 
+# Cap the import body so a stray multi-GB upload can't OOM the process. A home
+# catalog is a few KB; 5 MiB is comfortably generous.
+MAX_IMPORT_BYTES = 5 * 1024 * 1024
+
+
+def _validate_collection(items: list, model: type[BaseModel], label: str) -> list[str]:
+    """Validate each item in *items* against *model*, returning error strings."""
+    errors: list[str] = []
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            errors.append(f"{label}[{i}]: must be a JSON object")
+            continue
+        try:
+            model(**item)
+        except Exception as exc:
+            errors.append(f"{label}[{i}]: {exc}")
+    return errors
+
+
 @app.post("/api/import", status_code=200)
 async def import_catalog(file: UploadFile) -> dict[str, int]:
     """Replace catalog with uploaded JSON after validation."""
-    raw = await file.read()
+    # Read at most MAX_IMPORT_BYTES+1 so an oversized upload is rejected without
+    # ever buffering the whole thing in memory.
+    raw = await file.read(MAX_IMPORT_BYTES + 1)
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"import too large (max {MAX_IMPORT_BYTES // (1024 * 1024)} MiB)",
+        )
+
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -266,18 +294,18 @@ async def import_catalog(file: UploadFile) -> dict[str, int]:
     switches = data.get("switches", [])
     cables = data.get("cables", [])
 
-    if not isinstance(devices, list):
-        raise HTTPException(status_code=422, detail="'devices' must be an array")
+    # All three collections must be arrays before we validate their contents.
+    for label, value in (("devices", devices), ("switches", switches), ("cables", cables)):
+        if not isinstance(value, list):
+            raise HTTPException(status_code=422, detail=f"'{label}' must be an array")
 
-    # Validate each device against the Device model
-    from .models import Device as DeviceModel
-    errors = []
-    for i, d in enumerate(devices):
-        try:
-            DeviceModel(**d)
-        except Exception as exc:
-            errors.append(f"device[{i}]: {exc}")
-
+    # Validate every item against its model so a malformed switch/cable can't be
+    # persisted and later break the topology / inventory views.
+    errors = (
+        _validate_collection(devices, Device, "device")
+        + _validate_collection(switches, Switch, "switch")
+        + _validate_collection(cables, Cable, "cable")
+    )
     if errors:
         raise HTTPException(status_code=422, detail="; ".join(errors[:5]))
 

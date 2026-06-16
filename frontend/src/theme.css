@@ -637,6 +637,14 @@ body {
     display: none;
   }
 }
+.hide-md {
+  display: inline;
+}
+@media (max-width: 1200px) {
+  .hide-md {
+    display: none;
+  }
+}
 
 /* ─── Detail view (ported D_CSS) ───────────────────────────────────────── */
 .d-main {

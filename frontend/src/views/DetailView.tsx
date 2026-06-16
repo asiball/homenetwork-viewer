@@ -1,6 +1,7 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
+import { Fragment } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
@@ -47,7 +48,6 @@ export function DetailView() {
     d.setDate(d.getDate() - (6 - i));
     return d.toLocaleDateString("en-US", { weekday: "narrow" });
   });
-  const uptimeParts = (device.uptime ?? "").split(" ");
 
   return (
     <Shell
@@ -174,12 +174,10 @@ export function DetailView() {
 
           <div className="d-stat">
             <div className="l">Uptime</div>
-            <div className="v">{device.online ? uptimeParts[0] || "—" : "—"}</div>
+            <div className="v">{device.online ? (device.uptime ?? "—") : "—"}</div>
             <div className="sub">
               {device.online
-                ? uptimeParts.length > 1
-                  ? `boot ${uptimeParts.slice(1).join(" ")} ago`
-                  : "online"
+                ? device.uptime ? "since boot" : "online"
                 : `last online ${device.last ?? "—"}`}
             </div>
           </div>
@@ -265,6 +263,24 @@ export function DetailView() {
               <dd>{detail?.hw?.chassis ?? "—"}</dd>
               <dt>firmware</dt>
               <dd>{detail?.hw?.bios ?? "—"}</dd>
+              {detail?.hw?.motherboard && (
+                <>
+                  <dt>motherboard</dt>
+                  <dd>{detail.hw.motherboard}</dd>
+                </>
+              )}
+              {(detail?.hw?.gpu ?? []).map((g, i) => (
+                <Fragment key={i}>
+                  <dt>gpu {detail!.hw!.gpu!.length > 1 ? i + 1 : ""}</dt>
+                  <dd>{g}</dd>
+                </Fragment>
+              ))}
+              {(detail?.hw?.storage_drives ?? []).map((d, i) => (
+                <Fragment key={i}>
+                  <dt>drive {i + 1}</dt>
+                  <dd>{d}</dd>
+                </Fragment>
+              ))}
             </dl>
           </div>
 

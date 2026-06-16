@@ -241,3 +241,34 @@ def bulk_update_reachability(updates: list[dict]) -> None:
             if upd["online"] and upd.get("last"):
                 d["last"] = upd["last"]
         _write_doc(data)
+
+
+# ─── Backup / Restore ───────────────────────────────────────────────────────
+
+def backup_catalog() -> None:
+    """Save a timestamped backup of the current data file."""
+    import time as _time
+    with _lock:
+        if DATA_FILE.exists():
+            bak = DATA_FILE.parent / f"devices.json.bak-{int(_time.time())}"
+            shutil.copy2(DATA_FILE, bak)
+            logger.info("storage.op action=backup dst=%s", bak.name)
+            # Keep only the 5 most recent backups
+            baks = sorted(DATA_FILE.parent.glob("devices.json.bak-*"))
+            for old in baks[:-5]:
+                old.unlink(missing_ok=True)
+                logger.info("storage.op action=prune_backup file=%s", old.name)
+
+
+def replace_catalog(devices: list, switches: list, cables: list) -> None:
+    """Atomically replace the catalog with new data."""
+    with _lock:
+        current = _read_doc()
+        current["devices"] = devices
+        current["switches"] = switches
+        current["cables"] = cables
+        _write_doc(current)
+        logger.info(
+            "storage.op action=replace_catalog devices=%d switches=%d cables=%d",
+            len(devices), len(switches), len(cables),
+        )

@@ -15,9 +15,13 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, Response
+import json
+from datetime import date
+
+from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response as FastAPIResponse
 
 # ─── Structured logging ────────────────────────────────────────────────────
 logging.basicConfig(
@@ -191,3 +195,59 @@ def get_switches() -> list[dict]:
 @app.get("/api/cables", response_model=list[Cable])
 def get_cables() -> list[dict]:
     return storage.list_cables()
+
+
+# ─── Export / Import ───────────────────────────────────────────────────────
+
+@app.get("/api/export")
+def export_catalog() -> FastAPIResponse:
+    """Download the full catalog as a JSON file."""
+    catalog = {
+        "devices": storage.list_devices(),
+        "switches": storage.list_switches(),
+        "cables": storage.list_cables(),
+    }
+    filename = f"homenet-{date.today().isoformat()}.json"
+    return FastAPIResponse(
+        content=json.dumps(catalog, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/import", status_code=200)
+async def import_catalog(file: UploadFile) -> dict[str, int]:
+    """Replace catalog with uploaded JSON after validation."""
+    raw = await file.read()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=422, detail=f"not valid JSON: {exc}")
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=422, detail="top-level must be a JSON object")
+
+    devices = data.get("devices", [])
+    switches = data.get("switches", [])
+    cables = data.get("cables", [])
+
+    if not isinstance(devices, list):
+        raise HTTPException(status_code=422, detail="'devices' must be an array")
+
+    # Validate each device against the Device model
+    from .models import Device as DeviceModel
+    errors = []
+    for i, d in enumerate(devices):
+        try:
+            DeviceModel(**d)
+        except Exception as exc:
+            errors.append(f"device[{i}]: {exc}")
+
+    if errors:
+        raise HTTPException(status_code=422, detail="; ".join(errors[:5]))
+
+    # Backup current data before replacing
+    storage.backup_catalog()
+    storage.replace_catalog(devices, switches, cables)
+
+    return {"devices": len(devices), "switches": len(switches), "cables": len(cables)}

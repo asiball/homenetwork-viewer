@@ -5,6 +5,7 @@ import App from "./App";
 import { HomeView } from "./views/HomeView";
 import { DetailView } from "./views/DetailView";
 import { EditView } from "./views/EditView";
+import { InventoryView } from "./views/InventoryView";
 import "./theme.css";
 
 // useBlocker (編集フォームの離脱ガード) は data router でしか動かないため、
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: "/d/:id", element: <DetailView /> },
       { path: "/d/:id/edit", element: <EditView mode="edit" /> },
       { path: "/add", element: <EditView mode="add" /> },
+      { path: "/inventory", element: <InventoryView /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

@@ -1,9 +1,10 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../App";
+import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
@@ -31,8 +32,22 @@ function serviceUrl(ip: string, s: ServiceRow): string | null {
 export function DetailView() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { devices, switches, cables, selfId, loading } = useCatalog();
+  const { devices, switches, cables, selfId, loading, notify } = useCatalog();
   const device = devices.find((d) => d.id === id);
+  const [waking, setWaking] = useState(false);
+
+  async function handleWake() {
+    if (!device) return;
+    setWaking(true);
+    try {
+      await api.wake(device.id);
+      notify("magic packet sent · device may take 30s to boot", "ok");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "failed to send magic packet", "err");
+    } finally {
+      setWaking(false);
+    }
+  }
 
   if (loading && !device) return <div className="center-screen"><div className="spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid var(--fg-faint)", borderTopColor: "var(--amber)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><div style={{ marginTop: 12 }}>読み込み中...</div></div>;
   if (!device) return <DeviceNotFound devices={devices} id={id} />;
@@ -91,7 +106,17 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill">catalog metrics</span>}
+            {device.online && m && <span className="pill live">live agent</span>}
+            {!device.online && device.conn && !device.conn.startsWith("Wi-Fi") && (
+              <button
+                className="d-edit"
+                onClick={handleWake}
+                disabled={waking}
+                title="Send Wake-on-LAN magic packet"
+              >
+                {waking ? "sending…" : "⏻ wake"}
+              </button>
+            )}
             {device.url && (
               <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
                 ↗ open

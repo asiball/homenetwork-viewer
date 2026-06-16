@@ -5,7 +5,7 @@
 import { useRef, useMemo } from "react";
 import { useCatalog } from "../App";
 import type { Device } from "../types";
-import { lastOctet, shortHost } from "../lib/helpers";
+import { lastOctet } from "../lib/helpers";
 import {
   computeLayout,
   type LayoutKind,
@@ -233,7 +233,7 @@ export function TopologyMap({
                     dy={lo.below ? 4 : 3}
                     style={{ fontWeight: isSel ? 600 : 400 }}
                   >
-                    {shortHost(d.host)}
+                    {d.name}
                   </text>
                   {!compact && !lo.below && (
                     <text className="node-meta" x={lo.x} y={lo.y} textAnchor={lo.anchor} dy={14}>

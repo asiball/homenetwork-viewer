@@ -1,7 +1,9 @@
 """Background reachability collector (spec §4 T1).
 
-Pings each device every INTERVAL seconds using a TCP-connect fallback
-(no raw socket / CAP_NET_RAW required). Updates online / last in storage.
+Pings each device every INTERVAL seconds using a TCP-connect probe first,
+then an ICMP ping fallback for devices with no open TCP ports (e.g. IoT
+sensors, smart plugs). No raw socket / CAP_NET_RAW required — the system
+ping binary is typically setuid on Linux.
 """
 from __future__ import annotations
 
@@ -35,12 +37,40 @@ async def _tcp_reachable(ip: str) -> bool:
     return False
 
 
+async def _ping_reachable(ip: str) -> bool:
+    """ICMP ping fallback — works without raw-socket privileges via setuid ping.
+
+    Used when all TCP probes fail (e.g. IoT devices with no open ports).
+    A missing or non-functional ping binary is silently treated as unreachable.
+    """
+    try:
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_exec(
+                "ping", "-c", "1", "-W", "1", str(ip),
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            ),
+            timeout=3.0,
+        )
+        await proc.wait()
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
+async def _is_reachable(ip: str) -> bool:
+    """Return True if the device is reachable via TCP or ICMP ping."""
+    if await _tcp_reachable(ip):
+        return True
+    return await _ping_reachable(ip)
+
+
 async def _probe_device(device: dict) -> tuple[str, bool]:
     """Probe a single device; returns (id, reachable)."""
     ip = device.get("ip", "")
     if not ip:
         return device["id"], False
-    reachable = await _tcp_reachable(ip)
+    reachable = await _is_reachable(ip)
     return device["id"], reachable
 
 

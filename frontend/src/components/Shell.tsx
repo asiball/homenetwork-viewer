@@ -50,6 +50,7 @@ export function Shell({
         <Link className="brand" to="/" title="home">
           <span className="dot" /> <b>HOMENET / NOC</b>
         </Link>
+        <Link className="nav-link" to="/inventory" title="switch & cable inventory">inventory</Link>
         <div className="crumbs">{crumbs}</div>
         <div className="right">{right}</div>
       </header>

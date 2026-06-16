@@ -1516,3 +1516,75 @@ body {
   background: var(--ok);
   border: 2px solid var(--ok);
 }
+
+/* ─── Inventory view ────────────────────────────────────────────────────── */
+.inv-main {
+  grid-area: map / map / side / side;
+  padding: 22px 32px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.inv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.inv-section-title {
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.inv-card {
+  border: 1px solid var(--rule-2);
+  background: var(--bg-2);
+}
+.inv-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.inv-sw-name {
+  color: var(--amber);
+  font-weight: 500;
+  font-size: 12px;
+}
+.inv-sw-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--fg-soft);
+  font-size: 10px;
+}
+.inv-sw-ports {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-soft);
+}
+.inv-port-table {
+  margin: 0;
+}
+.inv-port-empty td {
+  opacity: 0.35;
+}
+
+.n-head .nav-link {
+  font-size: 10px;
+  color: var(--fg-soft);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+}
+.n-head .nav-link:hover {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}

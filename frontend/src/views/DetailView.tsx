@@ -91,7 +91,7 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill live">live agent</span>}
+            {device.online && m && <span className="pill">catalog metrics</span>}
             {device.url && (
               <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
                 ↗ open

@@ -16,7 +16,7 @@ function fmtTime(d: Date | null): string {
 }
 
 export function RefreshControls() {
-  const { meta, lastSync, loading, syncError, refresh } = useCatalog();
+  const { meta, lastSync, refreshing, syncError, refresh } = useCatalog();
   const [interval, setInterval_] = useState<Interval>(
     () => (localStorage.getItem(KEY) as Interval) || "5m",
   );
@@ -65,11 +65,11 @@ export function RefreshControls() {
       <button
         className="btn"
         onClick={() => void refresh()}
-        disabled={loading}
+        disabled={refreshing}
         title="re-fetch catalog now"
         aria-label="refresh data"
       >
-        <span className={loading ? "spin" : ""} style={{ display: "inline-block" }}>⟳</span> refresh
+        <span className={refreshing ? "spin" : ""} style={{ display: "inline-block" }}>⟳</span> refresh
       </button>
     </>
   );

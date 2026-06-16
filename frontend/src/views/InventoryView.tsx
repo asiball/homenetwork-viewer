@@ -36,7 +36,11 @@ export function InventoryView() {
                 ([a], [b]) => Number(a) - Number(b)
               );
               const usedPorts = ports.filter(([, slot]) => slot !== null).length;
-              const totalPorts = sw.portCount ?? ports.length;
+              // Never let a portCount that's smaller than the actual port map
+              // hide rows or report negative free ports — take the largest of
+              // declared count, highest mapped port number, and entry count.
+              const maxMapped = ports.reduce((m, [p]) => Math.max(m, Number(p) || 0), 0);
+              const totalPorts = Math.max(sw.portCount ?? 0, maxMapped, ports.length);
               const freePorts = totalPorts - usedPorts;
 
               return (

@@ -108,6 +108,14 @@ def _write_doc(doc: dict[str, Any]) -> None:
                 fh.flush()
                 os.fsync(fh.fileno())
             os.replace(tmp, DATA_FILE)
+            # fsync the directory too, otherwise a crash right after the rename
+            # can lose the new directory entry and leave the old file in place —
+            # which would defeat the point of the atomic write.
+            dir_fd = os.open(str(DATA_FILE.parent), os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
             logger.debug("storage.write action=write file=%s", DATA_FILE.name)
         finally:
             if os.path.exists(tmp):
@@ -251,7 +259,10 @@ def backup_catalog() -> None:
     import time as _time
     with _lock:
         if DATA_FILE.exists():
-            bak = DATA_FILE.parent / f"devices.json.bak-{int(_time.time())}"
+            # Nanosecond precision so two imports in the same second don't clobber
+            # each other's backup (the value stays fixed-width, so name-sort below
+            # is still chronological).
+            bak = DATA_FILE.parent / f"devices.json.bak-{_time.time_ns()}"
             shutil.copy2(DATA_FILE, bak)
             logger.info("storage.op action=backup dst=%s", bak.name)
             # Keep only the 5 most recent backups

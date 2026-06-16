@@ -68,7 +68,14 @@ export const api = {
   importCatalog: async (file: File) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(BASE + "/import", { method: "POST", body: form });
+    // X-Requested-With makes this a non-simple CORS request (forces a preflight),
+    // so a cross-site form can't silently POST a catalog replacement. The backend
+    // rejects the import without this header.
+    const res = await fetch(BASE + "/import", {
+      method: "POST",
+      body: form,
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(typeof body.detail === "string" ? body.detail : res.statusText);

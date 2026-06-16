@@ -12,6 +12,9 @@ from pathlib import Path
 # Must be set before app.storage is imported anywhere.
 _TMP_DIR = Path(tempfile.mkdtemp(prefix="homenet-test-"))
 os.environ["HOMENET_DATA_FILE"] = str(_TMP_DIR / "devices.json")
+# Keep tests deterministic: don't let the background reachability collector
+# probe the network and rewrite seed online/last counts mid-test.
+os.environ["HOMENET_DISABLE_COLLECTOR"] = "1"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

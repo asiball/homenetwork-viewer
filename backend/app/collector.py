@@ -1,0 +1,81 @@
+"""Background reachability collector (spec §4 T1).
+
+Pings each device every INTERVAL seconds using a TCP-connect fallback
+(no raw socket / CAP_NET_RAW required). Updates online / last in storage.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
+
+INTERVAL = 120  # seconds between full sweeps
+CONNECT_TIMEOUT = 2  # seconds per TCP connect attempt
+TCP_PROBE_PORTS = [22, 80, 443, 8080, 8443]  # try these in order
+
+async def _tcp_reachable(ip: str) -> bool:
+    """Return True if any common TCP port responds on the given IP."""
+    for port in TCP_PROBE_PORTS:
+        try:
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(ip, port),
+                timeout=CONNECT_TIMEOUT,
+            )
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+            return True
+        except (OSError, asyncio.TimeoutError):
+            continue
+    return False
+
+
+async def _probe_device(device: dict) -> tuple[str, bool]:
+    """Probe a single device; returns (id, reachable)."""
+    ip = device.get("ip", "")
+    if not ip:
+        return device["id"], False
+    reachable = await _tcp_reachable(ip)
+    return device["id"], reachable
+
+
+async def run_collector(storage_module) -> None:
+    """Continuously probe all devices and update online/last in storage."""
+    logger.info("collector.start interval=%ds", INTERVAL)
+    while True:
+        try:
+            devices = storage_module.list_devices()
+            if devices:
+                results = await asyncio.gather(
+                    *[_probe_device(d) for d in devices],
+                    return_exceptions=True,
+                )
+                now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                now_human = "just now"
+                updates: list[dict] = []
+                for r in results:
+                    if isinstance(r, Exception):
+                        logger.warning("collector.probe error=%s", r)
+                        continue
+                    dev_id, reachable = r
+                    updates.append({
+                        "id": dev_id,
+                        "online": reachable,
+                        "last": now_human if reachable else None,
+                        "_probed_at": now_iso,
+                    })
+                if updates:
+                    storage_module.bulk_update_reachability(updates)
+                    online = sum(1 for u in updates if u["online"])
+                    logger.info(
+                        "collector.sweep devices=%d online=%d offline=%d",
+                        len(updates), online, len(updates) - online,
+                    )
+        except Exception as exc:
+            logger.error("collector.error %s", exc, exc_info=True)
+        await asyncio.sleep(INTERVAL)

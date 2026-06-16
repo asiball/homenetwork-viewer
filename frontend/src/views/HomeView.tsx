@@ -127,7 +127,7 @@ export function HomeView() {
       }
       right={
         <>
-          <div className="layout-tog" title="レイアウト切替 (radial / spine / tree)">
+          <div className="layout-tog" title="switch layout (radial / spine / tree)">
             <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
               ◎ radial
             </button>

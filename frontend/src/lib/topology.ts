@@ -105,9 +105,13 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
   });
 
   const gw = visible.find((d) => d.ring === 0);
-  const edges: Edge[] = visible
-    .filter((d) => d.ring !== 0 && gw)
-    .map((d) => ({ from: gw!.id, to: d.id, off: !d.online }));
+  // gw is const, so narrowing it to a Device here carries into the map callback
+  // and we avoid a non-null assertion on every edge.
+  const edges: Edge[] = gw
+    ? visible
+        .filter((d) => d.ring !== 0)
+        .map((d) => ({ from: gw.id, to: d.id, off: !d.online }))
+    : [];
 
   return { positions, edges, deco: { kind: "radial", cx, cy, r1, r2 } };
 }

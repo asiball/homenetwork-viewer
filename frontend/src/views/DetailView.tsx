@@ -294,12 +294,15 @@ export function DetailView() {
                   <dd>{detail.hw.motherboard}</dd>
                 </>
               )}
-              {(detail?.hw?.gpu ?? []).map((g, i) => (
-                <Fragment key={i}>
-                  <dt>gpu {detail!.hw!.gpu!.length > 1 ? i + 1 : ""}</dt>
-                  <dd>{g}</dd>
-                </Fragment>
-              ))}
+              {(() => {
+                const gpus = detail?.hw?.gpu ?? [];
+                return gpus.map((g, i) => (
+                  <Fragment key={i}>
+                    <dt>gpu {gpus.length > 1 ? i + 1 : ""}</dt>
+                    <dd>{g}</dd>
+                  </Fragment>
+                ));
+              })()}
               {(detail?.hw?.storage_drives ?? []).map((d, i) => (
                 <Fragment key={i}>
                   <dt>drive {i + 1}</dt>

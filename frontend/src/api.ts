@@ -55,8 +55,9 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(d),
     }),
-  remove: (id: string) =>
-    req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  remove: async (id: string): Promise<void> => {
+    await req<unknown>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
   wake: (id: string) =>
     req<{ status: string; mac: string }>(`/devices/${encodeURIComponent(id)}/wake`, { method: "POST" }),
   export: () =>

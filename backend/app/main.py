@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import os
 import socket
 import time
 from contextlib import asynccontextmanager
@@ -48,12 +49,20 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     logger.info("app.startup action=seed")
     storage.ensure_seeded()
-    task = asyncio.create_task(collector.run_collector(storage))
-    logger.info("app.startup action=ready collector=started")
+    # The collector probes the real network and writes back online/last. Tests
+    # set HOMENET_DISABLE_COLLECTOR=1 so they stay deterministic (otherwise a
+    # sweep can rewrite seed reachability mid-test and flake the meta counts).
+    task = None
+    if not os.environ.get("HOMENET_DISABLE_COLLECTOR"):
+        task = asyncio.create_task(collector.run_collector(storage))
+        logger.info("app.startup action=ready collector=started")
+    else:
+        logger.info("app.startup action=ready collector=disabled")
     yield
-    task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await task
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
     logger.info("app.shutdown")
 
 
@@ -256,23 +265,57 @@ def export_catalog() -> FastAPIResponse:
 MAX_IMPORT_BYTES = 5 * 1024 * 1024
 
 
-def _validate_collection(items: list, model: type[BaseModel], label: str) -> list[str]:
-    """Validate each item in *items* against *model*, returning error strings."""
+def _validate_and_dump(
+    items: list, model: type[BaseModel], label: str
+) -> tuple[list[dict], list[str]]:
+    """Validate each item against *model*; return (normalized dicts, errors).
+
+    The normalized dicts come from ``model_dump(exclude_none=True)`` — exactly
+    what create_device persists — so an imported device gets the same MAC
+    upper-casing and field shape as one added through the form.
+    """
+    dumped: list[dict] = []
     errors: list[str] = []
     for i, item in enumerate(items):
         if not isinstance(item, dict):
             errors.append(f"{label}[{i}]: must be a JSON object")
             continue
         try:
-            model(**item)
+            dumped.append(model(**item).model_dump(exclude_none=True))
         except Exception as exc:
             errors.append(f"{label}[{i}]: {exc}")
+    return dumped, errors
+
+
+def _check_import_uniqueness(devices: list[dict]) -> list[str]:
+    """Reject an import whose devices collide on id / ip / mac (matches the
+    409 contract that create_device enforces — import must not be a back door)."""
+    errors: list[str] = []
+    seen_id: set[str] = set()
+    seen_ip: set[str] = set()
+    seen_mac: set[str] = set()
+    for i, d in enumerate(devices):
+        for key, seen in (("id", seen_id), ("ip", seen_ip), ("mac", seen_mac)):
+            val = d.get(key)
+            if not val:
+                continue
+            norm = val.upper() if key == "mac" else val
+            if norm in seen:
+                errors.append(f"device[{i}]: duplicate {key} {val!r}")
+            seen.add(norm)
     return errors
 
 
 @app.post("/api/import", status_code=200)
-async def import_catalog(file: UploadFile) -> dict[str, int]:
+async def import_catalog(request: Request, file: UploadFile) -> dict[str, int]:
     """Replace catalog with uploaded JSON after validation."""
+    # CSRF guard: a multipart POST is a CORS "simple request" (no preflight), so
+    # a malicious site could otherwise auto-submit a form to wipe the catalog.
+    # Requiring a custom header forces a preflight, which CORS then blocks for
+    # any origin not on the allow-list. The SPA sends this header (see api.ts).
+    if not request.headers.get("x-requested-with"):
+        raise HTTPException(status_code=403, detail="missing X-Requested-With header")
+
     # Read at most MAX_IMPORT_BYTES+1 so an oversized upload is rejected without
     # ever buffering the whole thing in memory.
     raw = await file.read(MAX_IMPORT_BYTES + 1)
@@ -299,18 +342,21 @@ async def import_catalog(file: UploadFile) -> dict[str, int]:
         if not isinstance(value, list):
             raise HTTPException(status_code=422, detail=f"'{label}' must be an array")
 
-    # Validate every item against its model so a malformed switch/cable can't be
-    # persisted and later break the topology / inventory views.
-    errors = (
-        _validate_collection(devices, Device, "device")
-        + _validate_collection(switches, Switch, "switch")
-        + _validate_collection(cables, Cable, "cable")
-    )
+    # Validate + normalize every item so a malformed switch/cable can't be
+    # persisted (and later break topology / inventory) and an imported device
+    # is stored in the same shape as a form-created one.
+    norm_devices, dev_errors = _validate_and_dump(devices, Device, "device")
+    norm_switches, sw_errors = _validate_and_dump(switches, Switch, "switch")
+    norm_cables, cb_errors = _validate_and_dump(cables, Cable, "cable")
+    errors = dev_errors + sw_errors + cb_errors
+    if not errors:
+        # Only worth checking once every device parsed cleanly.
+        errors += _check_import_uniqueness(norm_devices)
     if errors:
         raise HTTPException(status_code=422, detail="; ".join(errors[:5]))
 
     # Backup current data before replacing
     storage.backup_catalog()
-    storage.replace_catalog(devices, switches, cables)
+    storage.replace_catalog(norm_devices, norm_switches, norm_cables)
 
     return {"devices": len(devices), "switches": len(switches), "cables": len(cables)}

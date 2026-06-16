@@ -372,7 +372,7 @@ export function DetailView() {
                       <span className="meter">
                         <span
                           className={`fill ${d.pct > 85 ? "hot" : ""}`}
-                          style={{ width: `${d.pct}%` }}
+                          style={{ width: `${Math.max(0, Math.min(100, d.pct))}%` }}
                         />
                       </span>
                       <span className="pct">{d.pct}%</span>

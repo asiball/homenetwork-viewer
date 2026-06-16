@@ -61,19 +61,20 @@ export function HomeView() {
     );
   }, [visible, searchQuery]);
 
-  // Keyboard-nav order matches what's on screen: grouped-sidebar order for
-  // radial/spine, top-to-bottom row order for the wiring tree.
+  // Keyboard-nav order matches what's actually on the map (mapVisible, i.e.
+  // search-filtered) — otherwise ↑/↓ would jump to devices hidden by the search
+  // and the side panel could show a node that isn't drawn.
   const ordered = useMemo(() => {
     if (layout === "tree") {
-      const { positions } = computeLayout("tree", visible, false, switches);
-      return [...visible].sort(
+      const { positions } = computeLayout("tree", mapVisible, false, switches);
+      return [...mapVisible].sort(
         (a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0),
       );
     }
-    return orderedByGroup(visible);
-  }, [layout, visible, switches]);
+    return orderedByGroup(mapVisible);
+  }, [layout, mapVisible, switches]);
 
-  const selected = visible.find((d) => d.id === selId) ?? visible[0];
+  const selected = mapVisible.find((d) => d.id === selId) ?? mapVisible[0];
   const selSw = selSwId ? (switches.find((s) => s.id === selSwId) ?? null) : null;
 
   // Keep selection valid as visibility changes.

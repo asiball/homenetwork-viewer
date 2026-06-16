@@ -77,7 +77,9 @@ async def run_collector(storage_module) -> None:
     logger.info("collector.start interval=%ds", INTERVAL)
     while True:
         try:
-            devices = storage_module.list_devices()
+            # storage reads/writes are blocking (and fsync on write) — run them
+            # off the event loop so a sweep never stalls API request handling.
+            devices = await asyncio.to_thread(storage_module.list_devices)
             if devices:
                 results = await asyncio.gather(
                     *[_probe_device(d) for d in devices],
@@ -98,7 +100,7 @@ async def run_collector(storage_module) -> None:
                         "_probed_at": now_iso,
                     })
                 if updates:
-                    storage_module.bulk_update_reachability(updates)
+                    await asyncio.to_thread(storage_module.bulk_update_reachability, updates)
                     online = sum(1 for u in updates if u["online"])
                     logger.info(
                         "collector.sweep devices=%d online=%d offline=%d",

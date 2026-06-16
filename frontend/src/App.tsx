@@ -22,7 +22,10 @@ interface CatalogValue {
   /** id of the catalog device whose IP matches the browser's client IP. */
   selfId: string | null;
   lastSync: Date | null;
+  /** true only during the very first catalog load (gates full-screen spinners). */
   loading: boolean;
+  /** true during a background re-fetch (poll / manual refresh) — never blanks views. */
+  refreshing: boolean;
   syncError: string | null;
   refresh: () => Promise<void>;
   notify: (message: string, kind?: "ok" | "err") => void;
@@ -46,6 +49,7 @@ export default function App() {
   const [clientIp, setClientIp] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -64,9 +68,11 @@ export default function App() {
     return () => window.clearTimeout(toastTimer.current);
   }, []);
 
-  // Lightweight refresh: devices + meta only, unless boot failed
+  // Lightweight refresh: devices + meta only, unless boot failed. Uses
+  // `refreshing` (not `loading`) so a poll never collapses a detail/edit view
+  // into the full-screen spinner.
   const refresh = useCallback(async () => {
-    setLoading(true);
+    setRefreshing(true);
     try {
       if (bootError) {
         const [d, s, c, m] = await Promise.all([
@@ -92,7 +98,7 @@ export default function App() {
       setBootError(msg);
       setSyncError(msg);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   }, [bootError]);
 
@@ -171,6 +177,7 @@ export default function App() {
     selfId,
     lastSync,
     loading,
+    refreshing,
     syncError,
     refresh,
     notify,

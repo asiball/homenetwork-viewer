@@ -337,7 +337,7 @@ def test_put_clears_ownership_but_keeps_other_detail(client):
 
 # ─── /api/import hardening (issue #83) ──────────────────────────────────────
 
-def _import(client, payload):
+def _import(client, payload, headers=None):
     import io
     import json as _json
 
@@ -345,6 +345,7 @@ def _import(client, payload):
     return client.post(
         "/api/import",
         files={"file": ("catalog.json", blob, "application/json")},
+        headers={"X-Requested-With": "XMLHttpRequest", **(headers or {})},
     )
 
 
@@ -387,5 +388,71 @@ def test_import_rejects_oversized_upload(client):
     r = client.post(
         "/api/import",
         files={"file": ("big.json", io.BytesIO(blob), "application/json")},
+        headers={"X-Requested-With": "XMLHttpRequest"},
     )
     assert r.status_code == 413
+
+
+def test_import_requires_csrf_header(client):
+    """A multipart POST without X-Requested-With is rejected (CSRF guard)."""
+    import io
+    import json as _json
+
+    blob = io.BytesIO(_json.dumps({"devices": [], "switches": [], "cables": []}).encode())
+    r = client.post("/api/import", files={"file": ("c.json", blob, "application/json")})
+    assert r.status_code == 403
+
+
+def test_import_rejects_duplicate_id(client):
+    dev2 = _sample_device(ip="192.168.50.2", mac="DE:AD:BE:EF:00:02")
+    r = _import(client, {"devices": [_sample_device(), dev2], "switches": [], "cables": []})
+    assert r.status_code == 422
+    assert "duplicate id" in r.json()["detail"]
+
+
+def test_import_rejects_duplicate_ip(client):
+    dev2 = _sample_device(id="other", mac="DE:AD:BE:EF:00:02")  # same ip as sample
+    r = _import(client, {"devices": [_sample_device(), dev2], "switches": [], "cables": []})
+    assert r.status_code == 422
+    assert "duplicate ip" in r.json()["detail"]
+
+
+def test_import_normalizes_mac_to_uppercase(client):
+    """An imported device is stored in the same shape as a form-created one."""
+    r = _import(
+        client,
+        {"devices": [_sample_device(mac="de:ad:be:ef:00:01")], "switches": [], "cables": []},
+    )
+    assert r.status_code == 200
+    assert client.get("/api/devices/test-pi").json()["mac"] == "DE:AD:BE:EF:00:01"
+
+
+# ─── Wake-on-LAN ────────────────────────────────────────────────────────────
+
+def test_wake_missing_device_404(client):
+    assert client.post("/api/devices/ghost/wake").status_code == 404
+
+
+def test_wake_sends_magic_packet(client):
+    """A device with a MAC returns 200 and reports the MAC it targeted."""
+    client.post("/api/devices", json=_sample_device(mac="AA:BB:CC:DD:EE:01"))
+    r = client.post("/api/devices/test-pi/wake")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "sent"
+    assert body["mac"] == "AA:BB:CC:DD:EE:01"
+
+
+def test_wake_socket_failure_returns_503(client, monkeypatch):
+    """If the UDP broadcast can't be sent, the endpoint surfaces a 503."""
+    client.post("/api/devices", json=_sample_device())
+
+    import socket as _socket
+
+    def _boom(*_a, **_k):
+        raise OSError("no broadcast route")
+
+    monkeypatch.setattr(_socket, "socket", _boom)
+    r = client.post("/api/devices/test-pi/wake")
+    assert r.status_code == 503
+    assert "failed to send magic packet" in r.json()["detail"]

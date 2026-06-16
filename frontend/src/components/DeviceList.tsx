@@ -62,19 +62,19 @@ export function DeviceList({ devices, selectedId, onSelect }: Props) {
             onKeyDown={(e) => {
               if (e.key === "Escape") setQ("");
             }}
-            placeholder="検索..."
+            placeholder="search..."
             aria-label="filter devices"
           />
-          <select 
-            value={sort} 
+          <select
+            value={sort}
             onChange={(e) => handleSortChange(e.target.value as SortMode)}
             style={{ width: "80px", background: "var(--bg-2)", color: "var(--fg)", border: "1px solid var(--rule-2)", fontSize: "10px" }}
             aria-label="sort devices"
           >
-            <option value="group">グループ</option>
-            <option value="name">名前</option>
+            <option value="group">group</option>
+            <option value="name">name</option>
             <option value="ip">IP</option>
-            <option value="status">ステータス</option>
+            <option value="status">status</option>
           </select>
         </div>
       </div>
@@ -93,7 +93,7 @@ export function DeviceList({ devices, selectedId, onSelect }: Props) {
               aria-current={selectedId === d.id ? "true" : undefined}
               title={`${d.name} · ${d.ip}`}
             >
-              <span className={`lstat ${d.online ? "on" : "off"}`} aria-label={d.online ? "オンライン" : "オフライン"} />
+              <span className={`lstat ${d.online ? "on" : "off"}`} aria-label={d.online ? "online" : "offline"} />
               <span className="lname">{d.name}</span>
               {d.id === selfId && <span className="lyou">YOU</span>}
               <span className="lip">.{lastOctet(d.ip)}</span>

@@ -107,7 +107,7 @@ export function SummaryPanel({ device }: Props) {
       </div>
 
       <Link className="side-btn" to={`/d/${device.id}`}>
-        詳細を見る →
+        view detail →
       </Link>
     </aside>
   );

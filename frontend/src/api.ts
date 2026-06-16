@@ -57,4 +57,6 @@ export const api = {
     }),
   remove: (id: string) =>
     req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  wake: (id: string) =>
+    req<{ status: string; mac: string }>(`/devices/${encodeURIComponent(id)}/wake`, { method: "POST" }),
 };

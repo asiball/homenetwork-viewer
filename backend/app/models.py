@@ -49,6 +49,9 @@ class HwInfo(BaseModel):
     mem_full: Optional[str] = None
     chassis: Optional[str] = None
     bios: Optional[str] = None
+    motherboard: Optional[str] = None
+    gpu: Optional[List[str]] = None
+    storage_drives: Optional[List[str]] = None
 
 
 class Metrics(BaseModel):

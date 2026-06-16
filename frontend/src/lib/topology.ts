@@ -86,7 +86,12 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
       const i = infra.findIndex((x) => x.id === d.id);
       const a =
         infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
-      positions[d.id] = polar(a, r1, cx, cy);
+      const p = polar(a, r1, cx, cy);
+      const out = polar(a, r1 + 16, cx, cy);
+      let anchor: "start" | "middle" | "end" = "middle";
+      if (out.x > cx + 4) anchor = "start";
+      else if (out.x < cx - 4) anchor = "end";
+      positions[d.id] = { ...p, labelOffset: { x: out.x, y: out.y, anchor } };
     } else {
       const idx = leaves.findIndex((x) => x.id === d.id);
       const a = (9 + idx * (360 / total)) % 360;

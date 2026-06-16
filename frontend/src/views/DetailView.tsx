@@ -1,6 +1,7 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
+import { Fragment } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
@@ -42,7 +43,11 @@ export function DetailView() {
   const cbl = cableForDevice(cables, device.id);
   // §6.4: never invent data — no hist7 means "no history", not a perfect week.
   const hist = detail?.hist7 ?? null;
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toLocaleDateString("en-US", { weekday: "narrow" });
+  });
   const uptimeParts = (device.uptime ?? "").split(" ");
 
   return (
@@ -87,7 +92,7 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill live">live agent</span>}
+            {device.online && m && <span className="pill">catalog metrics</span>}
             {device.url && (
               <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
                 ↗ open
@@ -261,6 +266,24 @@ export function DetailView() {
               <dd>{detail?.hw?.chassis ?? "—"}</dd>
               <dt>firmware</dt>
               <dd>{detail?.hw?.bios ?? "—"}</dd>
+              {detail?.hw?.motherboard && (
+                <>
+                  <dt>motherboard</dt>
+                  <dd>{detail.hw.motherboard}</dd>
+                </>
+              )}
+              {(detail?.hw?.gpu ?? []).map((g, i) => (
+                <Fragment key={i}>
+                  <dt>gpu {detail!.hw!.gpu!.length > 1 ? i + 1 : ""}</dt>
+                  <dd>{g}</dd>
+                </Fragment>
+              ))}
+              {(detail?.hw?.storage_drives ?? []).map((d, i) => (
+                <Fragment key={i}>
+                  <dt>drive {i + 1}</dt>
+                  <dd>{d}</dd>
+                </Fragment>
+              ))}
             </dl>
           </div>
 

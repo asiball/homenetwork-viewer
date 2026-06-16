@@ -92,11 +92,11 @@ export function SummaryPanel({ device }: Props) {
             )}
           </div>
         )}
-        <div className={`stale${device.online && m ? " live" : ""}`}>
+        <div className="stale">
           {device.online
             ? m
-              ? <span>agent · metrics live</span>
-              : <span>online · no agent</span>
+              ? <span>catalog · metrics available</span>
+              : <span>online · no metrics</span>
             : <span>offline · last seen {device.last ?? "—"}</span>}
           <span>{device.online ? device.last ?? "" : ""}</span>
         </div>
@@ -107,7 +107,7 @@ export function SummaryPanel({ device }: Props) {
       </div>
 
       <Link className="side-btn" to={`/d/${device.id}`}>
-        詳細を見る →
+        view detail →
       </Link>
     </aside>
   );

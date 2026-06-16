@@ -74,6 +74,9 @@ export interface HwInfo {
   mem_full?: string | null;
   chassis?: string | null;
   bios?: string | null;
+  motherboard?: string | null;
+  gpu?: string[] | null;
+  storage_drives?: string[] | null;
 }
 
 export interface Metrics {

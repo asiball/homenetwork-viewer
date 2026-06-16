@@ -21,10 +21,13 @@ export function RefreshControls() {
     () => (localStorage.getItem(KEY) as Interval) || "5m",
   );
   const savedRefresh = useRef(refresh);
-  savedRefresh.current = refresh;
+  useEffect(() => {
+    savedRefresh.current = refresh;
+  });
 
   const [flashKey, setFlashKey] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (lastSync) setFlashKey((k) => k + 1);
   }, [lastSync]);
 

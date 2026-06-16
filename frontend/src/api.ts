@@ -56,5 +56,5 @@ export const api = {
       body: JSON.stringify(d),
     }),
   remove: (id: string) =>
-    req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    req<undefined>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

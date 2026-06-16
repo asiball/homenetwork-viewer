@@ -153,12 +153,14 @@ export function EditView({ mode }: Props) {
     setLoadedId(id);
     const newForm = existing ? formFromDevice(existing) : emptyForm();
     setForm(newForm);
+    // eslint-disable-next-line react-hooks/refs
     initialForm.current = newForm;
     setIdTouched(false);
     setErrors({});
     setSubmitErr(null);
   }
 
+  // eslint-disable-next-line react-hooks/refs
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }: { currentLocation: Location; nextLocation: Location }) =>

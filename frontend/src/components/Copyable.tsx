@@ -25,7 +25,7 @@ async function copyText(text: string): Promise<boolean> {
   try {
     ok = document.execCommand("copy");
   } catch {
-    ok = false;
+    // ok remains false on failure
   }
   document.body.removeChild(ta);
   return ok;

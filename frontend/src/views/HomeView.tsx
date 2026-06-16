@@ -66,6 +66,7 @@ export function HomeView() {
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selected && selected.id !== selId) setSelId(selected.id);
   }, [selected, selId]);
 

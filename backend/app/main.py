@@ -11,6 +11,8 @@ SPA and the API from one origin in production.
 from __future__ import annotations
 
 import logging
+import socket
+import struct
 import time
 from contextlib import asynccontextmanager
 
@@ -176,6 +178,42 @@ def delete_device(device_id: str) -> Response:
     except storage.NotFoundError:
         raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
     return Response(status_code=204)
+
+
+@app.post("/api/devices/{device_id}/wake", status_code=200)
+def wake_device(device_id: str) -> dict[str, str]:
+    """Send a Wake-on-LAN magic packet to the device's MAC address."""
+    try:
+        device = storage.get_device(device_id)
+    except storage.NotFoundError:
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+
+    mac = device.get("mac", "")
+    if not mac:
+        raise HTTPException(status_code=400, detail="device has no MAC address")
+
+    # Normalize MAC: remove separators, convert to bytes
+    mac_clean = mac.replace(":", "").replace("-", "").replace(".", "")
+    if len(mac_clean) != 12:
+        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}")
+
+    try:
+        mac_bytes = bytes.fromhex(mac_clean)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}")
+
+    # Magic packet: 6x 0xFF + 16x MAC
+    magic = b"\xff" * 6 + mac_bytes * 16
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.sendto(magic, ("255.255.255.255", 9))
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail=f"failed to send magic packet: {exc}")
+
+    logger.info("wol device_id=%s mac=%s", device_id, mac)
+    return {"status": "sent", "mac": mac}
 
 
 # ─── Topology (read-only) ───────────────────────────────────────────────────

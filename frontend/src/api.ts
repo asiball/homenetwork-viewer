@@ -56,7 +56,9 @@ export const api = {
       body: JSON.stringify(d),
     }),
   remove: (id: string) =>
-    req<undefined>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  wake: (id: string) =>
+    req<{ status: string; mac: string }>(`/devices/${encodeURIComponent(id)}/wake`, { method: "POST" }),
   export: () =>
     fetch(BASE + "/export").then(async (r) => {
       if (!r.ok) throw new Error(await r.text());

@@ -37,6 +37,11 @@ interface FormState {
   cpu: string;
   mem: string;
   storage: string;
+  motherboard: string;
+  gpu1: string;
+  gpu2: string;
+  storeDrive1: string;
+  storeDrive2: string;
   manufacturer: string;
   model: string;
   location: string;
@@ -63,6 +68,11 @@ function emptyForm(): FormState {
     cpu: "",
     mem: "",
     storage: "",
+    motherboard: "",
+    gpu1: "",
+    gpu2: "",
+    storeDrive1: "",
+    storeDrive2: "",
     manufacturer: "",
     model: "",
     location: "",
@@ -91,6 +101,11 @@ function formFromDevice(d: Device): FormState {
     cpu: d.cpu ?? "",
     mem: d.mem ?? "",
     storage: d.storage ?? "",
+    motherboard: d.detail?.hw?.motherboard ?? "",
+    gpu1: d.detail?.hw?.gpu?.[0] ?? "",
+    gpu2: d.detail?.hw?.gpu?.[1] ?? "",
+    storeDrive1: d.detail?.hw?.storage_drives?.[0] ?? "",
+    storeDrive2: d.detail?.hw?.storage_drives?.[1] ?? "",
     manufacturer: own.manufacturer ?? "",
     model: own.model ?? "",
     location: own.location ?? "",
@@ -153,12 +168,14 @@ export function EditView({ mode }: Props) {
     setLoadedId(id);
     const newForm = existing ? formFromDevice(existing) : emptyForm();
     setForm(newForm);
+    // eslint-disable-next-line react-hooks/refs
     initialForm.current = newForm;
     setIdTouched(false);
     setErrors({});
     setSubmitErr(null);
   }
 
+  // eslint-disable-next-line react-hooks/refs
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }: { currentLocation: Location; nextLocation: Location }) =>
@@ -235,6 +252,18 @@ export function EditView({ mode }: Props) {
       detail = { ...detail, own: null };
     }
 
+    // Merge user-entered hw fields into the detail.hw block, preserving any
+    // auto-collected fields (cpu_full, arch, mem_full, chassis, bios).
+    const hw: import("../types").HwInfo = {};
+    if (form.motherboard.trim()) hw.motherboard = form.motherboard.trim();
+    const gpus = [form.gpu1, form.gpu2].map((s) => s.trim()).filter(Boolean);
+    if (gpus.length) hw.gpu = gpus;
+    const drives = [form.storeDrive1, form.storeDrive2].map((s) => s.trim()).filter(Boolean);
+    if (drives.length) hw.storage_drives = drives;
+    if (Object.keys(hw).length) {
+      detail = { ...(detail ?? {}), hw: { ...(detail?.hw ?? {}), ...hw } };
+    }
+
     // Spread the existing device first so fields the form doesn't edit
     // (last, uptime, idx, …) survive the save; then overlay the form values.
     // Emptied optional fields are sent as `null` (not undefined) so they reach
@@ -264,7 +293,14 @@ export function EditView({ mode }: Props) {
   async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     setSubmitErr(null);
-    if (!validate()) return;
+    if (!validate()) {
+      requestAnimationFrame(() => {
+        const firstBad = document.querySelector<HTMLElement>('.f-field.bad input, .f-field.bad select');
+        firstBad?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstBad?.focus();
+      });
+      return;
+    }
     const payload = buildPayload();
     setBusy(true);
     try {
@@ -484,12 +520,27 @@ export function EditView({ mode }: Props) {
               <Field label="memory">
                 <input value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
               </Field>
+              <Field label="motherboard">
+                <input value={form.motherboard} onChange={(e) => set("motherboard", e.target.value)} placeholder="ASUS B550M" />
+              </Field>
+              <Field label="gpu 1">
+                <input value={form.gpu1} onChange={(e) => set("gpu1", e.target.value)} placeholder="NVIDIA RTX 4070" />
+              </Field>
+              <Field label="gpu 2">
+                <input value={form.gpu2} onChange={(e) => set("gpu2", e.target.value)} placeholder="(optional)" />
+              </Field>
               <Field label="storage" full>
                 <input
                   value={form.storage}
                   onChange={(e) => set("storage", e.target.value)}
                   placeholder="4 × 8 TB HDD · RAID5"
                 />
+              </Field>
+              <Field label="drive 1">
+                <input value={form.storeDrive1} onChange={(e) => set("storeDrive1", e.target.value)} placeholder="Samsung 990 Pro 2TB NVMe" />
+              </Field>
+              <Field label="drive 2">
+                <input value={form.storeDrive2} onChange={(e) => set("storeDrive2", e.target.value)} placeholder="WD Red 4TB HDD" />
               </Field>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCatalog } from "../App";
+import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
@@ -24,7 +25,7 @@ function initialLayout(urlLayout: string | null): LayoutKind {
 }
 
 export function HomeView() {
-  const { devices, switches } = useCatalog();
+  const { devices, switches, refresh, notify } = useCatalog();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -37,6 +38,7 @@ export function HomeView() {
   );
   // Ledger switch selected on the wiring tree (side panel shows its ports).
   const [selSwId, setSelSwId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Selecting a device always takes the side panel back from a switch.
   function selectDevice(id: string) {
@@ -48,6 +50,16 @@ export function HomeView() {
     () => devices.filter((d) => showOffline || d.online),
     [devices, showOffline],
   );
+
+  const mapVisible = useMemo(() => {
+    if (!searchQuery.trim()) return visible;
+    const needle = searchQuery.trim().toLowerCase();
+    return visible.filter((d) =>
+      [d.name, d.host, d.ip, d.type, d.group, d.id].some((v) =>
+        v.toLowerCase().includes(needle),
+      ),
+    );
+  }, [visible, searchQuery]);
 
   // Keyboard-nav order matches what's on screen: grouped-sidebar order for
   // radial/spine, top-to-bottom row order for the wiring tree.
@@ -66,6 +78,7 @@ export function HomeView() {
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selected && selected.id !== selId) setSelId(selected.id);
   }, [selected, selId]);
 
@@ -110,24 +123,59 @@ export function HomeView() {
   const layoutLabel =
     layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";
 
+  async function handleExport() {
+    try {
+      const blob = await api.export();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `homenet-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "export failed", "err");
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (!confirm(`Replace ALL catalog data with "${file.name}"? This cannot be undone (a backup is saved server-side).`)) return;
+    try {
+      const result = await api.importCatalog(file);
+      await refresh();
+      notify(`imported: ${result.devices} devices, ${result.switches} switches, ${result.cables} cables`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "import failed", "err");
+    }
+  }
+
   return (
     <Shell
       devices={visible}
       selectedId={selected?.id}
       onSelect={selectDevice}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
       crumbs={
         <>
           net <span>{devices.find(d => d.type === "router" || d.ring === 0)?.detail?.net?.ipv4?.replace(/\.\d+\/\d+$/, ".0/24") || "192.168.1.0/24"}</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span> &nbsp;·&nbsp; layout{" "}
-            <span>{layoutLabel}</span>
+            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span>
+          </span>
+          <span className="hide-md">
+            {" "}
+            &nbsp;·&nbsp; layout <span>{layoutLabel}</span>
           </span>
         </>
       }
       right={
         <>
-          <div className="layout-tog" title="レイアウト切替 (radial / spine / tree)">
+          <div className="layout-tog" title="switch layout (radial / spine / tree)">
             <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
               ◎ radial
             </button>
@@ -156,14 +204,21 @@ export function HomeView() {
           <button className={`tg ${showOffline ? "on" : ""}`} onClick={toggleOffline}>
             show offline · <b>{showOffline ? "on" : "off"}</b>
           </button>
-          <span className="right">homenet {APP_VERSION} · {layoutLabel}</span>
+          <span className="right" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button className="tg" onClick={handleExport} title="download catalog backup">&#x21E9; export</button>
+            <label className="tg" style={{ cursor: "pointer" }} title="restore catalog from backup">
+              &#x21E7; import
+              <input type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+            </label>
+            <span>homenet {APP_VERSION} · {layoutLabel}</span>
+          </span>
         </>
       }
     >
       {selected ? (
         <>
           <TopologyMap
-            devices={visible}
+            devices={mapVisible}
             layout={layout}
             selectedId={selected.id}
             onSelect={selectDevice}

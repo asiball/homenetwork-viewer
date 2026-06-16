@@ -59,4 +59,19 @@ export const api = {
     req<void>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" }),
   wake: (id: string) =>
     req<{ status: string; mac: string }>(`/devices/${encodeURIComponent(id)}/wake`, { method: "POST" }),
+  export: () =>
+    fetch(BASE + "/export").then(async (r) => {
+      if (!r.ok) throw new Error(await r.text());
+      return r.blob();
+    }),
+  importCatalog: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(BASE + "/import", { method: "POST", body: form });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(typeof body.detail === "string" ? body.detail : res.statusText);
+    }
+    return res.json() as Promise<{ devices: number; switches: number; cables: number }>;
+  },
 };

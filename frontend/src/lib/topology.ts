@@ -104,9 +104,10 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
     }
   });
 
+  const gw = visible.find((d) => d.ring === 0);
   const edges: Edge[] = visible
-    .filter((d) => d.ring !== 0)
-    .map((d) => ({ from: "gw", to: d.id, off: !d.online }));
+    .filter((d) => d.ring !== 0 && gw)
+    .map((d) => ({ from: gw!.id, to: d.id, off: !d.online }));
 
   return { positions, edges, deco: { kind: "radial", cx, cy, r1, r2 } };
 }
@@ -117,7 +118,10 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
   const startX = 100;
   const endX = MAP_W - 40;
 
-  positions["gw"] = { x: startX, y: busY };
+  const gw = visible.find((d) => d.ring === 0);
+  if (gw) {
+    positions[gw.id] = { x: startX, y: busY };
+  }
 
   const infra = visible.filter((d) => d.ring === 1);
   infra.forEach((d, i) => {
@@ -154,7 +158,9 @@ function computeSpine(visible: Device[], compact: boolean): Layout {
   });
 
   const edges: Edge[] = [];
-  infra.forEach((d) => edges.push({ from: "gw", to: d.id, off: !d.online }));
+  if (gw) {
+    infra.forEach((d) => edges.push({ from: gw.id, to: d.id, off: !d.online }));
+  }
   cats.forEach((cat) => {
     visible
       .filter((d) => d.group === cat)

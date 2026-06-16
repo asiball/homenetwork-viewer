@@ -8,6 +8,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# iputils-ping: the collector's ICMP fallback shells out to `ping` for devices
+# with no open TCP ports (IoT sensors, smart plugs). python:slim ships without
+# it, so without this the fallback silently fails and those devices read offline.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install uv from the official image (fast, no pip needed).
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

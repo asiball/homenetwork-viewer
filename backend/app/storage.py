@@ -16,9 +16,9 @@ import os
 import shutil
 import tempfile
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +147,9 @@ def _check_ip_mac_unique(
         if exclude_id is not None and d.get("id") == exclude_id:
             continue
         if ip and d.get("ip") == ip:
-            raise ConflictError(f"IP {ip} is already used by '{d.get('name', d.get('id'))}'")
+            raise ConflictError(f"ip already in use by '{d.get('name', d.get('id'))}'")
         if mac and d.get("mac") and mac.upper() == d["mac"].upper():
-            raise ConflictError(f"MAC {mac} is already used by '{d.get('name', d.get('id'))}'")
+            raise ConflictError(f"mac already in use by '{d.get('name', d.get('id'))}'")
 
 
 
@@ -177,11 +177,11 @@ def list_cables() -> list[dict[str, Any]]:
     return _read_doc()["cables"]
 
 
-def updated_at() -> Optional[str]:
+def updated_at() -> str | None:
     if not DATA_FILE.exists():
         return None
     ts = DATA_FILE.stat().st_mtime
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ts, tz=UTC).isoformat()
 
 
 # ─── Writes ─────────────────────────────────────────────────────────────────

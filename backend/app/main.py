@@ -11,27 +11,18 @@ SPA and the API from one origin in production.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import json
 import logging
 import socket
-import struct
 import time
 from contextlib import asynccontextmanager
-
-import json
 from datetime import date
 
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import Response as FastAPIResponse
-
-# ─── Structured logging ────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s level=%(levelname)s logger=%(name)s %(message)s',
-    handlers=[logging.StreamHandler()],
-)
-logger = logging.getLogger(__name__)
 
 from . import collector, storage
 from .models import (
@@ -43,6 +34,14 @@ from .models import (
     Switch,
 )
 
+# ─── Structured logging ────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s level=%(levelname)s logger=%(name)s %(message)s',
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -52,10 +51,8 @@ async def lifespan(_app: FastAPI):
     logger.info("app.startup action=ready collector=started")
     yield
     task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
     logger.info("app.shutdown")
 
 
@@ -151,7 +148,7 @@ def get_device(device_id: str) -> dict:
     try:
         return storage.get_device(device_id)
     except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
 
 
 @app.post("/api/devices", response_model=Device, status_code=201)
@@ -159,7 +156,7 @@ def create_device(payload: DeviceCreate) -> dict:
     try:
         return storage.create_device(payload.model_dump(exclude_none=True))
     except storage.ConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.put("/api/devices/{device_id}", response_model=Device)
@@ -173,9 +170,9 @@ def update_device(device_id: str, payload: DeviceUpdate) -> dict:
     try:
         return storage.update_device(device_id, body)
     except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
     except storage.ConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.delete("/api/devices/{device_id}", status_code=204)
@@ -183,7 +180,7 @@ def delete_device(device_id: str) -> Response:
     try:
         storage.delete_device(device_id)
     except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
     return Response(status_code=204)
 
 
@@ -193,7 +190,7 @@ def wake_device(device_id: str) -> dict[str, str]:
     try:
         device = storage.get_device(device_id)
     except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}")
+        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
 
     mac = device.get("mac", "")
     if not mac:
@@ -207,7 +204,7 @@ def wake_device(device_id: str) -> dict[str, str]:
     try:
         mac_bytes = bytes.fromhex(mac_clean)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}")
+        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}") from None
 
     # Magic packet: 6x 0xFF + 16x MAC
     magic = b"\xff" * 6 + mac_bytes * 16
@@ -217,7 +214,7 @@ def wake_device(device_id: str) -> dict[str, str]:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             sock.sendto(magic, ("255.255.255.255", 9))
     except OSError as exc:
-        raise HTTPException(status_code=503, detail=f"failed to send magic packet: {exc}")
+        raise HTTPException(status_code=503, detail=f"failed to send magic packet: {exc}") from exc
 
     logger.info("wol device_id=%s mac=%s", device_id, mac)
     return {"status": "sent", "mac": mac}
@@ -260,7 +257,7 @@ async def import_catalog(file: UploadFile) -> dict[str, int]:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=422, detail=f"not valid JSON: {exc}")
+        raise HTTPException(status_code=422, detail=f"not valid JSON: {exc}") from exc
 
     if not isinstance(data, dict):
         raise HTTPException(status_code=422, detail="top-level must be a JSON object")

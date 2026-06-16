@@ -8,9 +8,9 @@ ping binary is typically setuid on Linux.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +27,10 @@ async def _tcp_reachable(ip: str) -> bool:
                 timeout=CONNECT_TIMEOUT,
             )
             writer.close()
-            try:
+            with contextlib.suppress(Exception):
                 await writer.wait_closed()
-            except Exception:
-                pass
             return True
-        except (OSError, asyncio.TimeoutError):
+        except (TimeoutError, OSError):
             continue
     return False
 
@@ -85,7 +83,7 @@ async def run_collector(storage_module) -> None:
                     *[_probe_device(d) for d in devices],
                     return_exceptions=True,
                 )
-                now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
                 now_human = "just now"
                 updates: list[dict] = []
                 for r in results:

@@ -120,8 +120,11 @@ export function HomeView() {
           net <span>{devices.find(d => d.type === "router" || d.ring === 0)?.detail?.net?.ipv4?.replace(/\.\d+\/\d+$/, ".0/24") || "192.168.1.0/24"}</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span> &nbsp;·&nbsp; layout{" "}
-            <span>{layoutLabel}</span>
+            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span>
+          </span>
+          <span className="hide-md">
+            {" "}
+            &nbsp;·&nbsp; layout <span>{layoutLabel}</span>
           </span>
         </>
       }

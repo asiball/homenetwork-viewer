@@ -405,6 +405,8 @@ body {
 }
 .node-box.off {
   stroke: var(--err);
+  stroke-dasharray: 3 2;
+  opacity: 0.65;
 }
 .node-box.sel {
   stroke: var(--amber);

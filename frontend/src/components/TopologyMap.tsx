@@ -131,10 +131,13 @@ export function TopologyMap({
         )}
 
         {/* edges — straight for radial/spine, right-angled for the tree */}
-        {edges.map((e, i) => {
+        {(() => {
+          const selDevice = devices.find(d => d.id === selectedId);
+          const selIsGateway = selDevice?.ring === 0;
+          return edges.map((e, i) => {
           const p1 = getPos(e.from);
           const p2 = getPos(e.to);
-          const onSel = e.to === selectedId || e.from === selectedId;
+          const onSel = !selIsGateway && (e.to === selectedId || e.from === selectedId);
           const cls = `link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}`;
           return e.bendX != null ? (
             <path
@@ -145,7 +148,7 @@ export function TopologyMap({
           ) : (
             <line key={`e${i}`} className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
           );
-        })}
+        });})()}
 
         {/* selection pulse */}
         <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />

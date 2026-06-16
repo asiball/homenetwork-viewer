@@ -333,3 +333,59 @@ def test_put_clears_ownership_but_keeps_other_detail(client):
     detail = client.get("/api/devices/test-pi").json()["detail"]
     assert detail["own"] is None
     assert detail["metrics"]["cpu_pct"] == 42
+
+
+# ─── /api/import hardening (issue #83) ──────────────────────────────────────
+
+def _import(client, payload):
+    import io
+    import json as _json
+
+    blob = io.BytesIO(_json.dumps(payload).encode())
+    return client.post(
+        "/api/import",
+        files={"file": ("catalog.json", blob, "application/json")},
+    )
+
+
+def test_import_valid_catalog(client):
+    payload = {
+        "devices": [_sample_device()],
+        "switches": [{"id": "sw1", "name": "Sw 1", "type": "switch"}],
+        "cables": [{"id": "c1", "fromDev": "test-pi", "toDev": "sw1"}],
+    }
+    r = _import(client, payload)
+    assert r.status_code == 200
+    assert r.json() == {"devices": 1, "switches": 1, "cables": 1}
+    assert client.get("/api/devices/test-pi").status_code == 200
+
+
+def test_import_rejects_non_array_switches(client):
+    r = _import(client, {"devices": [], "switches": {}, "cables": []})
+    assert r.status_code == 422
+    assert "'switches' must be an array" in r.json()["detail"]
+
+
+def test_import_rejects_malformed_switch(client):
+    # Missing the required `name` field.
+    r = _import(client, {"devices": [], "switches": [{"id": "sw1"}], "cables": []})
+    assert r.status_code == 422
+    assert "switch[0]" in r.json()["detail"]
+
+
+def test_import_rejects_malformed_cable(client):
+    # Cable missing the required fromDev / toDev endpoints.
+    r = _import(client, {"devices": [], "switches": [], "cables": [{"id": "c1"}]})
+    assert r.status_code == 422
+    assert "cable[0]" in r.json()["detail"]
+
+
+def test_import_rejects_oversized_upload(client):
+    import io
+
+    blob = b"x" * (5 * 1024 * 1024 + 1)
+    r = client.post(
+        "/api/import",
+        files={"file": ("big.json", io.BytesIO(blob), "application/json")},
+    )
+    assert r.status_code == 413

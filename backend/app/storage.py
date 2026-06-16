@@ -147,9 +147,10 @@ def _check_ip_mac_unique(
         if exclude_id is not None and d.get("id") == exclude_id:
             continue
         if ip and d.get("ip") == ip:
-            raise ConflictError(f"ip already in use: {ip} (device {d.get('id')})")
+            raise ConflictError(f"IP {ip} is already used by '{d.get('name', d.get('id'))}'")
         if mac and d.get("mac") and mac.upper() == d["mac"].upper():
-            raise ConflictError(f"mac already in use: {mac} (device {d.get('id')})")
+            raise ConflictError(f"MAC {mac} is already used by '{d.get('name', d.get('id'))}'")
+
 
 
 # ─── Reads ──────────────────────────────────────────────────────────────────

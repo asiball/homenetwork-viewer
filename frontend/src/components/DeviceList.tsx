@@ -78,7 +78,7 @@ export function DeviceList({ devices, selectedId, onSelect }: Props) {
           </select>
         </div>
       </div>
-      {needle && grouped.length === 0 && <div className="lempty">no match</div>}
+      {needle && filtered.length === 0 && <div className="lempty">no match</div>}
       {grouped.map(({ group, items }) => (
         <div key={group}>
           <div className="ltitle">

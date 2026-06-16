@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCatalog } from "../App";
+import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
@@ -24,7 +25,7 @@ function initialLayout(urlLayout: string | null): LayoutKind {
 }
 
 export function HomeView() {
-  const { devices, switches } = useCatalog();
+  const { devices, switches, refresh, notify } = useCatalog();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -122,6 +123,36 @@ export function HomeView() {
   const layoutLabel =
     layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";
 
+  async function handleExport() {
+    try {
+      const blob = await api.export();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `homenet-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "export failed", "err");
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (!confirm(`Replace ALL catalog data with "${file.name}"? This cannot be undone (a backup is saved server-side).`)) return;
+    try {
+      const result = await api.importCatalog(file);
+      await refresh();
+      notify(`imported: ${result.devices} devices, ${result.switches} switches, ${result.cables} cables`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "import failed", "err");
+    }
+  }
+
   return (
     <Shell
       devices={visible}
@@ -173,7 +204,14 @@ export function HomeView() {
           <button className={`tg ${showOffline ? "on" : ""}`} onClick={toggleOffline}>
             show offline · <b>{showOffline ? "on" : "off"}</b>
           </button>
-          <span className="right">homenet {APP_VERSION} · {layoutLabel}</span>
+          <span className="right" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button className="tg" onClick={handleExport} title="download catalog backup">&#x21E9; export</button>
+            <label className="tg" style={{ cursor: "pointer" }} title="restore catalog from backup">
+              &#x21E7; import
+              <input type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+            </label>
+            <span>homenet {APP_VERSION} · {layoutLabel}</span>
+          </span>
         </>
       }
     >

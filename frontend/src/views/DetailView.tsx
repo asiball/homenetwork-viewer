@@ -47,7 +47,6 @@ export function DetailView() {
     d.setDate(d.getDate() - (6 - i));
     return d.toLocaleDateString("en-US", { weekday: "narrow" });
   });
-  const uptimeParts = (device.uptime ?? "").split(" ");
 
   return (
     <Shell
@@ -174,12 +173,10 @@ export function DetailView() {
 
           <div className="d-stat">
             <div className="l">Uptime</div>
-            <div className="v">{device.online ? uptimeParts[0] || "—" : "—"}</div>
+            <div className="v">{device.online ? (device.uptime ?? "—") : "—"}</div>
             <div className="sub">
               {device.online
-                ? uptimeParts.length > 1
-                  ? `boot ${uptimeParts.slice(1).join(" ")} ago`
-                  : "online"
+                ? device.uptime ? "since boot" : "online"
                 : `last online ${device.last ?? "—"}`}
             </div>
           </div>

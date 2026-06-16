@@ -10,6 +10,8 @@ interface Props {
   devices: Device[];
   selectedId?: string;
   onSelect?: (id: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
   crumbs: ReactNode;
   right: ReactNode;
   footer: ReactNode;
@@ -20,6 +22,8 @@ export function Shell({
   devices,
   selectedId,
   onSelect,
+  searchQuery,
+  onSearchChange,
   crumbs,
   right,
   footer,
@@ -50,7 +54,13 @@ export function Shell({
         <div className="right">{right}</div>
       </header>
 
-      <DeviceList devices={devices} selectedId={selectedId} onSelect={onSelect} />
+      <DeviceList
+        devices={devices}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+      />
 
       {children}
 

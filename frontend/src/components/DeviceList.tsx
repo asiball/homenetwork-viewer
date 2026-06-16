@@ -12,16 +12,17 @@ interface Props {
   devices: Device[];
   selectedId?: string;
   onSelect?: (id: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
 }
 
-export function DeviceList({ devices, selectedId, onSelect }: Props) {
+export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", onSearchChange }: Props) {
   const { selfId } = useCatalog();
-  const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortMode>(
     () => (localStorage.getItem("homenet.sort") as SortMode) || "group"
   );
 
-  const needle = q.trim().toLowerCase();
+  const needle = searchQuery.trim().toLowerCase();
   const filtered = needle
     ? devices.filter((d) =>
         [d.name, d.host, d.ip, d.type, d.group, d.id].some((v) =>
@@ -57,10 +58,10 @@ export function DeviceList({ devices, selectedId, onSelect }: Props) {
         <div style={{ display: "flex", gap: "8px", width: "100%" }}>
           <input
             style={{ flex: 1 }}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => onSearchChange?.(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setQ("");
+              if (e.key === "Escape") onSearchChange?.("");
             }}
             placeholder="検索..."
             aria-label="filter devices"

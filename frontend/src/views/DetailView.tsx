@@ -43,7 +43,6 @@ export function DetailView() {
   // §6.4: never invent data — no hist7 means "no history", not a perfect week.
   const hist = detail?.hist7 ?? null;
   const days = ["M", "T", "W", "T", "F", "S", "S"];
-  const uptimeParts = (device.uptime ?? "").split(" ");
 
   return (
     <Shell
@@ -170,12 +169,10 @@ export function DetailView() {
 
           <div className="d-stat">
             <div className="l">Uptime</div>
-            <div className="v">{device.online ? uptimeParts[0] || "—" : "—"}</div>
+            <div className="v">{device.online ? (device.uptime ?? "—") : "—"}</div>
             <div className="sub">
               {device.online
-                ? uptimeParts.length > 1
-                  ? `boot ${uptimeParts.slice(1).join(" ")} ago`
-                  : "online"
+                ? device.uptime ? "since boot" : "online"
                 : `last online ${device.last ?? "—"}`}
             </div>
           </div>

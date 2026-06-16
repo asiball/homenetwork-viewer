@@ -10,6 +10,7 @@ SPA and the API from one origin in production.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -26,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from . import storage
+from . import collector, storage
 from .models import (
     Cable,
     Device,
@@ -41,8 +42,14 @@ from .models import (
 async def lifespan(_app: FastAPI):
     logger.info("app.startup action=seed")
     storage.ensure_seeded()
-    logger.info("app.startup action=ready")
+    task = asyncio.create_task(collector.run_collector(storage))
+    logger.info("app.startup action=ready collector=started")
     yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
     logger.info("app.shutdown")
 
 

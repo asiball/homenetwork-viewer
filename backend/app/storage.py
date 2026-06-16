@@ -226,3 +226,18 @@ def delete_device(device_id: str) -> None:
             raise NotFoundError(device_id)
         _write_doc(doc)
         logger.info("storage.op action=delete_device id=%s", device_id)
+
+
+def bulk_update_reachability(updates: list[dict]) -> None:
+    """Update online/last for multiple devices atomically."""
+    with _lock:
+        data = _read_doc()
+        by_id = {u["id"]: u for u in updates}
+        for d in data.get("devices", []):
+            upd = by_id.get(d.get("id"))
+            if upd is None:
+                continue
+            d["online"] = upd["online"]
+            if upd["online"] and upd.get("last"):
+                d["last"] = upd["last"]
+        _write_doc(data)

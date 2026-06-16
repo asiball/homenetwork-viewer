@@ -21,3 +21,6 @@ data/*.json
 .DS_Store
 backend/openapi.json
 
+
+# Claude Code
+.claude/

@@ -128,6 +128,7 @@ export default function App() {
       .then((w) => {
         if (!cancelled) setClientIp(w.ip);
       })
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       .catch(() => {});
     return () => {
       cancelled = true;

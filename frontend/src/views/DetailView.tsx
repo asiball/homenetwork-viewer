@@ -42,7 +42,11 @@ export function DetailView() {
   const cbl = cableForDevice(cables, device.id);
   // §6.4: never invent data — no hist7 means "no history", not a perfect week.
   const hist = detail?.hist7 ?? null;
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toLocaleDateString("en-US", { weekday: "narrow" });
+  });
 
   return (
     <Shell
@@ -86,7 +90,7 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill live">live agent</span>}
+            {device.online && m && <span className="pill">catalog metrics</span>}
             {device.url && (
               <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
                 ↗ open

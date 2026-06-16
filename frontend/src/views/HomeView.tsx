@@ -37,6 +37,7 @@ export function HomeView() {
   );
   // Ledger switch selected on the wiring tree (side panel shows its ports).
   const [selSwId, setSelSwId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Selecting a device always takes the side panel back from a switch.
   function selectDevice(id: string) {
@@ -48,6 +49,16 @@ export function HomeView() {
     () => devices.filter((d) => showOffline || d.online),
     [devices, showOffline],
   );
+
+  const mapVisible = useMemo(() => {
+    if (!searchQuery.trim()) return visible;
+    const needle = searchQuery.trim().toLowerCase();
+    return visible.filter((d) =>
+      [d.name, d.host, d.ip, d.type, d.group, d.id].some((v) =>
+        v.toLowerCase().includes(needle),
+      ),
+    );
+  }, [visible, searchQuery]);
 
   // Keyboard-nav order matches what's on screen: grouped-sidebar order for
   // radial/spine, top-to-bottom row order for the wiring tree.
@@ -66,6 +77,7 @@ export function HomeView() {
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selected && selected.id !== selId) setSelId(selected.id);
   }, [selected, selId]);
 
@@ -115,19 +127,24 @@ export function HomeView() {
       devices={visible}
       selectedId={selected?.id}
       onSelect={selectDevice}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
       crumbs={
         <>
           net <span>{devices.find(d => d.type === "router" || d.ring === 0)?.detail?.net?.ipv4?.replace(/\.\d+\/\d+$/, ".0/24") || "192.168.1.0/24"}</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span> &nbsp;·&nbsp; layout{" "}
-            <span>{layoutLabel}</span>
+            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span>
+          </span>
+          <span className="hide-md">
+            {" "}
+            &nbsp;·&nbsp; layout <span>{layoutLabel}</span>
           </span>
         </>
       }
       right={
         <>
-          <div className="layout-tog" title="レイアウト切替 (radial / spine / tree)">
+          <div className="layout-tog" title="switch layout (radial / spine / tree)">
             <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
               ◎ radial
             </button>
@@ -163,7 +180,7 @@ export function HomeView() {
       {selected ? (
         <>
           <TopologyMap
-            devices={visible}
+            devices={mapVisible}
             layout={layout}
             selectedId={selected.id}
             onSelect={selectDevice}

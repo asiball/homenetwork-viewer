@@ -12,8 +12,8 @@
   --bg-2: #11141a;
   --bg-3: #161a22;
   --fg: #d9e0e8;
-  --fg-soft: #8a93a0;
-  --fg-faint: #6b7280;
+  --fg-soft: #9aa3b0;
+  --fg-faint: #8896a8;
   --rule: #1d222b;
   --rule-2: #2a313d;
   --ok: #79ddb0;
@@ -260,6 +260,7 @@ body {
 }
 .n-left .lrow:hover {
   background: var(--bg-2);
+  border-left-color: var(--rule-2);
 }
 .n-left .lrow.sel {
   background: var(--bg-3);
@@ -405,6 +406,8 @@ body {
 }
 .node-box.off {
   stroke: var(--err);
+  stroke-dasharray: 3 2;
+  opacity: 0.65;
 }
 .node-box.sel {
   stroke: var(--amber);
@@ -634,6 +637,14 @@ body {
 }
 @media (max-width: 980px) {
   .hide-sm {
+    display: none;
+  }
+}
+.hide-md {
+  display: inline;
+}
+@media (max-width: 1200px) {
+  .hide-md {
     display: none;
   }
 }

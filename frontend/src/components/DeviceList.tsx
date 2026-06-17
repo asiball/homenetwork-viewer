@@ -1,6 +1,6 @@
 // Left sidebar device list, grouped by category (spec §5.4).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
@@ -21,6 +21,21 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
   const [sort, setSort] = useState<SortMode>(
     () => (localStorage.getItem("homenet.sort") as SortMode) || "group"
   );
+
+  // "/" focuses the search box from anywhere (unless already typing in a
+  // field) — fast path to the core "what is this IP?" lookup (#108).
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "/") return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag && /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const needle = searchQuery.trim().toLowerCase();
   const filtered = needle ? devices.filter((d) => matchesQuery(d, needle)) : devices;
@@ -51,13 +66,14 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
       <div className="lfilter">
         <div style={{ display: "flex", gap: "8px", width: "100%" }}>
           <input
+            ref={searchRef}
             style={{ flex: 1 }}
             value={searchQuery}
             onChange={(e) => onSearchChange?.(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Escape") onSearchChange?.("");
             }}
-            placeholder="search..."
+            placeholder="search…  ( / )"
             aria-label="filter devices"
           />
           <select

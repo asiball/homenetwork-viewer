@@ -22,6 +22,8 @@
 6. [運用とトラブルシューティング — 起動/停止/更新/バックアップ/困ったとき](06-operations.md)
 7. [用語集 — IP・API・コンテナ…をやさしく](07-glossary.md)
 
+> 補足資料: [競合分析と差別化](competitive-analysis.md) — 類似ツール（NetBox / NetAlertX / Homelable / HomeBox / Uptime Kuma 等）との比較と、homenet の立ち位置・存続判断の材料。
+
 ## 3行でいうと
 
 - homenet は「自宅のネットワーク機器（ルーター・NAS・PC・スマート家電など）の情報をブラウザで一覧・編集できる**自分専用の台帳**」です。

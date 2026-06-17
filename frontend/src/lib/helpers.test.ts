@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast } from "./helpers";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct } from "./helpers";
 import type { Device } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -72,6 +72,17 @@ describe("formatLast", () => {
   it("shows legacy / hand-edited human strings verbatim", () => {
     expect(formatLast("just now")).toBe("just now");
     expect(formatLast("yesterday")).toBe("yesterday");
+  });
+});
+
+describe("clampPct", () => {
+  it("clamps to 0–100 and defaults bad input to 0", () => {
+    expect(clampPct(50)).toBe(50);
+    expect(clampPct(150)).toBe(100);
+    expect(clampPct(-5)).toBe(0);
+    expect(clampPct(null)).toBe(0);
+    expect(clampPct(undefined)).toBe(0);
+    expect(clampPct(NaN)).toBe(0);
   });
 });
 

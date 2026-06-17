@@ -29,6 +29,9 @@ export interface FormState {
   cpu: string;
   mem: string;
   storage: string;
+  arch: string;
+  chassis: string;
+  bios: string;
   motherboard: string;
   gpu1: string;
   gpu2: string;
@@ -60,6 +63,9 @@ export function emptyForm(): FormState {
     cpu: "",
     mem: "",
     storage: "",
+    arch: "",
+    chassis: "",
+    bios: "",
     motherboard: "",
     gpu1: "",
     gpu2: "",
@@ -93,6 +99,9 @@ export function formFromDevice(d: Device): FormState {
     cpu: d.cpu ?? "",
     mem: d.mem ?? "",
     storage: d.storage ?? "",
+    arch: d.detail?.hw?.arch ?? "",
+    chassis: d.detail?.hw?.chassis ?? "",
+    bios: d.detail?.hw?.bios ?? "",
     motherboard: d.detail?.hw?.motherboard ?? "",
     gpu1: d.detail?.hw?.gpu?.[0] ?? "",
     gpu2: d.detail?.hw?.gpu?.[1] ?? "",
@@ -147,6 +156,9 @@ export function buildPayload(
   // Merge user-entered hw fields into the detail.hw block, preserving any
   // auto-collected fields (cpu_full, arch, mem_full, chassis, bios).
   const hw: HwInfo = {};
+  if (form.arch.trim()) hw.arch = form.arch.trim();
+  if (form.chassis.trim()) hw.chassis = form.chassis.trim();
+  if (form.bios.trim()) hw.bios = form.bios.trim();
   if (form.motherboard.trim()) hw.motherboard = form.motherboard.trim();
   const gpus = [form.gpu1, form.gpu2].map((s) => s.trim()).filter(Boolean);
   if (gpus.length) hw.gpu = gpus;

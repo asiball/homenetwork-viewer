@@ -172,9 +172,7 @@ class DeviceBase(BaseModel):
         if v is None or not v.strip():
             return None
         if not v.startswith(("http://", "https://")):
-            raise ValueError(
-                f"invalid url: {v!r} (must start with http:// or https://)"
-            )
+            raise ValueError(f"invalid url: {v!r} (must start with http:// or https://)")
         return v
 
 

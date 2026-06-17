@@ -5,6 +5,7 @@ then an ICMP ping fallback for devices with no open TCP ports (e.g. IoT
 sensors, smart plugs). No raw socket / CAP_NET_RAW required — the system
 ping binary is typically setuid on Linux.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ TCP_PROBE_PORTS = [22, 80, 443, 8080, 8443]  # try these in order
 # Cap simultaneous probes so a large or offline-heavy sweep can't exhaust file
 # descriptors / ping subprocesses on a small host like a Raspberry Pi (#89).
 MAX_CONCURRENT_PROBES = 16
+
 
 async def _tcp_reachable(ip: str) -> bool:
     """Return True if any common TCP port responds on the given IP."""
@@ -47,7 +49,12 @@ async def _ping_reachable(ip: str) -> bool:
     try:
         proc = await asyncio.wait_for(
             asyncio.create_subprocess_exec(
-                "ping", "-c", "1", "-W", "1", str(ip),
+                "ping",
+                "-c",
+                "1",
+                "-W",
+                "1",
+                str(ip),
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             ),
@@ -66,9 +73,7 @@ async def _is_reachable(ip: str) -> bool:
     return await _ping_reachable(ip)
 
 
-async def _probe_device(
-    device: dict, sem: asyncio.Semaphore | None = None
-) -> tuple[str, bool]:
+async def _probe_device(device: dict, sem: asyncio.Semaphore | None = None) -> tuple[str, bool]:
     """Probe a single device; returns (id, reachable).
 
     An optional semaphore bounds how many probes run at once (see
@@ -108,17 +113,21 @@ async def run_collector(storage_module) -> None:
                         logger.warning("collector.probe error=%s", r)
                         continue
                     dev_id, reachable = r
-                    updates.append({
-                        "id": dev_id,
-                        "online": reachable,
-                        "last": now_iso if reachable else None,
-                    })
+                    updates.append(
+                        {
+                            "id": dev_id,
+                            "online": reachable,
+                            "last": now_iso if reachable else None,
+                        }
+                    )
                 if updates:
                     await asyncio.to_thread(storage_module.bulk_update_reachability, updates)
                     online = sum(1 for u in updates if u["online"])
                     logger.info(
                         "collector.sweep devices=%d online=%d offline=%d",
-                        len(updates), online, len(updates) - online,
+                        len(updates),
+                        online,
+                        len(updates) - online,
                     )
         except Exception as exc:
             logger.error("collector.error %s", exc, exc_info=True)

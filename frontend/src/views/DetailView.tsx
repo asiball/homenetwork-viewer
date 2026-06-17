@@ -1,7 +1,7 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
@@ -13,6 +13,7 @@ import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { DeviceIcon } from "../components/DeviceIcon";
 import { CableSwatch } from "../components/CableSwatch";
+import { prefs } from "../lib/prefs";
 import { Spinner } from "../components/Spinner";
 import type { ServiceRow } from "../types";
 
@@ -38,6 +39,12 @@ export function DetailView() {
   const { devices, switches, cables, selfId, loading, notify } = useCatalog();
   const device = devices.find((d) => d.id === id);
   const [waking, setWaking] = useState(false);
+
+  // Remember this device as recently-opened so the home screen can reopen it
+  // instead of always selecting devices[0] (#122).
+  useEffect(() => {
+    if (device) prefs.recent.push(device.id);
+  }, [device?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleWake() {
     if (!device) return;
@@ -128,7 +135,11 @@ export function DetailView() {
             </span>
             {device.conn && <span className="pill">{device.conn}</span>}
             {device.id === selfId && <span className="pill you">this device</span>}
-            {device.online && m && <span className="pill">catalog metrics</span>}
+            {m && (
+              <span className="pill" title="hand-entered in the catalog — not live-collected">
+                manual metrics
+              </span>
+            )}
             {!device.online && device.ring !== 0 && (!device.conn || !device.conn.startsWith("Wi-Fi")) && (
               <button
                 className="d-edit"
@@ -257,9 +268,10 @@ export function DetailView() {
               {device.url && (
                 <>
                   <dt>web ui</dt>
-                  <dd>
-                    <a className="weblink" href={device.url} target="_blank" rel="noreferrer">
-                      {device.url}
+                  <dd className="weblink-row">
+                    <Copyable text={device.url} />
+                    <a className="weblink" href={device.url} target="_blank" rel="noreferrer" title="open in new tab">
+                      ↗
                     </a>
                   </dd>
                 </>
@@ -434,7 +446,7 @@ export function DetailView() {
                 </div>
                 <div className="d-pool">
                   <span>avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%</span>
-                  <span>this week</span>
+                  <span title="hand-entered — reachability history isn't collected yet">manual · this week</span>
                 </div>
               </>
             ) : (

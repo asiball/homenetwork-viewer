@@ -50,9 +50,10 @@ export function SummaryPanel({ device }: Props) {
           {device.url && (
             <>
               <dt>web</dt>
-              <dd>
-                <a className="weblink" href={device.url} target="_blank" rel="noreferrer">
-                  open ↗
+              <dd className="weblink-row">
+                <Copyable text={device.url} />
+                <a className="weblink" href={device.url} target="_blank" rel="noreferrer" title="open in new tab">
+                  ↗
                 </a>
               </dd>
             </>

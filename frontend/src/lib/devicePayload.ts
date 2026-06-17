@@ -127,45 +127,51 @@ export function buildPayload(
   mode: "add" | "edit",
   id: string,
 ): DeviceWrite {
-  const own: Ownership = {};
-  if (form.manufacturer.trim()) own.manufacturer = form.manufacturer.trim();
-  if (form.model.trim()) own.model = form.model.trim();
-  if (form.location.trim()) own.location = form.location.trim();
-  if (form.purchased.trim()) own.purchased = form.purchased.trim();
-  if (form.price.trim()) own.price = form.price.trim();
-  if (form.warranty.trim()) own.warranty = form.warranty.trim();
+  // Ownership is fully form-owned. Emptied fields are sent as explicit null
+  // (not omitted) because the backend deep-merges nested dicts — omitting a key
+  // would let the stored value survive, so clearing a field in the form would
+  // silently not clear it. (issue #122 review)
   const tags = form.tags
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
-  if (tags.length) own.tags = tags;
-  const ownHasAny = Object.keys(own).length > 0;
+  const own: Ownership = {
+    manufacturer: form.manufacturer.trim() || null,
+    model: form.model.trim() || null,
+    location: form.location.trim() || null,
+    purchased: form.purchased.trim() || null,
+    price: form.price.trim() || null,
+    warranty: form.warranty.trim() || null,
+    tags: tags.length ? tags : null,
+  };
+  const ownHasAny = Object.values(own).some((v) => v != null);
 
-  // Preserve auto-collected detail blocks on edit; ownership is form-owned.
-  // When the user empties ownership, send `own: null` so the backend clears it
-  // (and keeps the other detail blocks) rather than silently retaining it.
   let detail: DeviceDetail | undefined = existing?.detail
     ? { ...existing.detail }
     : undefined;
-  if (ownHasAny) {
-    detail = { ...(detail ?? {}), own };
-  } else if (detail && detail.own) {
-    detail = { ...detail, own: null };
+  // Include the block (with explicit nulls) whenever the form has data or the
+  // stored device already had ownership to clear; otherwise leave it absent.
+  if (ownHasAny || detail?.own) {
+    detail = { ...(detail ?? {}), own: ownHasAny ? own : null };
   }
 
-  // Merge user-entered hw fields into the detail.hw block, preserving any
-  // auto-collected fields (cpu_full, arch, mem_full, chassis, bios).
-  const hw: HwInfo = {};
-  if (form.arch.trim()) hw.arch = form.arch.trim();
-  if (form.chassis.trim()) hw.chassis = form.chassis.trim();
-  if (form.bios.trim()) hw.bios = form.bios.trim();
-  if (form.motherboard.trim()) hw.motherboard = form.motherboard.trim();
+  // Hardware fields the form owns. cpu_full / mem_full are auto-collected and
+  // NOT in this object, so the merge below preserves them; the form-owned
+  // fields carry explicit null when emptied so the backend clears them rather
+  // than keeping a stale value. (issue #122 review)
   const gpus = [form.gpu1, form.gpu2].map((s) => s.trim()).filter(Boolean);
-  if (gpus.length) hw.gpu = gpus;
   const drives = [form.storeDrive1, form.storeDrive2].map((s) => s.trim()).filter(Boolean);
-  if (drives.length) hw.storage_drives = drives;
-  if (Object.keys(hw).length) {
-    detail = { ...(detail ?? {}), hw: { ...(detail?.hw ?? {}), ...hw } };
+  const formHw: HwInfo = {
+    arch: form.arch.trim() || null,
+    chassis: form.chassis.trim() || null,
+    bios: form.bios.trim() || null,
+    motherboard: form.motherboard.trim() || null,
+    gpu: gpus.length ? gpus : null,
+    storage_drives: drives.length ? drives : null,
+  };
+  const hwHasAny = Object.values(formHw).some((v) => v != null);
+  if (hwHasAny || detail?.hw) {
+    detail = { ...(detail ?? {}), hw: { ...(detail?.hw ?? {}), ...formHw } };
   }
 
   const payload: DeviceWrite = {

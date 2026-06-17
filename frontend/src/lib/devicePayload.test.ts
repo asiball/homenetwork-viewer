@@ -95,6 +95,25 @@ describe("buildPayload", () => {
     expect([f.arch, f.chassis, f.bios]).toEqual(["arm64", "SFF", "v1.2"]);
   });
 
+  it("sends null for an emptied hw field while keeping the rest and auto-collected", () => {
+    const dev: Device = {
+      ...existing,
+      detail: { hw: { arch: "x86_64", chassis: "Tower", cpu_full: "i5-12400" } },
+    };
+    const form = { ...formFromDevice(dev), arch: "" }; // clear arch, keep chassis
+    const p = buildPayload(form, dev, "edit", "nas");
+    expect(p.detail?.hw?.arch).toBeNull(); // cleared -> backend deep-merge clears it
+    expect(p.detail?.hw?.chassis).toBe("Tower"); // kept
+    expect(p.detail?.hw?.cpu_full).toBe("i5-12400"); // auto-collected preserved
+  });
+
+  it("sends null for an emptied ownership field while keeping the rest", () => {
+    const form = { ...formFromDevice(existing), manufacturer: "" };
+    const p = buildPayload(form, existing, "edit", "nas");
+    expect(p.detail?.own?.manufacturer).toBeNull(); // cleared
+    expect(p.detail?.own?.model).toBe("DS920+"); // kept
+  });
+
   it("uses the path id in edit mode, the form id in add mode", () => {
     const editP = buildPayload(formFromDevice(existing), existing, "edit", "nas");
     expect(editP.id).toBe("nas");

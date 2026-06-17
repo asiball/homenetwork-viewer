@@ -326,6 +326,32 @@ def _check_import_uniqueness(devices: list[dict]) -> list[str]:
     return errors
 
 
+def _check_referential_integrity(
+    devices: list[dict], switches: list[dict], cables: list[dict]
+) -> list[str]:
+    """Reject an import whose cables / switch ports point at ids that aren't in
+    the same payload (#88). A dangling `fromDev` / `toDev` / `portMap[].device`
+    would otherwise be saved silently and break topology / inventory rendering.
+
+    Valid targets are device *and* switch ids — a cable or port can connect to
+    either (e.g. a switch uplinked to another switch)."""
+    valid = {d["id"] for d in devices if d.get("id")} | {s["id"] for s in switches if s.get("id")}
+    errors: list[str] = []
+    for i, c in enumerate(cables):
+        for key in ("fromDev", "toDev"):
+            ref = c.get(key)
+            if ref and ref not in valid:
+                errors.append(f"cable[{i}]: {key} {ref!r} is not a known device/switch id")
+    for i, s in enumerate(switches):
+        for port, slot in (s.get("portMap") or {}).items():
+            ref = slot.get("device") if isinstance(slot, dict) else None
+            if ref and ref not in valid:
+                errors.append(
+                    f"switch[{i}] port {port}: device {ref!r} is not a known device/switch id"
+                )
+    return errors
+
+
 @app.post("/api/import", status_code=200)
 async def import_catalog(request: Request, file: UploadFile) -> dict[str, int]:
     """Replace catalog with uploaded JSON after validation."""
@@ -370,8 +396,9 @@ async def import_catalog(request: Request, file: UploadFile) -> dict[str, int]:
     norm_cables, cb_errors = _validate_and_dump(cables, Cable, "cable")
     errors = dev_errors + sw_errors + cb_errors
     if not errors:
-        # Only worth checking once every device parsed cleanly.
+        # Only worth checking once every item parsed cleanly.
         errors += _check_import_uniqueness(norm_devices)
+        errors += _check_referential_integrity(norm_devices, norm_switches, norm_cables)
     if errors:
         raise HTTPException(status_code=422, detail="; ".join(errors[:5]))
 

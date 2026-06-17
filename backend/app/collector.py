@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,11 @@ async def run_collector(storage_module) -> None:
                     *[_probe_device(d) for d in devices],
                     return_exceptions=True,
                 )
-                now_human = "just now"
+                # Store an ISO8601 instant, not a frozen human string like
+                # "just now" (which never ages — see issue #84). The frontend
+                # renders it as a relative time. On offline we send last=None so
+                # storage keeps the previous value = the real last-seen instant.
+                now_iso = datetime.now(UTC).isoformat(timespec="seconds")
                 updates: list[dict] = []
                 for r in results:
                     if isinstance(r, Exception):
@@ -94,7 +99,7 @@ async def run_collector(storage_module) -> None:
                     updates.append({
                         "id": dev_id,
                         "online": reachable,
-                        "last": now_human if reachable else None,
+                        "last": now_iso if reachable else None,
                     })
                 if updates:
                     await asyncio.to_thread(storage_module.bulk_update_reachability, updates)

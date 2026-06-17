@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 INTERVAL = 120  # seconds between full sweeps
 CONNECT_TIMEOUT = 2  # seconds per TCP connect attempt
 TCP_PROBE_PORTS = [22, 80, 443, 8080, 8443]  # try these in order
+# Cap simultaneous probes so a large or offline-heavy sweep can't exhaust file
+# descriptors / ping subprocesses on a small host like a Raspberry Pi (#89).
+MAX_CONCURRENT_PROBES = 16
 
 async def _tcp_reachable(ip: str) -> bool:
     """Return True if any common TCP port responds on the given IP."""
@@ -63,13 +66,21 @@ async def _is_reachable(ip: str) -> bool:
     return await _ping_reachable(ip)
 
 
-async def _probe_device(device: dict) -> tuple[str, bool]:
-    """Probe a single device; returns (id, reachable)."""
+async def _probe_device(
+    device: dict, sem: asyncio.Semaphore | None = None
+) -> tuple[str, bool]:
+    """Probe a single device; returns (id, reachable).
+
+    An optional semaphore bounds how many probes run at once (see
+    MAX_CONCURRENT_PROBES); omit it to probe immediately (used in tests).
+    """
     ip = device.get("ip", "")
     if not ip:
         return device["id"], False
-    reachable = await _is_reachable(ip)
-    return device["id"], reachable
+    if sem is not None:
+        async with sem:
+            return device["id"], await _is_reachable(ip)
+    return device["id"], await _is_reachable(ip)
 
 
 async def run_collector(storage_module) -> None:
@@ -81,8 +92,9 @@ async def run_collector(storage_module) -> None:
             # off the event loop so a sweep never stalls API request handling.
             devices = await asyncio.to_thread(storage_module.list_devices)
             if devices:
+                sem = asyncio.Semaphore(MAX_CONCURRENT_PROBES)
                 results = await asyncio.gather(
-                    *[_probe_device(d) for d in devices],
+                    *[_probe_device(d, sem) for d in devices],
                     return_exceptions=True,
                 )
                 # Store an ISO8601 instant, not a frozen human string like

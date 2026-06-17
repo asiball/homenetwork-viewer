@@ -16,6 +16,18 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
+    # Run as the host user so the bind-mounted ./data is writable without the
+    # host being UID 1000. Defaults match the image's baked-in user (#89).
+    #   UID=$(id -u) GID=$(id -g) docker compose up -d
+    user: "${UID:-1000}:${GID:-1000}"
+    # Give an in-flight sweep time to finish before SIGKILL on `docker stop`.
+    stop_grace_period: 15s
+    # Bound JSON log growth from per-request + per-sweep INFO lines (#89).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build: ./frontend
@@ -26,3 +38,8 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

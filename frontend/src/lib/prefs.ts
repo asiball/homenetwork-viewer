@@ -7,6 +7,7 @@ import type { LayoutKind } from "./topology";
 
 export type PollInterval = "off" | "30s" | "5m";
 export type SortMode = "group" | "name" | "ip" | "status";
+export type Theme = "dark" | "light";
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   const v = localStorage.getItem(key);
@@ -16,8 +17,13 @@ function read<T extends string>(key: string, allowed: readonly T[], fallback: T)
 const POLL = ["off", "30s", "5m"] as const;
 const SORT = ["group", "name", "ip", "status"] as const;
 const LAYOUT = ["radial", "spine", "tree"] as const;
+const THEME = ["dark", "light"] as const;
 
 export const prefs = {
+  theme: {
+    get: (): Theme => read("homenet.theme", THEME, "dark"),
+    set: (v: Theme) => localStorage.setItem("homenet.theme", v),
+  },
   poll: {
     get: (): PollInterval => read("homenet.poll", POLL, "5m"),
     set: (v: PollInterval) => localStorage.setItem("homenet.poll", v),

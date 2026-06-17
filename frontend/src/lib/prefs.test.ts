@@ -9,6 +9,7 @@ describe("prefs", () => {
     expect(prefs.sort.get()).toBe("group");
     expect(prefs.layout.get()).toBe("radial");
     expect(prefs.showOffline.get()).toBe(true);
+    expect(prefs.theme.get()).toBe("dark");
   });
 
   it("round-trips valid values", () => {
@@ -16,10 +17,12 @@ describe("prefs", () => {
     prefs.sort.set("ip");
     prefs.layout.set("tree");
     prefs.showOffline.set(false);
+    prefs.theme.set("light");
     expect(prefs.poll.get()).toBe("30s");
     expect(prefs.sort.get()).toBe("ip");
     expect(prefs.layout.get()).toBe("tree");
     expect(prefs.showOffline.get()).toBe(false);
+    expect(prefs.theme.get()).toBe("light");
   });
 
   it("falls back to the default on a garbage stored value", () => {

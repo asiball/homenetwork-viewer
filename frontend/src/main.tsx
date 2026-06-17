@@ -6,7 +6,11 @@ import { HomeView } from "./views/HomeView";
 import { DetailView } from "./views/DetailView";
 import { EditView } from "./views/EditView";
 import { InventoryView } from "./views/InventoryView";
+import { prefs } from "./lib/prefs";
 import "./theme.css";
+
+// Apply the saved theme before first paint so there's no dark→light flash.
+document.documentElement.dataset.theme = prefs.theme.get();
 
 // useBlocker (編集フォームの離脱ガード) は data router でしか動かないため、
 // BrowserRouter ではなく createBrowserRouter + RouterProvider を使う。

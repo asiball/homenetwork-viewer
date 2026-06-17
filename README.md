@@ -1,5 +1,11 @@
 # homenet — 家庭ネットワーク機器カタログ
 
+[![CI](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml)
+
+> **A local-first catalog & topology map for your home LAN** — track every device's IP, MAC,
+> hostname, specs and ownership, and know "what's that IP?" in 10 seconds. Single-user, self-hosted,
+> never exposed to the internet. (日本語の説明が以下に続きます。)
+
 自宅LAN配下の機器（ルーター・NAS・PC・IoT 等）の **IP / MAC / ホスト名 / スペック / 接続・所有情報** を、
 ブラウザから一覧・参照・編集できるローカルホスト用 Web アプリです。「これ何のIP?」「あのMacのRAMは?」を
 **10秒以内**に解消することを目的にしています（個人利用・1ユーザー・〜25機器・インターネット非公開）。

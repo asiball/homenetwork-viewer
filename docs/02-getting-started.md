@@ -49,11 +49,11 @@ homenet 一式（このリポジトリ）を自分のパソコンに置きます
 `git` が入っているなら、ターミナルで:
 
 ```bash
-git clone <このリポジトリのURL> homenetwork-viewer
+git clone https://github.com/asiball/homenetwork-viewer.git
 cd homenetwork-viewer
 ```
 
-`<このリポジトリのURL>` は GitHub のページにある緑の「Code」ボタンから取得できます。
+URL は GitHub のページにある緑の「Code」ボタンからも取得できます。
 
 ### 方法B: ZIP でダウンロード
 

@@ -48,6 +48,8 @@ export const api = {
   cables: () => req<Cable[]>("/cables"),
   meta: () => req<Meta>("/meta"),
   whoami: () => req<{ ip: string | null }>("/whoami"),
+  oui: (mac: string) =>
+    req<{ manufacturer: string | null }>(`/oui/${encodeURIComponent(mac)}`),
   create: (d: DeviceWrite) =>
     req<Device>("/devices", { method: "POST", body: JSON.stringify(d) }),
   update: (id: string, d: DeviceWrite) =>

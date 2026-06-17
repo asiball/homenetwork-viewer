@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel
 
-from . import collector, storage, wol
+from . import collector, oui, storage, wol
 from .models import (
     Cable,
     Device,
@@ -164,6 +164,18 @@ def whoami(request: Request) -> dict[str, str | None]:
     if not ip and request.client:
         ip = request.client.host
     return {"ip": ip or None}
+
+
+@app.get("/api/oui/{mac}")
+def oui_lookup(mac: str) -> dict[str, str | None]:
+    """Manufacturer for a MAC address (or prefix), via the bundled IEEE table.
+
+    Used by the edit form to suggest `ownership.manufacturer` while typing the
+    MAC (issue #107). Always 200: a randomized / unregistered prefix returns
+    ``{"manufacturer": null}`` rather than a 404 so the UI treats "no vendor"
+    as a quiet non-suggestion, not an error.
+    """
+    return {"manufacturer": oui.lookup(mac)}
 
 
 @app.get("/api/meta", response_model=Meta)

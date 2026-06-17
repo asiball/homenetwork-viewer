@@ -116,6 +116,39 @@ export function EditView({ mode }: Props) {
     return hit ? hit.name || hit.id : null;
   }, [devices, form.mac, selfId]);
 
+  // OUI → manufacturer suggestion: the first 24+ bits of a MAC identify the
+  // vendor via the bundled IEEE table. We look it up (debounced) as the user
+  // types and offer it as a one-click fill for the manufacturer field — never
+  // auto-overwriting what they typed (#107). Randomized phone MACs aren't in
+  // the table, so they quietly yield no suggestion.
+  const [ouiVendor, setOuiVendor] = useState<string | null>(null);
+  const macHex = form.mac.replace(/[^0-9a-fA-F]/g, "");
+  useEffect(() => {
+    let ignore = false;
+    // All setState happens inside the (async) timeout so the lookup is
+    // debounced and we never set state synchronously during the effect.
+    const t = setTimeout(() => {
+      if (macHex.length < 6) {
+        if (!ignore) setOuiVendor(null);
+        return;
+      }
+      api
+        .oui(macHex)
+        .then((r) => {
+          if (!ignore) setOuiVendor(r.manufacturer);
+        })
+        .catch(() => {
+          if (!ignore) setOuiVendor(null);
+        });
+    }, 300);
+    return () => {
+      ignore = true;
+      clearTimeout(t);
+    };
+  }, [macHex]);
+  // Hide the suggestion once the manufacturer field already holds it.
+  const showOuiSuggestion = !!ouiVendor && form.manufacturer.trim() !== ouiVendor;
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => {
       const next = { ...f, [key]: value };
@@ -322,6 +355,14 @@ export function EditView({ mode }: Props) {
                   onChange={(e) => set("mac", e.target.value)}
                   placeholder="AA:BB:CC:00:0A:11"
                 />
+                {showOuiSuggestion && (
+                  <span className="oui-suggest">
+                    OUI: {ouiVendor}
+                    <button type="button" className="oui-apply" onClick={() => ouiVendor && set("manufacturer", ouiVendor)}>
+                      use as manufacturer
+                    </button>
+                  </span>
+                )}
               </Field>
               <Field id="f-type" label="type" required error={errors.type} hint="アイコン・分類に使用">
                 <input

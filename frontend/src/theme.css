@@ -1170,6 +1170,31 @@ body {
   color: var(--err);
   letter-spacing: 0.02em;
 }
+/* OUI vendor suggestion under the MAC field (#107). */
+.f-field .oui-suggest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--fg-dim);
+  letter-spacing: 0.02em;
+}
+.f-field .oui-apply {
+  appearance: none;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg-3);
+  color: var(--amber);
+  cursor: pointer;
+}
+.f-field .oui-apply:hover {
+  border-color: var(--amber);
+}
 .f-check {
   display: flex;
   align-items: center;

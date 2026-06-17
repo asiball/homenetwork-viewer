@@ -26,7 +26,7 @@ export function SummaryPanel({ device }: Props) {
           {device.id === selfId && <span className="pill you">this device</span>}
         </div>
         <div className="dname">{device.name}</div>
-        <div className="dhost">{device.host}</div>
+        <div className="dhost"><Copyable text={device.host} /></div>
       </div>
 
       <div className="panel" data-title="network">

@@ -231,7 +231,7 @@ export function DetailView() {
                 <Copyable text={detail?.net?.ipv4 ?? device.ip} />
               </dd>
               <dt>ipv6</dt>
-              <dd>{detail?.net?.ipv6 ?? "—"}</dd>
+              <dd>{detail?.net?.ipv6 ? <Copyable text={detail.net.ipv6} /> : "—"}</dd>
               <dt>mac</dt>
               <dd>
                 <Copyable text={device.mac} />
@@ -239,9 +239,9 @@ export function DetailView() {
               <dt>link</dt>
               <dd>{device.conn ?? "—"}</dd>
               <dt>gateway</dt>
-              <dd>{detail?.net?.gateway ?? "—"}</dd>
+              <dd>{detail?.net?.gateway ? <Copyable text={detail.net.gateway} /> : "—"}</dd>
               <dt>dns</dt>
-              <dd>{detail?.net?.dns ?? "—"}</dd>
+              <dd>{detail?.net?.dns ? <Copyable text={detail.net.dns} /> : "—"}</dd>
               <dt>dhcp</dt>
               <dd>{detail?.net?.dhcp ?? "—"}</dd>
               <dt>vlan</dt>

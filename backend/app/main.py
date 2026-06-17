@@ -15,7 +15,6 @@ import contextlib
 import json
 import logging
 import os
-import socket
 import time
 from contextlib import asynccontextmanager
 from datetime import date
@@ -26,7 +25,7 @@ from fastapi.responses import JSONResponse
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel
 
-from . import collector, storage
+from . import collector, storage, wol
 from .models import (
     Cable,
     Device,
@@ -226,23 +225,10 @@ def wake_device(device_id: str) -> dict[str, str]:
     if not mac:
         raise HTTPException(status_code=400, detail="device has no MAC address")
 
-    # Normalize MAC: remove separators, convert to bytes
-    mac_clean = mac.replace(":", "").replace("-", "").replace(".", "")
-    if len(mac_clean) != 12:
-        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}")
-
     try:
-        mac_bytes = bytes.fromhex(mac_clean)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"invalid MAC address: {mac}") from None
-
-    # Magic packet: 6x 0xFF + 16x MAC
-    magic = b"\xff" * 6 + mac_bytes * 16
-
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            sock.sendto(magic, ("255.255.255.255", 9))
+        wol.send_magic_packet(mac)
+    except wol.InvalidMacError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=503, detail=f"failed to send magic packet: {exc}") from exc
 

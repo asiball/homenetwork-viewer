@@ -189,7 +189,11 @@ export default function App() {
         <Outlet />
       </ErrorBoundary>
       {toast && (
-        <div className={`toast ${toast.kind === "err" ? "err" : ""}`}>
+        <div
+          className={`toast ${toast.kind === "err" ? "err" : ""}`}
+          role={toast.kind === "err" ? "alert" : "status"}
+          aria-live={toast.kind === "err" ? "assertive" : "polite"}
+        >
           <span>{toast.msg}</span>
           <button className="toast-close" onClick={() => setToast(null)} aria-label="閉じる">×</button>
         </div>

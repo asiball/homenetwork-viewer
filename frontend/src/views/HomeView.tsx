@@ -9,6 +9,7 @@ import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
 import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { countOnline, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
 import { APP_VERSION } from "../version";
@@ -39,6 +40,9 @@ export function HomeView() {
   // Ledger switch selected on the wiring tree (side panel shows its ports).
   const [selSwId, setSelSwId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Import is a destructive full-catalog replace — confirm via the in-app
+  // ConfirmModal (matching delete / leave guards) instead of native confirm().
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
 
   // Selecting a device always takes the side panel back from a switch.
   function selectDevice(id: string) {
@@ -135,11 +139,17 @@ export function HomeView() {
     }
   }
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    if (!confirm(`Replace ALL catalog data with "${file.name}"? This cannot be undone (a backup is saved server-side).`)) return;
+    setPendingImport(file); // open the confirm modal; actual import on confirm
+  }
+
+  async function confirmImport() {
+    const file = pendingImport;
+    setPendingImport(null);
+    if (!file) return;
     try {
       const result = await api.importCatalog(file);
       await refresh();
@@ -228,6 +238,20 @@ export function HomeView() {
           <div className="center-screen">no devices · add one to begin</div>
         </div>
       )}
+      <ConfirmModal
+        open={pendingImport != null}
+        danger
+        title="Replace all catalog data?"
+        message={
+          pendingImport
+            ? `Import "${pendingImport.name}" and replace ALL devices, switches and cables. This cannot be undone (a backup is saved server-side).`
+            : ""
+        }
+        confirmLabel="Replace"
+        cancelLabel="Cancel"
+        onConfirm={confirmImport}
+        onCancel={() => setPendingImport(null)}
+      />
     </Shell>
   );
 }

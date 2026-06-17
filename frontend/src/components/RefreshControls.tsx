@@ -1,7 +1,8 @@
 // Header status + refresh controls (spec §4.3 / §5.3).
 // Honest about what it does: it re-fetches the catalog from the API on an
-// interval. Live ARP/ping scanning is the v1.1 collector (not wired yet), so
-// this polls the data source rather than faking metrics.
+// interval. The backend collector already samples reachability live (TCP +
+// ICMP every 120s) and writes online/last; this button just re-pulls that
+// data — it doesn't fake metrics. detail.metrics/services remain manual.
 
 import { useEffect, useRef, useState } from "react";
 import { useCatalog } from "../App";

@@ -156,10 +156,13 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 ## ロードマップ
 
-- **v1.0（実装済み）** ホーム（radial/spine）+ 詳細の2画面、`devices.json` 読み込み、オフライン表示。
+- **v1.0（実装済み）** ホーム（radial / spine / tree）+ 詳細の2画面、`devices.json` 読み込み、オフライン表示。
 - **v1.1 編集（前倒し実装済み）** ブラウザからの追加 / 編集 / 削除と `devices.json` 書き戻し（本リポジトリ）。
-- **v1.1+（将来）** ルーター ARP + ping による T1/T2 バックグラウンド収集、SNMP/node_exporter メトリクス、
-  ポートスキャン、ケーブル/スイッチ・インベントリ画面（プロトタイプ `design-prototype/src/view-cables.jsx` 参照）。
+- **到達性コレクタ（実装済み）** バックグラウンドで全機器を **TCP プローブ + ICMP ping フォールバック**（120秒間隔）で実測し、
+  `online` / `last` を自動更新します。`detail.metrics` / `hist7` / `services`（ポートスキャン）は手動入力のままです。
+- **その他 実装済み** ケーブル/スイッチ・インベントリ画面、Wake-on-LAN、カタログの import / export（バックアップ付き）。
+- **将来（未実装）** ルーター ARP / DHCP リース / mDNS による自動デバイス発見、SNMP / node_exporter メトリクス、
+  到達性の履歴・稼働率 SLO・ダウン通知、サブネット / VLAN（IPAM）ビュー。詳細は GitHub Issues（`[Feature/Epic]`）参照。
 
 ## 認証 / 公開について
 

@@ -416,7 +416,7 @@ export function DetailView() {
                 </div>
               </>
             ) : (
-              <div className="d-sparse">no uptime history · collector not wired yet</div>
+              <div className="d-sparse">no uptime history yet · reachability is sampled live, history isn't kept</div>
             )}
           </div>
 

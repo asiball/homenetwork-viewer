@@ -3,7 +3,7 @@
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableSwatch } from "../lib/helpers";
+import { CableSwatch } from "../components/CableSwatch";
 
 export function InventoryView() {
   const { devices, switches, cables } = useCatalog();
@@ -112,14 +112,7 @@ export function InventoryView() {
                     <td>{c.cat ?? "—"}</td>
                     <td>{c.len ?? "—"}</td>
                     <td>
-                      <span
-                        className="swatch"
-                        style={{
-                          background: cableSwatch(c.color),
-                          border: c.color === "white" ? "1px solid var(--rule-2)" : "0",
-                          display: "inline-block",
-                        }}
-                      />
+                      <CableSwatch color={c.color} style={{ display: "inline-block" }} />
                     </td>
                     <td>{deviceName(c.fromDev)}{c.fromPort != null ? ` · p${c.fromPort}` : ""}</td>
                     <td>{deviceName(c.toDev)}{c.toPort != null ? ` · p${c.toPort}` : ""}</td>

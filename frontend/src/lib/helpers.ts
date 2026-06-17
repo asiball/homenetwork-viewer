@@ -65,6 +65,22 @@ export function cableSwatch(color?: string | null): string {
   return (color && CABLE_SWATCH[color]) || "#5a606b";
 }
 
+// Single source of truth for device search. Matches the user's own words —
+// identity fields plus the free text they typed in (notes, tags, ownership) —
+// so a device can be found by the tag/note/maker the user actually wrote.
+// Used by both the sidebar list and the map filter so they never drift.
+export function matchesQuery(d: Device, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const own = d.detail?.own;
+  const haystack: (string | null | undefined)[] = [
+    d.name, d.host, d.ip, d.mac, d.type, d.group, d.id, d.notes,
+    own?.manufacturer, own?.model, own?.location,
+    ...(own?.tags ?? []),
+  ];
+  return haystack.some((v) => v != null && v.toLowerCase().includes(needle));
+}
+
 // Last octet of an IPv4 (".10"), used in the list + map labels.
 export function lastOctet(ip: string): string {
   return ip.split(".").pop() ?? "";

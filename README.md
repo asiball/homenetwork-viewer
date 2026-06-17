@@ -127,8 +127,9 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 ### ヘッダーの「poll / refresh」について
 
 `refresh` と自動更新（off / 30s / 5m）は **API からカタログを再取得**します。`devices.json` を手で書き換えた場合も
-これで反映されます。実機の ARP / ping ライブスキャン（spec §4 の T1/T2 コレクタ）は将来拡張で、現時点では未配線です
-（メトリクスを捏造せず、データソースをポーリングする実装にしています）。
+これで反映されます。到達性（`online` / `last`）は backend のコレクタが **TCP プローブ + ICMP ping**（120秒間隔）で
+実測して自動更新しており、`refresh` はその結果を取り直すものです。ルーター ARP 取得・SNMP メトリクス・ポートスキャンは
+将来拡張で、`detail.metrics` / `services` は現時点では手動入力です（メトリクスを捏造しない方針）。
 
 ---
 

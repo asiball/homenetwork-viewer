@@ -35,4 +35,20 @@ export const prefs = {
     get: (): boolean => localStorage.getItem("homenet.showOffline") !== "false",
     set: (v: boolean) => localStorage.setItem("homenet.showOffline", String(v)),
   },
+  // Most-recently-opened device ids, newest first (capped). Lets the home
+  // screen reopen where you last looked instead of always devices[0] (#122).
+  recent: {
+    get: (): string[] => {
+      try {
+        const v = JSON.parse(localStorage.getItem("homenet.recent") ?? "[]");
+        return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+      } catch {
+        return [];
+      }
+    },
+    push: (id: string) => {
+      const next = [id, ...prefs.recent.get().filter((x) => x !== id)].slice(0, 8);
+      localStorage.setItem("homenet.recent", JSON.stringify(next));
+    },
+  },
 };

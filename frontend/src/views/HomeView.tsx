@@ -29,9 +29,11 @@ export function HomeView() {
 
   const [layout, setLayout] = useState<LayoutKind>(() => initialLayout(params.get("layout")));
   const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
-  const [selId, setSelId] = useState<string>(
-    () => devices[0]?.id ?? "",
-  );
+  const [selId, setSelId] = useState<string>(() => {
+    // Reopen the most recently viewed device that still exists, else the first.
+    const recent = prefs.recent.get().find((id) => devices.some((d) => d.id === id));
+    return recent ?? devices[0]?.id ?? "";
+  });
   // Ledger switch selected on the wiring tree (side panel shows its ports).
   const [selSwId, setSelSwId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");

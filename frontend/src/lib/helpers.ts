@@ -107,6 +107,22 @@ export function clampPct(n: number | null | undefined): number {
   return Math.max(0, Math.min(100, n));
 }
 
+// Stable colour per device group, for at-a-glance differentiation in the list
+// (and, later, the map) — spec §3.1 wants type/group to be visually legible
+// rather than every node looking identical (#120). Unknown groups fall back to
+// a neutral grey.
+const GROUP_COLORS: Record<string, string> = {
+  Infra: "#4f8ad6",
+  IoT: "#d8b34e",
+  Media: "#b07cd0",
+  Mobile: "#5fa56e",
+  Computer: "#cf7a4d",
+  Misc: "#8a8f99",
+};
+export function groupColor(group: string): string {
+  return GROUP_COLORS[group] ?? "#8a8f99";
+}
+
 // Last octet of an IPv4 (".10"), used in the list + map labels.
 export function lastOctet(ip: string): string {
   return ip.split(".").pop() ?? "";

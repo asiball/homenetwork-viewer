@@ -12,7 +12,7 @@ import ipaddress
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Group = Literal["Infra", "IoT", "Media", "Mobile", "Computer", "Misc"]
 
@@ -56,9 +56,11 @@ class HwInfo(BaseModel):
 
 class Metrics(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    cpu_pct: float | None = None
+    # Percentages are 0–100: reject absurd values (cpu_pct: 150) at the import
+    # boundary so they never reach the UI bars (issue #88).
+    cpu_pct: float | None = Field(default=None, ge=0, le=100)
     cpu_series: list[float] | None = None
-    mem_pct: float | None = None
+    mem_pct: float | None = Field(default=None, ge=0, le=100)
     mem_series: list[float] | None = None
     net_in: float | None = None
     net_out: float | None = None
@@ -68,7 +70,7 @@ class Metrics(BaseModel):
 
 class Service(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    port: int
+    port: int = Field(ge=1, le=65535)
     proto: str = "tcp"
     svc: str = ""
     banner: str = ""
@@ -79,7 +81,7 @@ class Drive(BaseModel):
     nm: str
     md: str | None = None
     size: str | None = None
-    pct: float = 0
+    pct: float = Field(default=0, ge=0, le=100)
 
 
 class StorageInfo(BaseModel):

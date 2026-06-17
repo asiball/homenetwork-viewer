@@ -8,7 +8,7 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, formatLast, switchForDevice } from "../lib/helpers";
+import { cableForDevice, clampPct, formatLast, switchForDevice } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { CableSwatch } from "../components/CableSwatch";
@@ -368,7 +368,7 @@ export function DetailView() {
                       <span className="meter">
                         <span
                           className={`fill ${d.pct > 85 ? "hot" : ""}`}
-                          style={{ width: `${Math.max(0, Math.min(100, d.pct))}%` }}
+                          style={{ width: `${clampPct(d.pct)}%` }}
                         />
                       </span>
                       <span className="pct">{d.pct}%</span>

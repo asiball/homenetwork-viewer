@@ -100,6 +100,13 @@ export function formatLast(last?: string | null): string {
   return new Date(t).toLocaleDateString();
 }
 
+// Clamp a percentage to 0–100 so a corrupt or hand-edited value (pct: 150,
+// pct: -5) can never blow out a CSS bar width (issue #88). Non-finite → 0.
+export function clampPct(n: number | null | undefined): number {
+  if (n == null || Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
 // Last octet of an IPv4 (".10"), used in the list + map labels.
 export function lastOctet(ip: string): string {
   return ip.split(".").pop() ?? "";

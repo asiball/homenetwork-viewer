@@ -3,7 +3,7 @@
 import { Link } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Copyable } from "./Copyable";
-import { formatLast } from "../lib/helpers";
+import { clampPct, formatLast } from "../lib/helpers";
 import type { Device } from "../types";
 
 interface Props {
@@ -76,7 +76,7 @@ export function SummaryPanel({ device }: Props) {
                   <span>{m.cpu_pct}%</span>
                 </div>
                 <div className="bar">
-                  <div className="fill" style={{ width: `${m.cpu_pct}%` }} />
+                  <div className="fill" style={{ width: `${clampPct(m.cpu_pct)}%` }} />
                 </div>
               </>
             )}
@@ -87,7 +87,7 @@ export function SummaryPanel({ device }: Props) {
                   <span>{m.mem_pct}%</span>
                 </div>
                 <div className="bar">
-                  <div className="fill" style={{ width: `${m.mem_pct}%`, background: "var(--ok)" }} />
+                  <div className="fill" style={{ width: `${clampPct(m.mem_pct)}%`, background: "var(--ok)" }} />
                 </div>
               </>
             )}

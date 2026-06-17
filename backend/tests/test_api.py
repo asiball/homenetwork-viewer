@@ -381,6 +381,20 @@ def test_import_rejects_malformed_cable(client):
     assert "cable[0]" in r.json()["detail"]
 
 
+def test_import_rejects_out_of_range_pct(client):
+    """A percentage outside 0–100 is rejected at the import boundary (#88)."""
+    dev = _sample_device(detail={"metrics": {"cpu_pct": 150}})
+    r = _import(client, {"devices": [dev], "switches": [], "cables": []})
+    assert r.status_code == 422
+
+
+def test_import_rejects_out_of_range_port(client):
+    """A service port outside 1–65535 is rejected (#88)."""
+    dev = _sample_device(detail={"services": [{"port": 99999}]})
+    r = _import(client, {"devices": [dev], "switches": [], "cables": []})
+    assert r.status_code == 422
+
+
 def test_import_rejects_oversized_upload(client):
     import io
 

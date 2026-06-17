@@ -1,6 +1,7 @@
 # homenet — 家庭ネットワーク機器カタログ
 
 [![CI](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **A local-first catalog & topology map for your home LAN** — track every device's IP, MAC,
 > hostname, specs and ownership, and know "what's that IP?" in 10 seconds. Single-user, self-hosted,
@@ -174,3 +175,7 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 LAN内・個人利用前提のため認証は付けていません。外部に出す場合は前段の nginx 等で Basic 認証や
 内部CA（mkcert）による HTTPS を付与してください（spec §8.3）。
+
+## ライセンス
+
+[MIT License](LICENSE) © 2026 asiball

@@ -81,6 +81,25 @@ export function matchesQuery(d: Device, query: string): boolean {
   return haystack.some((v) => v != null && v.toLowerCase().includes(needle));
 }
 
+// Format a reachability timestamp into a short relative string ("5m ago").
+// The collector writes `last` as an ISO8601 instant (issue #84); older data or
+// a hand-edited value like "just now" is not a date, so we show it verbatim
+// rather than rendering "Invalid Date".
+export function formatLast(last?: string | null): string {
+  if (!last) return "—";
+  const t = Date.parse(last);
+  if (Number.isNaN(t)) return last; // legacy / hand-edited human string
+  const secs = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(t).toLocaleDateString();
+}
+
 // Last octet of an IPv4 (".10"), used in the list + map labels.
 export function lastOctet(ip: string): string {
   return ip.split(".").pop() ?? "";

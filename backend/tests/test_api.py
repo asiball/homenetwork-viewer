@@ -456,3 +456,32 @@ def test_wake_socket_failure_returns_503(client, monkeypatch):
     r = client.post("/api/devices/test-pi/wake")
     assert r.status_code == 503
     assert "failed to send magic packet" in r.json()["detail"]
+
+
+def test_bulk_update_reachability_keeps_last_seen_when_offline(client):
+    """Going offline must preserve the previous last-seen instant (issue #84).
+
+    The collector sends last=None on an offline probe; storage must keep the
+    timestamp from when the device was last reachable, not blank it out.
+    """
+    client.post("/api/devices", json=_sample_device(last="2026-06-17T02:00:00+00:00"))
+
+    # Device goes offline: collector reports online=False, last=None.
+    storage.bulk_update_reachability([{"id": "test-pi", "online": False, "last": None}])
+
+    dev = storage.get_device("test-pi")
+    assert dev["online"] is False
+    assert dev["last"] == "2026-06-17T02:00:00+00:00"
+
+
+def test_bulk_update_reachability_refreshes_last_when_online(client):
+    """An online probe stamps the new last-seen instant."""
+    client.post("/api/devices", json=_sample_device(last="2026-06-17T02:00:00+00:00"))
+
+    storage.bulk_update_reachability(
+        [{"id": "test-pi", "online": True, "last": "2026-06-17T03:30:00+00:00"}]
+    )
+
+    dev = storage.get_device("test-pi")
+    assert dev["online"] is True
+    assert dev["last"] == "2026-06-17T03:30:00+00:00"

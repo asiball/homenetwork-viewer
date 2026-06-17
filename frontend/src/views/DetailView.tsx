@@ -8,7 +8,7 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, switchForDevice } from "../lib/helpers";
+import { cableForDevice, formatLast, switchForDevice } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { CableSwatch } from "../components/CableSwatch";
@@ -194,7 +194,7 @@ export function DetailView() {
             ) : (
               <>
                 <div className="v dim">—</div>
-                <div className="sub">{device.online ? "no agent" : `offline · last ${device.last ?? "—"}`}</div>
+                <div className="sub">{device.online ? "no agent" : `offline · last ${formatLast(device.last)}`}</div>
               </>
             )}
           </div>
@@ -205,7 +205,7 @@ export function DetailView() {
             <div className="sub">
               {device.online
                 ? device.uptime ? "since boot" : "online"
-                : `last online ${device.last ?? "—"}`}
+                : `last online ${formatLast(device.last)}`}
             </div>
           </div>
         </div>

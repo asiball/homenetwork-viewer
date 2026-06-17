@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom";
 import { useCatalog } from "../App";
 import { Copyable } from "./Copyable";
+import { formatLast } from "../lib/helpers";
 import type { Device } from "../types";
 
 interface Props {
@@ -41,7 +42,7 @@ export function SummaryPanel({ device }: Props) {
           <dt>link</dt>
           <dd>{device.conn ?? "—"}</dd>
           <dt>last</dt>
-          <dd>{device.last ?? "—"}</dd>
+          <dd>{formatLast(device.last)}</dd>
           <dt>up</dt>
           <dd>{device.uptime ?? "—"}</dd>
           {device.url && (
@@ -97,8 +98,8 @@ export function SummaryPanel({ device }: Props) {
             ? m
               ? <span>catalog · metrics available</span>
               : <span>online · no metrics</span>
-            : <span>offline · last seen {device.last ?? "—"}</span>}
-          <span>{device.online ? device.last ?? "" : ""}</span>
+            : <span>offline · last seen {formatLast(device.last)}</span>}
+          <span>{device.online ? formatLast(device.last) : ""}</span>
         </div>
       </div>
 

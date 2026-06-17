@@ -6,6 +6,7 @@ import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
 import { groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
 import { prefs, type SortMode } from "../lib/prefs";
+import { DeviceIcon } from "./DeviceIcon";
 
 interface Props {
   devices: Device[];
@@ -116,6 +117,7 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
               title={`${d.name} · ${d.ip}`}
             >
               <span className={`lstat ${d.online ? "on" : "off"}`} aria-label={d.online ? "online" : "offline"} />
+              <DeviceIcon type={d.type} className="licon" style={{ color: groupColor(d.group) }} />
               <span className="lname">{d.name}</span>
               {d.id === selfId && <span className="lyou">YOU</span>}
               <span className="lip">.{lastOctet(d.ip)}</span>

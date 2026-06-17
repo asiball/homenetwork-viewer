@@ -3,7 +3,8 @@
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import { Copyable } from "./Copyable";
-import { clampPct, formatLast } from "../lib/helpers";
+import { DeviceIcon } from "./DeviceIcon";
+import { clampPct, formatLast, groupColor } from "../lib/helpers";
 import type { Device } from "../types";
 
 interface Props {
@@ -18,6 +19,7 @@ export function SummaryPanel({ device }: Props) {
     <aside className="n-side" aria-label="device summary">
       <div className="panel" data-title="identity">
         <div className="id-row">
+          <DeviceIcon type={device.type} size={15} style={{ color: groupColor(device.group) }} />
           <span className={`pill ${device.online ? "on" : "off"}`}>
             {device.online ? "ONLINE" : "OFFLINE"}
           </span>

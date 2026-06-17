@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Device } from "../types";
 import { DeviceList } from "./DeviceList";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface Props {
   devices: Device[];
@@ -52,7 +53,10 @@ export function Shell({
         </Link>
         <Link className="nav-link" to="/inventory" title="switch & cable inventory">inventory</Link>
         <div className="crumbs">{crumbs}</div>
-        <div className="right">{right}</div>
+        <div className="right">
+          {right}
+          <ThemeToggle />
+        </div>
       </header>
 
       <DeviceList

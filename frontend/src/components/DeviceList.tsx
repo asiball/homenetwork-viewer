@@ -5,8 +5,7 @@ import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
 import { groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
-
-type SortMode = "group" | "name" | "ip" | "status";
+import { prefs, type SortMode } from "../lib/prefs";
 
 interface Props {
   devices: Device[];
@@ -18,9 +17,7 @@ interface Props {
 
 export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", onSearchChange }: Props) {
   const { selfId } = useCatalog();
-  const [sort, setSort] = useState<SortMode>(
-    () => (localStorage.getItem("homenet.sort") as SortMode) || "group"
-  );
+  const [sort, setSort] = useState<SortMode>(() => prefs.sort.get());
 
   // "/" focuses the search box from anywhere (unless already typing in a
   // field) — fast path to the core "what is this IP?" lookup (#108).
@@ -58,7 +55,7 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
 
   function handleSortChange(s: SortMode) {
     setSort(s);
-    localStorage.setItem("homenet.sort", s);
+    prefs.sort.set(s);
   }
 
   return (

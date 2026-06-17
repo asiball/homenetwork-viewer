@@ -12,17 +12,14 @@ import { RefreshControls } from "../components/RefreshControls";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { countOnline, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
+import { prefs } from "../lib/prefs";
 import { APP_VERSION } from "../version";
-
-const LAYOUT_KEY = "homenet.layout";
-const OFFLINE_KEY = "homenet.showOffline";
 
 function initialLayout(urlLayout: string | null): LayoutKind {
   if (urlLayout === "spine" || urlLayout === "radial" || urlLayout === "tree") {
     return urlLayout;
   }
-  const stored = localStorage.getItem(LAYOUT_KEY);
-  return stored === "spine" || stored === "tree" ? stored : "radial";
+  return prefs.layout.get();
 }
 
 export function HomeView() {
@@ -31,9 +28,7 @@ export function HomeView() {
   const [params, setParams] = useSearchParams();
 
   const [layout, setLayout] = useState<LayoutKind>(() => initialLayout(params.get("layout")));
-  const [showOffline, setShowOffline] = useState(
-    () => localStorage.getItem(OFFLINE_KEY) !== "false",
-  );
+  const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
   const [selId, setSelId] = useState<string>(
     () => devices[0]?.id ?? "",
   );
@@ -85,7 +80,7 @@ export function HomeView() {
   function changeLayout(next: LayoutKind) {
     setLayout(next);
     setSelSwId(null);
-    localStorage.setItem(LAYOUT_KEY, next);
+    prefs.layout.set(next);
     const p = new URLSearchParams(params);
     p.set("layout", next);
     setParams(p, { replace: true });
@@ -93,7 +88,7 @@ export function HomeView() {
 
   function toggleOffline() {
     setShowOffline((v) => {
-      localStorage.setItem(OFFLINE_KEY, String(!v));
+      prefs.showOffline.set(!v);
       return !v;
     });
   }

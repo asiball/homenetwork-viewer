@@ -1,9 +1,7 @@
 // App root: catalog data provider + router + toast host.
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -12,32 +10,8 @@ import {
 import { Outlet } from "react-router-dom";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";
+import { CatalogContext, type CatalogValue } from "./CatalogContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-
-interface CatalogValue {
-  devices: Device[];
-  switches: Switch[];
-  cables: Cable[];
-  meta: Meta;
-  /** id of the catalog device whose IP matches the browser's client IP. */
-  selfId: string | null;
-  lastSync: Date | null;
-  /** true only during the very first catalog load (gates full-screen spinners). */
-  loading: boolean;
-  /** true during a background re-fetch (poll / manual refresh) — never blanks views. */
-  refreshing: boolean;
-  syncError: string | null;
-  refresh: () => Promise<void>;
-  notify: (message: string, kind?: "ok" | "err") => void;
-}
-
-const CatalogContext = createContext<CatalogValue | null>(null);
-
-export function useCatalog(): CatalogValue {
-  const ctx = useContext(CatalogContext);
-  if (!ctx) throw new Error("useCatalog must be used within <App>");
-  return ctx;
-}
 
 const EMPTY_META: Meta = { total: 0, online: 0, offline: 0, updated_at: null };
 

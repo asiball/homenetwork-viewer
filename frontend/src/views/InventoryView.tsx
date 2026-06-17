@@ -1,6 +1,6 @@
 // Inventory view: switch port maps and cable ledger (/inventory).
 
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import { Shell } from "../components/Shell";
 import { RefreshControls } from "../components/RefreshControls";
 import { CableSwatch } from "../components/CableSwatch";

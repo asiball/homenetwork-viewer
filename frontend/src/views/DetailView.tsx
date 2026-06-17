@@ -3,7 +3,7 @@
 
 import { Fragment, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";

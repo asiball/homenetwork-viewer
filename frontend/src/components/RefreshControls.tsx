@@ -5,7 +5,7 @@
 // data — it doesn't fake metrics. detail.metrics/services remain manual.
 
 import { useEffect, useRef, useState } from "react";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 
 type Interval = "off" | "30s" | "5m";
 const MS: Record<Interval, number> = { off: 0, "30s": 30_000, "5m": 300_000 };

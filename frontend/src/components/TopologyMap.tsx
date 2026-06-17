@@ -3,7 +3,7 @@
 // scroll/pan pane; radial & spine scale to fit as before.
 
 import { useRef, useMemo } from "react";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
 import { lastOctet } from "../lib/helpers";
 import {

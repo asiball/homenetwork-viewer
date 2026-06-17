@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
 import { groupByOrder, lastOctet, matchesQuery } from "../lib/helpers";
 

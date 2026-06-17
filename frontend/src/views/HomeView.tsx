@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { TopologyMap } from "../components/TopologyMap";

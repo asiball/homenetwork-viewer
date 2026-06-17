@@ -435,6 +435,43 @@ def test_import_rejects_out_of_range_port(client):
     assert r.status_code == 422
 
 
+def test_import_rejects_cable_with_unknown_endpoint(client):
+    """A cable pointing at an id not in the payload is rejected (#88)."""
+    payload = {
+        "devices": [_sample_device()],
+        "switches": [],
+        "cables": [{"id": "c1", "fromDev": "test-pi", "toDev": "ghost"}],
+    }
+    r = _import(client, payload)
+    assert r.status_code == 422
+    assert "ghost" in r.json()["detail"]
+
+
+def test_import_rejects_switch_port_with_unknown_device(client):
+    """A switch port mapped to an unknown id is rejected (#88)."""
+    payload = {
+        "devices": [_sample_device()],
+        "switches": [
+            {"id": "sw1", "name": "Sw 1", "type": "switch", "portMap": {"1": {"device": "ghost"}}}
+        ],
+        "cables": [],
+    }
+    r = _import(client, payload)
+    assert r.status_code == 422
+    assert "ghost" in r.json()["detail"]
+
+
+def test_import_allows_cable_between_device_and_switch(client):
+    """fromDev/toDev may reference a switch id, not only a device id (#88)."""
+    payload = {
+        "devices": [_sample_device()],
+        "switches": [{"id": "sw1", "name": "Sw 1", "type": "switch"}],
+        "cables": [{"id": "c1", "fromDev": "test-pi", "toDev": "sw1"}],
+    }
+    r = _import(client, payload)
+    assert r.status_code == 200
+
+
 def test_import_rejects_oversized_upload(client):
     import io
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { groupByOrder, lastOctet, matchesQuery } from "../lib/helpers";
+import { groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
 
 type SortMode = "group" | "name" | "ip" | "status";
 
@@ -93,6 +93,20 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
       {grouped.map(({ group, items }) => (
         <div key={group}>
           <div className="ltitle">
+            {group !== "All" && (
+              <span
+                aria-hidden
+                style={{
+                  display: "inline-block",
+                  width: 7,
+                  height: 7,
+                  borderRadius: 2,
+                  background: groupColor(group),
+                  marginRight: 6,
+                  verticalAlign: "middle",
+                }}
+              />
+            )}
             {group} · {items.length}
           </div>
           {items.map((d) => (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct } from "./helpers";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor } from "./helpers";
 import type { Device } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -72,6 +72,14 @@ describe("formatLast", () => {
   it("shows legacy / hand-edited human strings verbatim", () => {
     expect(formatLast("just now")).toBe("just now");
     expect(formatLast("yesterday")).toBe("yesterday");
+  });
+});
+
+describe("groupColor", () => {
+  it("gives each known group a distinct colour and falls back to grey", () => {
+    expect(groupColor("Infra")).toMatch(/^#/);
+    expect(groupColor("Computer")).not.toBe(groupColor("Infra"));
+    expect(groupColor("Unknown")).toBe("#8a8f99");
   });
 });
 

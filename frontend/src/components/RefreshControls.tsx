@@ -6,10 +6,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCatalog } from "../CatalogContext";
+import { prefs, type PollInterval } from "../lib/prefs";
 
-type Interval = "off" | "30s" | "5m";
-const MS: Record<Interval, number> = { off: 0, "30s": 30_000, "5m": 300_000 };
-const KEY = "homenet.poll";
+const MS: Record<PollInterval, number> = { off: 0, "30s": 30_000, "5m": 300_000 };
 
 function fmtTime(d: Date | null): string {
   if (!d) return "—";
@@ -18,9 +17,7 @@ function fmtTime(d: Date | null): string {
 
 export function RefreshControls() {
   const { meta, lastSync, refreshing, syncError, refresh } = useCatalog();
-  const [interval, setInterval_] = useState<Interval>(
-    () => (localStorage.getItem(KEY) as Interval) || "5m",
-  );
+  const [interval, setInterval_] = useState<PollInterval>(() => prefs.poll.get());
   const savedRefresh = useRef(refresh);
   useEffect(() => {
     savedRefresh.current = refresh;
@@ -33,7 +30,7 @@ export function RefreshControls() {
   }, [lastSync]);
 
   useEffect(() => {
-    localStorage.setItem(KEY, interval);
+    prefs.poll.set(interval);
     if (interval === "off") return;
     const id = window.setInterval(() => void savedRefresh.current(), MS[interval]);
     return () => window.clearInterval(id);
@@ -49,7 +46,7 @@ export function RefreshControls() {
         className="sel-interval"
         aria-label="auto-refresh interval"
         value={interval}
-        onChange={(e) => setInterval_(e.target.value as Interval)}
+        onChange={(e) => setInterval_(e.target.value as PollInterval)}
         title="auto-refresh interval"
       >
         <option value="off">poll · off</option>

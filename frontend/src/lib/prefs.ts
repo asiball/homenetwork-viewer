@@ -1,0 +1,38 @@
+// Typed, centralized access to the handful of UI preferences we persist in
+// localStorage (#124). One place owns each key, its allowed values and its
+// default — instead of `getItem(...) as SomeType` casts scattered across
+// components, which drift and silently accept stale/garbage values.
+
+import type { LayoutKind } from "./topology";
+
+export type PollInterval = "off" | "30s" | "5m";
+export type SortMode = "group" | "name" | "ip" | "status";
+
+function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  const v = localStorage.getItem(key);
+  return allowed.includes(v as T) ? (v as T) : fallback;
+}
+
+const POLL = ["off", "30s", "5m"] as const;
+const SORT = ["group", "name", "ip", "status"] as const;
+const LAYOUT = ["radial", "spine", "tree"] as const;
+
+export const prefs = {
+  poll: {
+    get: (): PollInterval => read("homenet.poll", POLL, "5m"),
+    set: (v: PollInterval) => localStorage.setItem("homenet.poll", v),
+  },
+  sort: {
+    get: (): SortMode => read("homenet.sort", SORT, "group"),
+    set: (v: SortMode) => localStorage.setItem("homenet.sort", v),
+  },
+  layout: {
+    get: (): LayoutKind => read("homenet.layout", LAYOUT, "radial"),
+    set: (v: LayoutKind) => localStorage.setItem("homenet.layout", v),
+  },
+  showOffline: {
+    // Default on; only the explicit string "false" hides offline devices.
+    get: (): boolean => localStorage.getItem("homenet.showOffline") !== "false",
+    set: (v: boolean) => localStorage.setItem("homenet.showOffline", String(v)),
+  },
+};

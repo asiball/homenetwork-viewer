@@ -6,7 +6,7 @@ import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useParams, useBlocker, type Location } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Spinner } from "../components/Spinner";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import { Shell } from "../components/Shell";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { ApiError, api } from "../api";

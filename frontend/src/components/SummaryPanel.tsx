@@ -1,7 +1,7 @@
 // Right-hand summary panel on the home screen (spec §5.5).
 
 import { Link } from "react-router-dom";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 import { Copyable } from "./Copyable";
 import { clampPct, formatLast } from "../lib/helpers";
 import type { Device } from "../types";

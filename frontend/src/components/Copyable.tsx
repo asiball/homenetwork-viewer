@@ -4,7 +4,7 @@
 // execCommand("copy") there.
 
 import type { ReactNode } from "react";
-import { useCatalog } from "../App";
+import { useCatalog } from "../CatalogContext";
 
 async function copyText(text: string): Promise<boolean> {
   if (navigator.clipboard && window.isSecureContext) {

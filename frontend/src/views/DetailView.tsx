@@ -8,9 +8,10 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, clampPct, formatLast, switchForDevice } from "../lib/helpers";
+import { cableForDevice, clampPct, formatLast, groupColor, switchForDevice } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
+import { DeviceIcon } from "../components/DeviceIcon";
 import { CableSwatch } from "../components/CableSwatch";
 import { Spinner } from "../components/Spinner";
 import type { ServiceRow } from "../types";
@@ -97,7 +98,10 @@ export function DetailView() {
             <div className="eyebrow">
               {device.group} · {device.type}
             </div>
-            <div className="name">{device.name}</div>
+            <div className="name">
+              <DeviceIcon type={device.type} size={20} className="name-icon" style={{ color: groupColor(device.group) }} />
+              {device.name}
+            </div>
             <div className="host">
               <Copyable text={device.host} />
               <span className="sep">·</span>

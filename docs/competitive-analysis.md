@@ -103,6 +103,32 @@
 
 ---
 
+## 4.5. 最接近の競合 Homelable との精密比較（追記）
+
+> 追加調査（2026-06、Homelable v2.5.0 / 2.1k★ / MIT / 単一メンテナだが活発）で判明した正確な事実に基づく。
+> 当初の「Homelable は所有/スペックが薄い」という見立ては**一部誤り**だったため補正する。
+
+### Homelable は当初の見立てより近い（正確な事実）
+- ノードスキーマに **`mac` / `services` / `cpu_count` / `cpu_model` / `ram_gb` / `disk_gb` / `os` / `notes` / `properties`** を持ち、**MCP の `create_node`/`update_node` で AI から編集可能**。つまり「スペックを持たない単なる図」ではなく、CPU/RAM/Disk/MAC を記録する。
+- **自動発見（nmap -sV）→ 承認キュー**、**多彩な死活**（ping/TCP/HTTP/SSH/Prometheus/health、ノード毎に方式選択）、**Zigbee2MQTT 取込**、**Home Assistant 連携（HACS）**、**MCP/AI**、**公開 Live View**、**PNG 出力**。homenet が「将来」として Issue 化した機能（#92/#93/#94/#100 等）の多くを**既に実装済み**。
+
+### それでも Homelable に「無い」＝ homenet だけができること（確度順）
+1. **手編集できるテキスト正本 ＋ Git 運用** — Homelable はバックエンドDB（手編集可否の明記なし）で、**構造化エクスポートは PNG（図）のみ**が言及。homenet の `devices.json` は **人が直接編集でき・`git diff`/PR でレビューでき・テキストでバックアップできる**。これが最も堅い差。
+2. **所有/資産/財務の管理** — Homelable のスキーマに **manufacturer / model / purchased / price / warranty / location** は**無い**（cpu/ram/disk の"性能"はあるが"所有"は無い）。homenet は「いつ買った・いくら・保証はいつ切れる・どこにある」を答えられる。**Homelable は資産管理ツールではない**。
+3. **自作PCのパーツ詳細と構成履歴** — homenet は GPU/マザボ/ドライブ単位（＋ #97 の Part/構成変更履歴・保証切れアラート）。Homelable は `cpu_model/ram_gb/disk_gb` 止まりで PC ビルド志向ではない。
+4. **「人が意図を書く台帳/ドシエ」＋ 引き継ぎ用テキスト出力** — Homelable は canvas（図）中心・自動発見中心。homenet は per-device のスペック/所有/サービス/ストレージの**仕様書**で、#113 の Markdown/HTML 引き継ぎ資料に発展できる。
+5. （非市場的だが実在）**自分のコードで完全に手の内** — 学習・改造・所有の楽しさ。
+
+### 逆に Homelable が明確に上回る点
+自動発見・自動トポロジ・死活の多様さ・Zigbee・MCP/AI・HA 連携・成熟度（2.1k★・活発）。**「発見して・自動で図にして・監視する」が主目的なら Homelable が決定的に優位**。
+
+### 結論（homenet vs Homelable）
+- **発見・可視化・監視が主目的** → Homelable を採用し homenet をアーカイブするのが合理的。homenet が追いつくには #92/#93/#94/#100 等の重い実装が必要で、しかも追いついても"後発の同等品"にしかならない。
+- **「手編集できる Git 正本」＋「所有/保証/自作PC資産の台帳」に価値を感じる** → そこは Homelable が踏んでいない空白で、homenet を **(1)テキスト正本 (2)資産/所有 (3)自作PCパーツ** に一点集中させれば存在意義がある。
+- **折衷（補完運用）** → 発見・監視・トポロジは Homelable に任せ、homenet を**「資産/所有レジスタ＋Git正本」**として併用（将来 Homelable の MCP/API から機器を取り込み、homenet 側で所有情報を付与する形もありうる）。
+
+---
+
 ## 5. 正直な評価とアーケイブ判断
 
 ### 差別化は「ある。ただし狭く、執行依存」

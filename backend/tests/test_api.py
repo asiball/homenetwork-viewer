@@ -354,6 +354,26 @@ def test_put_clears_ownership_but_keeps_other_detail(client):
     assert detail["metrics"]["cpu_pct"] == 42
 
 
+def test_put_clears_nested_hw_field_via_null(client):
+    """A null on a single detail.hw field clears just that field, keeping the
+    siblings and auto-collected values (the contract EditView relies on)."""
+    dev = _sample_device(
+        detail={"hw": {"arch": "x86_64", "chassis": "Tower", "cpu_full": "i5-12400"}},
+    )
+    client.post("/api/devices", json=dev)
+
+    update = {
+        **_sample_device(),
+        "detail": {"hw": {"arch": None, "chassis": "Tower", "cpu_full": "i5-12400"}},
+    }
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    hw = client.get("/api/devices/test-pi").json()["detail"]["hw"]
+    assert hw["arch"] is None  # cleared
+    assert hw["chassis"] == "Tower"  # kept
+    assert hw["cpu_full"] == "i5-12400"  # auto-collected preserved
+
+
 # ─── /api/import hardening (issue #83) ──────────────────────────────────────
 
 

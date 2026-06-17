@@ -39,11 +39,13 @@ export function cableForDevice(cables: Cable[], devId: string): Cable | null {
 export function switchForDevice(
   switches: Switch[],
   devId: string,
-): { sw: Switch; port: number } | null {
+): { sw: Switch; port: string } | null {
   for (const sw of switches) {
     for (const [port, slot] of Object.entries(sw.portMap || {})) {
       if (slot && slot.device === devId && slot.role !== "uplink") {
-        return { sw, port: Number(port) };
+        // Keep the raw port key: portMap keys are arbitrary strings (e.g. an
+        // SFP label like "sfp1"), so Number() would render "port NaN".
+        return { sw, port };
       }
     }
   }

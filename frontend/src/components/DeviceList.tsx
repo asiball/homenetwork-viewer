@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../App";
 import type { Device } from "../types";
-import { groupByOrder, lastOctet } from "../lib/helpers";
+import { groupByOrder, lastOctet, matchesQuery } from "../lib/helpers";
 
 type SortMode = "group" | "name" | "ip" | "status";
 
@@ -23,13 +23,7 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
   );
 
   const needle = searchQuery.trim().toLowerCase();
-  const filtered = needle
-    ? devices.filter((d) =>
-        [d.name, d.host, d.ip, d.type, d.group, d.id].some((v) =>
-          v.toLowerCase().includes(needle),
-        ),
-      )
-    : devices;
+  const filtered = needle ? devices.filter((d) => matchesQuery(d, needle)) : devices;
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "name") return a.name.localeCompare(b.name);

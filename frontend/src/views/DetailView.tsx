@@ -8,9 +8,11 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, cableSwatch, switchForDevice } from "../lib/helpers";
+import { cableForDevice, switchForDevice } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
+import { CableSwatch } from "../components/CableSwatch";
+import { Spinner } from "../components/Spinner";
 import type { ServiceRow } from "../types";
 
 function mean(xs: number[]): number {
@@ -49,7 +51,7 @@ export function DetailView() {
     }
   }
 
-  if (loading && !device) return <div className="center-screen"><div className="spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid var(--fg-faint)", borderTopColor: "var(--amber)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><div style={{ marginTop: 12 }}>読み込み中...</div></div>;
+  if (loading && !device) return <Spinner />;
   if (!device) return <DeviceNotFound devices={devices} id={id} />;
 
   const detail = device.detail ?? null;
@@ -260,13 +262,7 @@ export function DetailView() {
                 <>
                   <dt>cable</dt>
                   <dd style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span
-                      className="swatch"
-                      style={{
-                        background: cableSwatch(cbl.color),
-                        border: cbl.color === "white" ? "1px solid var(--rule-2)" : "0",
-                      }}
-                    />
+                    <CableSwatch color={cbl.color} />
                     <span>
                       {cbl.id} · {cbl.cat} · {cbl.len}
                     </span>

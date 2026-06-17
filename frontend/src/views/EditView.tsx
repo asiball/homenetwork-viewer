@@ -5,6 +5,7 @@
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useParams, useBlocker, type Location } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { Spinner } from "../components/Spinner";
 import { useCatalog } from "../App";
 import { Shell } from "../components/Shell";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
@@ -346,23 +347,7 @@ export function EditView({ mode }: Props) {
   // (React error #310).
   if (mode === "edit" && !existing) {
     if (loading) {
-      return (
-        <div className="center-screen">
-          <div
-            className="spin"
-            style={{
-              display: "inline-block",
-              width: "16px",
-              height: "16px",
-              border: "2px solid var(--fg-faint)",
-              borderTopColor: "var(--amber)",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-            }}
-          />
-          <div style={{ marginTop: 12 }}>読み込み中...</div>
-        </div>
-      );
+      return <Spinner />;
     }
     return <DeviceNotFound devices={devices} id={id} />;
   }

@@ -9,7 +9,7 @@ import { TopologyMap } from "../components/TopologyMap";
 import { SummaryPanel } from "../components/SummaryPanel";
 import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
-import { countOnline, orderedByGroup } from "../lib/helpers";
+import { countOnline, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
 import { APP_VERSION } from "../version";
 
@@ -51,15 +51,10 @@ export function HomeView() {
     [devices, showOffline],
   );
 
-  const mapVisible = useMemo(() => {
-    if (!searchQuery.trim()) return visible;
-    const needle = searchQuery.trim().toLowerCase();
-    return visible.filter((d) =>
-      [d.name, d.host, d.ip, d.type, d.group, d.id].some((v) =>
-        v.toLowerCase().includes(needle),
-      ),
-    );
-  }, [visible, searchQuery]);
+  const mapVisible = useMemo(
+    () => visible.filter((d) => matchesQuery(d, searchQuery)),
+    [visible, searchQuery],
+  );
 
   // Keyboard-nav order matches what's actually on the map (mapVisible, i.e.
   // search-filtered) — otherwise ↑/↓ would jump to devices hidden by the search

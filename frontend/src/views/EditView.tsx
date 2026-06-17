@@ -409,6 +409,15 @@ export function EditView({ mode }: Props) {
               <Field id="f-mem" label="memory">
                 <input id="f-mem" value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
               </Field>
+              <Field id="f-arch" label="arch">
+                <input id="f-arch" value={form.arch} onChange={(e) => set("arch", e.target.value)} placeholder="x86_64 / arm64" />
+              </Field>
+              <Field id="f-chassis" label="chassis">
+                <input id="f-chassis" value={form.chassis} onChange={(e) => set("chassis", e.target.value)} placeholder="Mini-ITX / Tower" />
+              </Field>
+              <Field id="f-bios" label="firmware / bios">
+                <input id="f-bios" value={form.bios} onChange={(e) => set("bios", e.target.value)} placeholder="AMI 2.21" />
+              </Field>
               <Field id="f-motherboard" label="motherboard">
                 <input id="f-motherboard" value={form.motherboard} onChange={(e) => set("motherboard", e.target.value)} placeholder="ASUS B550M" />
               </Field>

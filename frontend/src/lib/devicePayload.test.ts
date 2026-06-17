@@ -69,6 +69,32 @@ describe("buildPayload", () => {
     expect(p.detail?.hw?.storage_drives).toEqual(["SN850 2TB", "MX500 1TB"]);
   });
 
+  it("writes arch/chassis/bios into detail.hw", () => {
+    const form = {
+      ...emptyForm(),
+      id: "rig",
+      name: "Rig",
+      host: "rig",
+      ip: "192.168.1.51",
+      mac: "DE:AD:BE:EF:00:02",
+      type: "desktop",
+      arch: "x86_64",
+      chassis: "Mini-ITX",
+      bios: "AMI 2.21",
+    };
+    const p = buildPayload(form, undefined, "add", "");
+    expect(p.detail?.hw).toMatchObject({ arch: "x86_64", chassis: "Mini-ITX", bios: "AMI 2.21" });
+  });
+
+  it("round-trips hw fields through formFromDevice", () => {
+    const dev: Device = {
+      ...existing,
+      detail: { hw: { arch: "arm64", chassis: "SFF", bios: "v1.2" } },
+    };
+    const f = formFromDevice(dev);
+    expect([f.arch, f.chassis, f.bios]).toEqual(["arm64", "SFF", "v1.2"]);
+  });
+
   it("uses the path id in edit mode, the form id in add mode", () => {
     const editP = buildPayload(formFromDevice(existing), existing, "edit", "nas");
     expect(editP.id).toBe("nas");

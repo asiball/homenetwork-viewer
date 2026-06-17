@@ -296,6 +296,12 @@ export function DetailView() {
               <dd>{detail?.hw?.chassis ?? "—"}</dd>
               <dt>firmware</dt>
               <dd>{detail?.hw?.bios ?? "—"}</dd>
+              {m?.temp != null && (
+                <>
+                  <dt>temp</dt>
+                  <dd>{m.temp}°C</dd>
+                </>
+              )}
               {detail?.hw?.motherboard && (
                 <>
                   <dt>motherboard</dt>

@@ -520,3 +520,48 @@ def test_bulk_update_reachability_refreshes_last_when_online(client):
     dev = storage.get_device("test-pi")
     assert dev["online"] is True
     assert dev["last"] == "2026-06-17T03:30:00+00:00"
+
+
+# ─── export ─────────────────────────────────────────────────────────────────
+
+
+def test_export_has_filename_and_three_collections(client):
+    r = client.get("/api/export")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/json")
+    assert "attachment" in r.headers["content-disposition"]
+    assert ".json" in r.headers["content-disposition"]
+    body = r.json()
+    assert set(body) == {"devices", "switches", "cables"}
+    assert len(body["devices"]) == 22
+
+
+def test_export_preserves_non_ascii_names(client):
+    """ensure_ascii=False: a Japanese name round-trips as UTF-8, not \\uXXXX."""
+    client.post("/api/devices", json=_sample_device(name="リビングのPC"))
+    r = client.get("/api/export")
+    assert "リビングのPC" in r.text
+    assert "\\u30ea" not in r.text  # not escaped
+
+
+def test_export_import_roundtrip(client):
+    """Export then re-import yields the same catalog (no data loss)."""
+    before = client.get("/api/export").json()
+    r = _import(client, before)
+    assert r.status_code == 200
+    after = client.get("/api/export").json()
+    assert {d["id"] for d in after["devices"]} == {d["id"] for d in before["devices"]}
+    assert len(after["switches"]) == len(before["switches"])
+    assert len(after["cables"]) == len(before["cables"])
+
+
+# ─── whoami header priority ─────────────────────────────────────────────────
+
+
+def test_whoami_prefers_real_ip_over_forwarded_for(client):
+    """When both proxy headers are present, X-Real-IP wins."""
+    r = client.get(
+        "/api/whoami",
+        headers={"X-Real-IP": "192.168.1.5", "X-Forwarded-For": "192.168.1.9"},
+    )
+    assert r.json() == {"ip": "192.168.1.5"}

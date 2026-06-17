@@ -16,6 +16,9 @@ import os
 import shutil
 import tempfile
 import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -194,21 +197,34 @@ def updated_at() -> str | None:
 
 # ─── Writes ─────────────────────────────────────────────────────────────────
 
-def create_device(device: dict[str, Any]) -> dict[str, Any]:
+@contextmanager
+def _mutate() -> Iterator[dict[str, Any]]:
+    """Read-modify-write the document under the lock.
+
+    Yields the parsed doc; the body mutates it in place and, on normal exit,
+    it is written back atomically. If the body raises (e.g. a ConflictError or
+    NotFoundError), the write is skipped — so a rejected operation never
+    persists a half-applied change. This is the single primitive every writer
+    goes through, so the lock/read/write triple can't drift between them.
+    """
     with _lock:
         doc = _read_doc()
+        yield doc
+        _write_doc(doc)
+
+
+def create_device(device: dict[str, Any]) -> dict[str, Any]:
+    with _mutate() as doc:
         if any(d.get("id") == device["id"] for d in doc["devices"]):
             raise ConflictError(device["id"])
         _check_ip_mac_unique(doc["devices"], device.get("ip"), device.get("mac"))
         doc["devices"].append(device)
-        _write_doc(doc)
         logger.info("storage.op action=create_device id=%s", device.get("id"))
         return device
 
 
 def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
-    with _lock:
-        doc = _read_doc()
+    with _mutate() as doc:
         for i, d in enumerate(doc["devices"]):
             if d.get("id") == device_id:
                 _check_ip_mac_unique(
@@ -218,7 +234,6 @@ def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
                 merged = _deep_merge(d, device)
                 merged["id"] = device_id  # id is immutable
                 doc["devices"][i] = merged
-                _write_doc(doc)
                 logger.info("storage.op action=update_device id=%s", device_id)
                 return merged
         logger.warning("storage.op action=update_device id=%s error=not_found", device_id)
@@ -226,43 +241,38 @@ def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_device(device_id: str) -> None:
-    with _lock:
-        doc = _read_doc()
+    with _mutate() as doc:
         before = len(doc["devices"])
         doc["devices"] = [d for d in doc["devices"] if d.get("id") != device_id]
         if len(doc["devices"]) == before:
             logger.warning("storage.op action=delete_device id=%s error=not_found", device_id)
             raise NotFoundError(device_id)
-        _write_doc(doc)
         logger.info("storage.op action=delete_device id=%s", device_id)
 
 
 def bulk_update_reachability(updates: list[dict]) -> None:
     """Update online/last for multiple devices atomically."""
-    with _lock:
-        data = _read_doc()
+    with _mutate() as data:
         by_id = {u["id"]: u for u in updates}
-        for d in data.get("devices", []):
+        for d in data["devices"]:
             upd = by_id.get(d.get("id"))
             if upd is None:
                 continue
             d["online"] = upd["online"]
             if upd["online"] and upd.get("last"):
                 d["last"] = upd["last"]
-        _write_doc(data)
 
 
 # ─── Backup / Restore ───────────────────────────────────────────────────────
 
 def backup_catalog() -> None:
     """Save a timestamped backup of the current data file."""
-    import time as _time
     with _lock:
         if DATA_FILE.exists():
             # Nanosecond precision so two imports in the same second don't clobber
             # each other's backup (the value stays fixed-width, so name-sort below
             # is still chronological).
-            bak = DATA_FILE.parent / f"devices.json.bak-{_time.time_ns()}"
+            bak = DATA_FILE.parent / f"devices.json.bak-{time.time_ns()}"
             shutil.copy2(DATA_FILE, bak)
             logger.info("storage.op action=backup dst=%s", bak.name)
             # Keep only the 5 most recent backups
@@ -274,12 +284,10 @@ def backup_catalog() -> None:
 
 def replace_catalog(devices: list, switches: list, cables: list) -> None:
     """Atomically replace the catalog with new data."""
-    with _lock:
-        current = _read_doc()
+    with _mutate() as current:
         current["devices"] = devices
         current["switches"] = switches
         current["cables"] = cables
-        _write_doc(current)
         logger.info(
             "storage.op action=replace_catalog devices=%d switches=%d cables=%d",
             len(devices), len(switches), len(cables),

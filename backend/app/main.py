@@ -111,6 +111,18 @@ async def _data_file_error(_request: Request, exc: storage.DataFileError) -> JSO
     return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
+# Map the storage layer's domain errors to HTTP once, here, so the route
+# handlers stay on the happy path instead of repeating the same try/except.
+@app.exception_handler(storage.NotFoundError)
+async def _not_found(_request: Request, exc: storage.NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": f"device not found: {exc}"})
+
+
+@app.exception_handler(storage.ConflictError)
+async def _conflict(_request: Request, exc: storage.ConflictError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -155,18 +167,14 @@ def get_devices() -> list[dict]:
 
 @app.get("/api/devices/{device_id}", response_model=Device)
 def get_device(device_id: str) -> dict:
-    try:
-        return storage.get_device(device_id)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
+    # storage.NotFoundError -> 404 via the exception handler above.
+    return storage.get_device(device_id)
 
 
 @app.post("/api/devices", response_model=Device, status_code=201)
 def create_device(payload: DeviceCreate) -> dict:
-    try:
-        return storage.create_device(payload.model_dump(exclude_none=True))
-    except storage.ConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # storage.ConflictError (duplicate id/ip/mac) -> 409 via the handler above.
+    return storage.create_device(payload.model_dump(exclude_none=True))
 
 
 @app.put("/api/devices/{device_id}", response_model=Device)
@@ -177,30 +185,20 @@ def update_device(device_id: str, payload: DeviceUpdate) -> dict:
     # wiping auto-collected `detail` blocks the form never sends.
     body = payload.model_dump(exclude_unset=True)
     body["id"] = device_id
-    try:
-        return storage.update_device(device_id, body)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
-    except storage.ConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # NotFoundError -> 404, ConflictError -> 409 via the handlers above.
+    return storage.update_device(device_id, body)
 
 
 @app.delete("/api/devices/{device_id}", status_code=204)
 def delete_device(device_id: str) -> Response:
-    try:
-        storage.delete_device(device_id)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
+    storage.delete_device(device_id)  # NotFoundError -> 404 via the handler above
     return Response(status_code=204)
 
 
 @app.post("/api/devices/{device_id}/wake", status_code=200)
 def wake_device(device_id: str) -> dict[str, str]:
     """Send a Wake-on-LAN magic packet to the device's MAC address."""
-    try:
-        device = storage.get_device(device_id)
-    except storage.NotFoundError:
-        raise HTTPException(status_code=404, detail=f"device not found: {device_id}") from None
+    device = storage.get_device(device_id)  # NotFoundError -> 404 via the handler
 
     mac = device.get("mac", "")
     if not mac:

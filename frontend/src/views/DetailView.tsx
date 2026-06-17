@@ -79,6 +79,10 @@ export function DetailView() {
       right={
         <>
           <RefreshControls />
+          {/* Clone: prefill an add form from this device for similar units (#121). */}
+          <Link className="btn" to="/add" state={{ clone: device.id }}>
+            ⧉ clone
+          </Link>
           <Link className="btn" to={`/d/${device.id}/edit`}>
             ✎ edit
           </Link>

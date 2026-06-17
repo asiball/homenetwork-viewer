@@ -3,7 +3,7 @@
 // blocks (net/hw/metrics/services/storage/hist7) untouched on update.
 
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useParams, useBlocker, type Location } from "react-router-dom";
+import { Link, useNavigate, useParams, useBlocker, useLocation, type Location } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Spinner } from "../components/Spinner";
 import { useCatalog } from "../CatalogContext";
@@ -11,9 +11,10 @@ import { Shell } from "../components/Shell";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { ApiError, api } from "../api";
 import { CONN_OPTIONS, type Conn, GROUP_ORDER, type Group, TYPE_OPTIONS } from "../types";
-import { ID_RE, IPV4_RE, kebabId, MAC_RE } from "../lib/helpers";
+import { ID_RE, IPV4_RE, kebabId, MAC_RE, suggestFreeIp } from "../lib/helpers";
 import {
   buildPayload,
+  cloneForm,
   emptyForm,
   formFromDevice,
   type FormState,
@@ -52,9 +53,19 @@ export function EditView({ mode }: Props) {
 
   const existing = mode === "edit" ? devices.find((d) => d.id === id) : undefined;
 
-  const [form, setForm] = useState<FormState>(() =>
-    existing ? formFromDevice(existing) : emptyForm(),
-  );
+  // "Clone this device" (#121): DetailView navigates to /add with the source id
+  // in router state; we prefill the form from it. Only meaningful in add mode.
+  const location = useLocation();
+  const cloneFromId =
+    mode === "add" ? (location.state as { clone?: string } | null)?.clone : undefined;
+
+  function makeInitialForm(): FormState {
+    if (existing) return formFromDevice(existing);
+    const src = cloneFromId ? devices.find((d) => d.id === cloneFromId) : undefined;
+    return src ? cloneForm(src) : emptyForm();
+  }
+
+  const [form, setForm] = useState<FormState>(makeInitialForm);
   const [idTouched, setIdTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitErr, setSubmitErr] = useState<string | null>(null);
@@ -65,11 +76,11 @@ export function EditView({ mode }: Props) {
   // component instance, so the useState initializer would otherwise hold the
   // previous device). React's "adjust state during render" pattern.
   const [loadedId, setLoadedId] = useState(id);
-  const initialForm = useRef<FormState>(existing ? formFromDevice(existing) : emptyForm());
+  const initialForm = useRef<FormState>(makeInitialForm());
 
   if (id !== loadedId) {
     setLoadedId(id);
-    const newForm = existing ? formFromDevice(existing) : emptyForm();
+    const newForm = makeInitialForm();
     setForm(newForm);
     // eslint-disable-next-line react-hooks/refs
     initialForm.current = newForm;
@@ -148,6 +159,12 @@ export function EditView({ mode }: Props) {
   }, [macHex]);
   // Hide the suggestion once the manufacturer field already holds it.
   const showOuiSuggestion = !!ouiVendor && form.manufacturer.trim() !== ouiVendor;
+
+  // Smallest free IP in the home /24, offered while adding a device so the
+  // user doesn't have to hunt for an unused address (#121). Only when adding
+  // and the field is still empty — never nag once they've typed something.
+  const freeIp = useMemo(() => (mode === "add" ? suggestFreeIp(devices) : null), [mode, devices]);
+  const showFreeIp = mode === "add" && !form.ip.trim() && !!freeIp;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => {
@@ -339,6 +356,14 @@ export function EditView({ mode }: Props) {
                   onChange={(e) => set("ip", e.target.value)}
                   placeholder="192.168.1.10"
                 />
+                {showFreeIp && (
+                  <span className="oui-suggest">
+                    free: {freeIp}
+                    <button type="button" className="oui-apply" onClick={() => freeIp && set("ip", freeIp)}>
+                      use
+                    </button>
+                  </span>
+                )}
               </Field>
               <Field
                 id="f-mac"

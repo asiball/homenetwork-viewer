@@ -101,6 +101,18 @@ export function DetailView() {
               <span className="sep">·</span>
               <Copyable text={device.mac} />
             </div>
+            {/* Bridge the ledger to real work: copy ready-to-run commands (#108). */}
+            <div className="host" style={{ marginTop: 4, opacity: 0.8 }}>
+              <Copyable text={`ping ${device.ip}`}>⧉ ping</Copyable>
+              <span className="sep">·</span>
+              <Copyable text={`ssh ${device.ip}`}>⧉ ssh</Copyable>
+              {!device.url && (
+                <>
+                  <span className="sep">·</span>
+                  <Copyable text={`http://${device.ip}`}>⧉ http</Copyable>
+                </>
+              )}
+            </div>
           </div>
           <div className="badges">
             <span className={`pill ${device.online ? "on" : "off"}`}>

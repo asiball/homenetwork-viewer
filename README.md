@@ -1,6 +1,7 @@
 # homenet — 家庭ネットワーク機器カタログ
 
 [![CI](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/asiball/homenetwork-viewer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **A local-first catalog & topology map for your home LAN** — track every device's IP, MAC,
 > hostname, specs and ownership, and know "what's that IP?" in 10 seconds. Single-user, self-hosted,
@@ -126,8 +127,9 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 ### ヘッダーの「poll / refresh」について
 
 `refresh` と自動更新（off / 30s / 5m）は **API からカタログを再取得**します。`devices.json` を手で書き換えた場合も
-これで反映されます。実機の ARP / ping ライブスキャン（spec §4 の T1/T2 コレクタ）は将来拡張で、現時点では未配線です
-（メトリクスを捏造せず、データソースをポーリングする実装にしています）。
+これで反映されます。到達性（`online` / `last`）は backend のコレクタが **TCP プローブ + ICMP ping**（120秒間隔）で
+実測して自動更新しており、`refresh` はその結果を取り直すものです。ルーター ARP 取得・SNMP メトリクス・ポートスキャンは
+将来拡張で、`detail.metrics` / `services` は現時点では手動入力です（メトリクスを捏造しない方針）。
 
 ---
 
@@ -174,3 +176,7 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 LAN内・個人利用前提のため認証は付けていません。外部に出す場合は前段の nginx 等で Basic 認証や
 内部CA（mkcert）による HTTPS を付与してください（spec §8.3）。
+
+## ライセンス
+
+[MIT License](LICENSE) © 2026 asiball

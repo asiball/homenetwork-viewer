@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor } from "./helpers";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp } from "./helpers";
 import type { Device } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -91,6 +91,43 @@ describe("clampPct", () => {
     expect(clampPct(null)).toBe(0);
     expect(clampPct(undefined)).toBe(0);
     expect(clampPct(NaN)).toBe(0);
+  });
+});
+
+describe("suggestFreeIp", () => {
+  it("returns null when there are no devices to infer a subnet", () => {
+    expect(suggestFreeIp([])).toBeNull();
+  });
+
+  it("suggests the smallest unused host in the busiest /24", () => {
+    const devs = [
+      makeDevice({ id: "a", ip: "192.168.1.2" }),
+      makeDevice({ id: "b", ip: "192.168.1.3" }),
+      makeDevice({ id: "c", ip: "192.168.1.5" }),
+    ];
+    // .1 is reserved (gateway), .2/.3 used → .4 is the lowest free.
+    expect(suggestFreeIp(devs)).toBe("192.168.1.4");
+  });
+
+  it("reserves .0/.1 and starts from .2", () => {
+    const devs = [makeDevice({ id: "a", ip: "192.168.1.50" })];
+    expect(suggestFreeIp(devs)).toBe("192.168.1.2");
+  });
+
+  it("picks the most common /24 when devices span subnets", () => {
+    const devs = [
+      makeDevice({ id: "a", ip: "192.168.1.2" }),
+      makeDevice({ id: "b", ip: "192.168.1.3" }),
+      makeDevice({ id: "c", ip: "10.0.0.9" }),
+    ];
+    expect(suggestFreeIp(devs)).toBe("192.168.1.4");
+  });
+
+  it("returns null when the /24 is full", () => {
+    const devs = Array.from({ length: 253 }, (_, i) =>
+      makeDevice({ id: `d${i}`, ip: `192.168.1.${i + 2}` }),
+    );
+    expect(suggestFreeIp(devs)).toBeNull();
   });
 });
 

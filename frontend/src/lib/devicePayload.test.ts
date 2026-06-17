@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPayload, emptyForm, formFromDevice } from "./devicePayload";
+import { buildPayload, cloneForm, emptyForm, formFromDevice } from "./devicePayload";
 import type { Device } from "../types";
 
 const existing: Device = {
@@ -18,6 +18,25 @@ const existing: Device = {
     hw: { cpu_full: "Celeron J4125", motherboard: "OEM" },
   },
 };
+
+describe("cloneForm", () => {
+  it("carries over template fields but clears per-unit identity", () => {
+    const f = cloneForm(existing);
+    // Unique / per-unit fields cleared.
+    expect(f.ip).toBe("");
+    expect(f.mac).toBe("");
+    expect(f.online).toBe(false);
+    // Name suffixed and id re-suggested from it.
+    expect(f.name).toBe("NAS copy");
+    expect(f.id).toBe("nas-copy");
+    // Shared "template" fields preserved.
+    expect(f.group).toBe("Infra");
+    expect(f.type).toBe("nas");
+    expect(f.manufacturer).toBe("Synology");
+    expect(f.model).toBe("DS920+");
+    expect(f.tags).toBe("critical");
+  });
+});
 
 describe("buildPayload", () => {
   it("trims, upper-cases the MAC and sends emptied optionals as null", () => {

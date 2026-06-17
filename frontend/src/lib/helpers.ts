@@ -135,6 +135,44 @@ export function shortHost(host: string): string {
   return host.split(".")[0];
 }
 
+// Suggest the smallest free host address in the home /24 so adding a device
+// doesn't require cross-checking an IP table by hand (issue #121, IPAM-lite).
+//
+// The subnet is inferred from existing devices: we take the most common
+// first-three-octets (spec assumes a single /24). We then return the lowest
+// unused host in 2..254, reserving .0 (network), .255 (broadcast) and .1
+// (conventionally the gateway) so we never propose a structural address.
+// Returns null when there are no devices to infer a subnet from, or the /24
+// is full.
+export function suggestFreeIp(devices: Device[]): string | null {
+  const octets = (ip: string) => ip.split(".").map((n) => Number(n));
+  const valid = devices
+    .map((d) => octets(d.ip))
+    .filter((o) => o.length === 4 && o.every((n) => Number.isInteger(n) && n >= 0 && n <= 255));
+  if (valid.length === 0) return null;
+
+  // Most common /24 prefix among existing devices.
+  const counts = new Map<string, number>();
+  for (const o of valid) {
+    const prefix = `${o[0]}.${o[1]}.${o[2]}`;
+    counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+  }
+  let prefix = "";
+  let best = -1;
+  for (const [p, c] of counts) {
+    if (c > best) {
+      best = c;
+      prefix = p;
+    }
+  }
+
+  const used = new Set(valid.filter((o) => `${o[0]}.${o[1]}.${o[2]}` === prefix).map((o) => o[3]));
+  for (let host = 2; host <= 254; host++) {
+    if (!used.has(host)) return `${prefix}.${host}`;
+  }
+  return null;
+}
+
 // Generate a kebab-case id suggestion from a free-text name.
 export function kebabId(name: string): string {
   const slug = name

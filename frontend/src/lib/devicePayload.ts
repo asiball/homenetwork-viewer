@@ -13,6 +13,7 @@ import type {
   HwInfo,
   Ownership,
 } from "../types";
+import { kebabId } from "./helpers";
 
 export interface FormState {
   id: string;
@@ -115,6 +116,24 @@ export function formFromDevice(d: Device): FormState {
     warranty: own.warranty ?? "",
     tags: (own.tags ?? []).join(", "),
     notes: d.notes ?? "",
+  };
+}
+
+// Prefill an "add" form from an existing device so similar units (e.g. four
+// identical cameras) don't start from a blank form (issue #121). The shared
+// "template" fields (type, group, hardware, ownership, notes…) carry over; the
+// per-unit identity that must be unique is cleared: id (re-suggested from the
+// name), ip and mac (backend-enforced unique → would block save) start empty,
+// and the device is assumed not-yet-online. The name gets a " copy" suffix.
+export function cloneForm(d: Device): FormState {
+  const name = `${d.name} copy`;
+  return {
+    ...formFromDevice(d),
+    id: kebabId(name),
+    name,
+    ip: "",
+    mac: "",
+    online: false,
   };
 }
 

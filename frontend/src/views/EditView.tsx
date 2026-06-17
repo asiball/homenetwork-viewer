@@ -198,6 +198,23 @@ export function EditView({ mode }: Props) {
 
   const existingIds = useMemo(() => new Set(devices.map((d) => d.id)), [devices]);
 
+  // Live duplicate detection: which *other* device already uses the typed ip /
+  // mac. Lets us warn while the user types instead of only after the backend
+  // rejects the save with a 409 (#121). The device being edited is excluded.
+  const selfId = mode === "edit" ? id : null;
+  const ipDupName = useMemo(() => {
+    const ip = form.ip.trim();
+    if (!ip) return null;
+    const hit = devices.find((d) => d.id !== selfId && d.ip === ip);
+    return hit ? hit.name || hit.id : null;
+  }, [devices, form.ip, selfId]);
+  const macDupName = useMemo(() => {
+    const mac = form.mac.trim().toUpperCase();
+    if (!mac) return null;
+    const hit = devices.find((d) => d.id !== selfId && (d.mac || "").toUpperCase() === mac);
+    return hit ? hit.name || hit.id : null;
+  }, [devices, form.mac, selfId]);
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => {
       const next = { ...f, [key]: value };
@@ -218,7 +235,9 @@ export function EditView({ mode }: Props) {
     if (!form.name.trim()) e.name = "必須です";
     if (!form.host.trim()) e.host = "必須です";
     if (!IPV4_RE.test(form.ip)) e.ip = "IPv4 形式（例 192.168.1.10）";
+    else if (ipDupName) e.ip = `IP は既に "${ipDupName}" が使用中です`;
     if (!MAC_RE.test(form.mac)) e.mac = "MAC 形式（XX:XX:XX:XX:XX:XX）";
+    else if (macDupName) e.mac = `MAC は既に "${macDupName}" が使用中です`;
     if (!form.type.trim()) e.type = "必須です";
     if (form.url.trim() && !/^https?:\/\//.test(form.url.trim())) {
       e.url = "http:// または https:// で始まるURL";
@@ -435,7 +454,13 @@ export function EditView({ mode }: Props) {
                   placeholder="nas.home.arpa"
                 />
               </Field>
-              <Field id="f-ip" label="ipv4" required error={errors.ip}>
+              <Field
+                id="f-ip"
+                label="ipv4"
+                required
+                error={errors.ip}
+                hint={ipDupName ? `⚠ "${ipDupName}" が使用中` : undefined}
+              >
                 <input
                   id="f-ip"
                   value={form.ip}
@@ -445,7 +470,13 @@ export function EditView({ mode }: Props) {
                   placeholder="192.168.1.10"
                 />
               </Field>
-              <Field id="f-mac" label="mac" required error={errors.mac}>
+              <Field
+                id="f-mac"
+                label="mac"
+                required
+                error={errors.mac}
+                hint={macDupName ? `⚠ "${macDupName}" が使用中` : undefined}
+              >
                 <input
                   id="f-mac"
                   value={form.mac}

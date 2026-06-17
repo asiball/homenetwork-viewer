@@ -74,18 +74,25 @@ app = FastAPI(
 )
 
 # LAN-only tool, single user. CORS is opened for local dev where the Vite dev
-# server (5173) talks to the API directly; in docker the SPA is same-origin.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
+# server (5173) talks to the API directly; in docker the SPA is same-origin and
+# needs none. Origins are configurable via HOMENET_CORS_ORIGINS (comma list);
+# set it empty in production to drop the middleware entirely (#89).
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:8080,http://127.0.0.1:8080"
 )
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get("HOMENET_CORS_ORIGINS", _DEFAULT_CORS_ORIGINS).split(",")
+    if o.strip()
+]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.middleware("http")
@@ -125,7 +132,22 @@ async def _conflict(_request: Request, exc: storage.ConflictError) -> JSONRespon
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
+    """Liveness: the process is up and serving. Always 200 while running."""
     return {"status": "ok"}
+
+
+@app.get("/api/ready")
+def ready() -> dict[str, str]:
+    """Readiness: liveness *and* the data file parses (#89).
+
+    Unlike /api/health this returns 503 when devices.json is corrupt, so an
+    operator can tell "process up" apart from "actually able to serve data".
+    """
+    try:
+        storage.list_devices()
+    except storage.DataFileError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"status": "ready"}
 
 
 @app.get("/api/whoami")

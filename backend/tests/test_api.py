@@ -134,6 +134,20 @@ def test_corrupt_data_file_returns_clear_error(client):
     assert client.get("/api/health").status_code == 200
 
 
+def test_ready_ok_with_valid_data(client):
+    """Readiness probe passes when the data file parses (#89)."""
+    r = client.get("/api/ready")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ready"
+
+
+def test_ready_fails_on_corrupt_data(client):
+    """Readiness reports 503 on a corrupt data file, while liveness stays 200."""
+    storage.DATA_FILE.write_text("{ not valid json", encoding="utf-8")
+    assert client.get("/api/ready").status_code == 503
+    assert client.get("/api/health").status_code == 200
+
+
 def test_wrong_shape_data_file_returns_clear_error(client):
     """Valid JSON of the wrong shape (e.g. a top-level array) also -> 503."""
     storage.DATA_FILE.write_text("[1, 2, 3]", encoding="utf-8")

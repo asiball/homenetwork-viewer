@@ -166,6 +166,7 @@ def test_non_array_collection_returns_clear_error(client):
 
 # ─── whoami ─────────────────────────────────────────────────────────────────
 
+
 def test_whoami_uses_real_ip_header(client):
     r = client.get("/api/whoami", headers={"X-Real-IP": "192.168.1.21"})
     assert r.status_code == 200
@@ -186,6 +187,7 @@ def test_whoami_without_proxy_headers(client):
 
 # ─── url field ──────────────────────────────────────────────────────────────
 
+
 def test_create_device_with_valid_url(client):
     r = client.post("/api/devices", json=_sample_device(url="http://192.168.1.99"))
     assert r.status_code == 201
@@ -198,6 +200,7 @@ def test_create_device_rejects_non_http_url(client):
 
 
 # ─── B1: PUT merge tests ───────────────────────────────────────────────────
+
 
 def test_put_preserves_detail_when_not_in_payload(client):
     """PUT without `detail` in the body must not erase existing detail data."""
@@ -258,6 +261,7 @@ def test_put_merges_fields_correctly(client):
 
 # ─── C3: IP/MAC uniqueness ────────────────────────────────────────────────
 
+
 def test_create_duplicate_ip_returns_409(client):
     """Creating a device whose IP matches an existing device should return 409."""
     # Use the gateway's IP (192.168.1.1) which exists in the seed data.
@@ -297,6 +301,7 @@ def test_update_to_non_conflicting_ip_mac_works(client):
 
 
 # ─── Clearing optional fields via PUT (null = clear, absent = keep) ─────────
+
 
 def test_put_clears_optional_scalar_fields(client):
     """Sending an optional field as null erases it; omitted fields are kept."""
@@ -350,6 +355,7 @@ def test_put_clears_ownership_but_keeps_other_detail(client):
 
 
 # ─── /api/import hardening (issue #83) ──────────────────────────────────────
+
 
 def _import(client, payload, headers=None):
     import io
@@ -456,6 +462,7 @@ def test_import_normalizes_mac_to_uppercase(client):
 
 
 # ─── Wake-on-LAN ────────────────────────────────────────────────────────────
+
 
 def test_wake_missing_device_404(client):
     assert client.post("/api/devices/ghost/wake").status_code == 404

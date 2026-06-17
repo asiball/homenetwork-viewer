@@ -29,9 +29,7 @@ APP_DIR = Path(__file__).resolve().parent
 SEED_FILE = APP_DIR / "seed" / "devices.json"
 
 # Runtime data file. Override with HOMENET_DATA_FILE (docker mounts /data).
-DATA_FILE = Path(
-    os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json"))
-)
+DATA_FILE = Path(os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json")))
 
 _lock = threading.RLock()
 
@@ -75,16 +73,13 @@ def _read_doc() -> dict[str, Any]:
                 doc = json.load(fh)
             except json.JSONDecodeError as exc:
                 logger.error("storage.read error=invalid_json file=%s", DATA_FILE.name)
-                raise DataFileError(
-                    f"{DATA_FILE.name} is not valid JSON: {exc}"
-                ) from exc
+                raise DataFileError(f"{DATA_FILE.name} is not valid JSON: {exc}") from exc
     # Valid JSON but the wrong shape (e.g. a top-level array) would otherwise
     # blow up on .setdefault below — surface it as a clear DataFileError too.
     if not isinstance(doc, dict):
         logger.error("storage.read error=wrong_shape file=%s", DATA_FILE.name)
         raise DataFileError(
-            f"{DATA_FILE.name} must be a JSON object with "
-            "devices / switches / cables arrays"
+            f"{DATA_FILE.name} must be a JSON object with devices / switches / cables arrays"
         )
     # Defensive: guarantee the three collections always exist and are arrays
     # (a hand-edit like {"devices": {}} would otherwise crash the iterators).
@@ -101,9 +96,7 @@ def _write_doc(doc: dict[str, Any]) -> None:
     """Atomically replace the data file."""
     with _lock:
         DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(
-            dir=str(DATA_FILE.parent), prefix=".devices.", suffix=".tmp"
-        )
+        fd, tmp = tempfile.mkstemp(dir=str(DATA_FILE.parent), prefix=".devices.", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False, indent=2)
@@ -127,6 +120,7 @@ def _write_doc(doc: dict[str, Any]) -> None:
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge *overlay* into *base*, returning the merged result.
 
@@ -136,11 +130,7 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     """
     merged = dict(base)
     for key, value in overlay.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
             merged[key] = _deep_merge(merged[key], value)
         else:
             merged[key] = value
@@ -163,8 +153,8 @@ def _check_ip_mac_unique(
             raise ConflictError(f"mac already in use by '{d.get('name', d.get('id'))}'")
 
 
-
 # ─── Reads ──────────────────────────────────────────────────────────────────
+
 
 def list_devices() -> list[dict[str, Any]]:
     logger.debug("storage.op action=list_devices")
@@ -197,6 +187,7 @@ def updated_at() -> str | None:
 
 # ─── Writes ─────────────────────────────────────────────────────────────────
 
+
 @contextmanager
 def _mutate() -> Iterator[dict[str, Any]]:
     """Read-modify-write the document under the lock.
@@ -228,7 +219,9 @@ def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
         for i, d in enumerate(doc["devices"]):
             if d.get("id") == device_id:
                 _check_ip_mac_unique(
-                    doc["devices"], device.get("ip"), device.get("mac"),
+                    doc["devices"],
+                    device.get("ip"),
+                    device.get("mac"),
                     exclude_id=device_id,
                 )
                 merged = _deep_merge(d, device)
@@ -265,6 +258,7 @@ def bulk_update_reachability(updates: list[dict]) -> None:
 
 # ─── Backup / Restore ───────────────────────────────────────────────────────
 
+
 def backup_catalog() -> None:
     """Save a timestamped backup of the current data file."""
     with _lock:
@@ -290,5 +284,7 @@ def replace_catalog(devices: list, switches: list, cables: list) -> None:
         current["cables"] = cables
         logger.info(
             "storage.op action=replace_catalog devices=%d switches=%d cables=%d",
-            len(devices), len(switches), len(cables),
+            len(devices),
+            len(switches),
+            len(cables),
         )

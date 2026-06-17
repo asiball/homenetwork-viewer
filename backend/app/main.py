@@ -39,7 +39,7 @@ from .models import (
 # ─── Structured logging ────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s level=%(levelname)s logger=%(name)s %(message)s',
+    format="%(asctime)s level=%(levelname)s logger=%(name)s %(message)s",
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
@@ -78,8 +78,7 @@ app = FastAPI(
 # needs none. Origins are configurable via HOMENET_CORS_ORIGINS (comma list);
 # set it empty in production to drop the middleware entirely (#89).
 _DEFAULT_CORS_ORIGINS = (
-    "http://localhost:5173,http://127.0.0.1:5173,"
-    "http://localhost:8080,http://127.0.0.1:8080"
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
 )
 _cors_origins = [
     o.strip()
@@ -102,7 +101,7 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
     logger.info(
-        'http method=%s path=%s status=%d duration_ms=%.1f',
+        "http method=%s path=%s status=%d duration_ms=%.1f",
         request.method,
         request.url.path,
         response.status_code,
@@ -182,6 +181,7 @@ def meta() -> Meta:
 
 # ─── Devices ──────────────────────────────────────────────────────────────
 
+
 @app.get("/api/devices", response_model=list[Device])
 def get_devices() -> list[dict]:
     return storage.list_devices()
@@ -252,6 +252,7 @@ def wake_device(device_id: str) -> dict[str, str]:
 
 # ─── Topology (read-only) ───────────────────────────────────────────────────
 
+
 @app.get("/api/switches", response_model=list[Switch])
 def get_switches() -> list[dict]:
     return storage.list_switches()
@@ -263,6 +264,7 @@ def get_cables() -> list[dict]:
 
 
 # ─── Export / Import ───────────────────────────────────────────────────────
+
 
 @app.get("/api/export")
 def export_catalog() -> FastAPIResponse:

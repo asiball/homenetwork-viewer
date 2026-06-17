@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "api:generate": "uv run --directory ../backend python -m app.dump_openapi && openapi-typescript ../backend/openapi.json -o src/types/api-schema.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

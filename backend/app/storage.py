@@ -478,6 +478,20 @@ def delete_device(device_id: str) -> None:
         logger.info("storage.op action=delete_device id=%s", device_id)
 
 
+def _preload_state(
+    conn: sqlite3.Connection,
+) -> tuple[dict[str, tuple[int, str | None]], set[str]]:
+    """Read every device_state row + device id once so a sweep's per-device
+    lookups are in-memory instead of two SELECTs per device under the write lock
+    (#167). Returns ({id: (online, last)}, {known device ids})."""
+    state = {
+        r["id"]: (r["online"], r["last"])
+        for r in conn.execute("SELECT id, online, last FROM device_state")
+    }
+    ids = {r["id"] for r in conn.execute("SELECT id FROM devices")}
+    return state, ids
+
+
 def bulk_update_reachability(updates: list[dict]) -> None:
     """Update online/last for multiple devices. Touches only device_state — never
     the curated catalog — and writes a row only when it actually changes, so an
@@ -485,18 +499,14 @@ def bulk_update_reachability(updates: list[dict]) -> None:
     if not updates:
         return
     with _write() as conn:
+        state, known_ids = _preload_state(conn)
         for upd in updates:
             dev_id = upd["id"]
-            row = conn.execute(
-                "SELECT online, last FROM device_state WHERE id = ?", (dev_id,)
-            ).fetchone()
-            if (
-                row is None
-                and not conn.execute("SELECT 1 FROM devices WHERE id = ?", (dev_id,)).fetchone()
-            ):
+            if dev_id not in state and dev_id not in known_ids:
                 continue  # unknown device id — nothing to update
-            cur_online = row["online"] if row else None
-            cur_last = row["last"] if row else None
+            cur = state.get(dev_id)
+            cur_online = cur[0] if cur else None
+            cur_last = cur[1] if cur else None
             new_online = int(bool(upd["online"]))
             # Keep the previous last-seen instant when going offline (issue #84).
             new_last = upd["last"] if (upd["online"] and upd.get("last")) else cur_last
@@ -507,6 +517,7 @@ def bulk_update_reachability(updates: list[dict]) -> None:
                 "ON CONFLICT(id) DO UPDATE SET online = excluded.online, last = excluded.last",
                 (dev_id, new_online, new_last),
             )
+            state[dev_id] = (new_online, new_last)
 
 
 # ─── Reachability time series (#93) ──────────────────────────────────────────
@@ -527,15 +538,10 @@ def record_reachability(samples: list[dict], ts: str | None = None) -> None:
         return
     sweep_ts = ts or _now_iso()
     with _write() as conn:
+        state, known_ids = _preload_state(conn)
         for s in samples:
             dev_id = s["id"]
-            row = conn.execute(
-                "SELECT online, last FROM device_state WHERE id = ?", (dev_id,)
-            ).fetchone()
-            if (
-                row is None
-                and not conn.execute("SELECT 1 FROM devices WHERE id = ?", (dev_id,)).fetchone()
-            ):
+            if dev_id not in state and dev_id not in known_ids:
                 continue  # unknown device id — nothing to record
             sample_ts = s.get("ts") or sweep_ts
             reachable = bool(s["reachable"])
@@ -544,8 +550,9 @@ def record_reachability(samples: list[dict], ts: str | None = None) -> None:
                 "VALUES (?, ?, ?, ?, ?)",
                 (dev_id, sample_ts, int(reachable), s.get("rtt_ms"), s.get("method")),
             )
-            cur_online = row["online"] if row else None
-            cur_last = row["last"] if row else None
+            cur = state.get(dev_id)
+            cur_online = cur[0] if cur else None
+            cur_last = cur[1] if cur else None
             new_online = int(reachable)
             # Record the up/down edge only on an actual flip from a known state.
             if cur_online is not None and cur_online != new_online:
@@ -560,6 +567,7 @@ def record_reachability(samples: list[dict], ts: str | None = None) -> None:
                     "ON CONFLICT(id) DO UPDATE SET online = excluded.online, last = excluded.last",
                     (dev_id, new_online, new_last),
                 )
+                state[dev_id] = (new_online, new_last)
 
 
 def reachability_history(device_id: str, days: int = 7) -> dict[str, Any]:

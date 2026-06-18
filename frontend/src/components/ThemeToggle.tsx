@@ -13,6 +13,7 @@ export function ThemeToggle() {
     setTheme(next);
     prefs.theme.set(next);
     document.documentElement.dataset.theme = next;
+    document.documentElement.style.colorScheme = next;
   }
 
   const goingTo = theme === "dark" ? "light" : "dark";

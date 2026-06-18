@@ -98,7 +98,6 @@ export function EditView({ mode }: Props) {
   // component instance, so the useState initializer would otherwise hold the
   // previous device). React's "adjust state during render" pattern.
   const [loadedId, setLoadedId] = useState(id);
-  const initialForm = useRef<FormState>(makeInitialForm());
   // Snapshot of the full editable state (form + parts + events) at load, so the
   // unsaved-changes guard also fires when only parts/build history changed (#97).
   const initialSnapshot = useRef<string>(
@@ -113,8 +112,6 @@ export function EditView({ mode }: Props) {
     setForm(newForm);
     setParts(newParts);
     setBuildEvents(newEvents);
-    // eslint-disable-next-line react-hooks/refs
-    initialForm.current = newForm;
     // eslint-disable-next-line react-hooks/refs
     initialSnapshot.current = JSON.stringify({ form: newForm, parts: newParts, buildEvents: newEvents });
     setIdTouched(false);
@@ -604,7 +601,17 @@ export function EditView({ mode }: Props) {
                   <input aria-label="model" value={p.model} onChange={(e) => updatePart(i, { model: e.target.value })} placeholder="model" />
                   <input aria-label="serial" value={p.serial ?? ""} onChange={(e) => updatePart(i, { serial: e.target.value || null })} placeholder="serial" />
                   <input aria-label="purchased" value={p.purchased ?? ""} onChange={(e) => updatePart(i, { purchased: e.target.value || null })} placeholder="purchased YYYY-MM-DD" />
-                  <input aria-label="price (jpy)" inputMode="numeric" value={p.price_jpy ?? ""} onChange={(e) => updatePart(i, { price_jpy: e.target.value.trim() === "" ? null : Number(e.target.value) })} placeholder="price ¥" />
+                  <input
+                    aria-label="price (jpy)"
+                    inputMode="numeric"
+                    value={p.price_jpy ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value.trim();
+                      const n = Number(raw);
+                      updatePart(i, { price_jpy: raw === "" || !Number.isFinite(n) ? null : n });
+                    }}
+                    placeholder="price ¥"
+                  />
                   <input aria-label="warranty until" value={p.warranty_until ?? ""} onChange={(e) => updatePart(i, { warranty_until: e.target.value || null })} placeholder="warranty YYYY-MM-DD" />
                   <select aria-label="status" value={p.status} onChange={(e) => updatePart(i, { status: e.target.value as Part["status"] })}>
                     {PART_STATUSES.map((s) => (

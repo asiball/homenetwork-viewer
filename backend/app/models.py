@@ -337,3 +337,30 @@ class Meta(BaseModel):
     online: int
     offline: int
     updated_at: str | None = None
+
+
+# ─── Reachability time series (#93) ──────────────────────────────────────────
+
+
+class ReachabilityDay(BaseModel):
+    """One calendar day's uptime ratio (0..1), or null when no samples exist
+    that day — history is derived from real probes, never invented (spec §6.4)."""
+
+    date: str
+    uptime: float | None = None
+    samples: int = 0
+
+
+class ReachabilityEvent(BaseModel):
+    """An up/down state transition detected by the collector."""
+
+    ts: str
+    kind: Literal["up", "down"]
+
+
+class ReachabilityHistory(BaseModel):
+    device_id: str
+    days: int
+    history: list[ReachabilityDay]
+    uptime_pct: float | None = None
+    events: list[ReachabilityEvent] = []

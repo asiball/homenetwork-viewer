@@ -169,6 +169,27 @@ export interface DeviceDetail {
   build_events?: BuildEvent[] | null;
 }
 
+// Reachability time series (#93). Computed server-side from the collector's
+// append-only samples; `uptime` is a 0..1 ratio, null on a day with no samples.
+export interface ReachabilityDay {
+  date: string;
+  uptime: number | null;
+  samples: number;
+}
+
+export interface ReachabilityEvent {
+  ts: string;
+  kind: "up" | "down";
+}
+
+export interface ReachabilityHistory {
+  device_id: string;
+  days: number;
+  history: ReachabilityDay[];
+  uptime_pct: number | null;
+  events: ReachabilityEvent[];
+}
+
 export interface Device {
   id: string;
   name: string;

@@ -15,7 +15,7 @@ import { DeviceIcon } from "../components/DeviceIcon";
 import { CableSwatch } from "../components/CableSwatch";
 import { prefs } from "../lib/prefs";
 import { Spinner } from "../components/Spinner";
-import type { ServiceRow } from "../types";
+import type { ReachabilityHistory, ServiceRow } from "../types";
 
 function mean(xs: number[]): number {
   return Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
@@ -39,6 +39,22 @@ export function DetailView() {
   const { devices, switches, cables, selfId, loading, notify } = useCatalog();
   const device = devices.find((d) => d.id === id);
   const [waking, setWaking] = useState(false);
+  const [reach, setReach] = useState<ReachabilityHistory | null>(null);
+
+  // Pull the real 7-day reachability history (#93). Re-fetch when a new sweep
+  // stamps device.last, so the chart tracks live samples instead of the legacy
+  // hand-entered detail.hist7. A failure just leaves us on the manual fallback.
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    api.reachability(id, 7).then(
+      (r) => alive && setReach(r),
+      () => alive && setReach(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [id, device?.last]);
 
   // Remember this device as recently-opened so the home screen can reopen it
   // instead of always selecting devices[0] (#122).
@@ -66,13 +82,32 @@ export function DetailView() {
   const m = detail?.metrics ?? null;
   const sw = switchForDevice(switches, device.id);
   const cbl = cableForDevice(cables, device.id);
-  // §6.4: never invent data — no hist7 means "no history", not a perfect week.
+  // §6.4: never invent data — no history means "no history", not a perfect week.
+  // Prefer the real collected series (#93); fall back to the legacy hand-entered
+  // detail.hist7 only when no samples exist yet.
   const hist = detail?.hist7 ?? null;
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     return d.toLocaleDateString("en-US", { weekday: "narrow" });
   });
+  const liveDays = reach?.history ?? null;
+  const hasLive = liveDays?.some((d) => d.samples > 0) ?? false;
+  const weekdayOf = (iso: string) =>
+    new Date(iso + "T00:00:00").toLocaleDateString("en-US", { weekday: "narrow" });
+  let histBars: { pct: number | null; label: string }[] | null = null;
+  let histSource: "live" | "manual" | null = null;
+  let histAvg: number | null = null;
+  if (hasLive && liveDays) {
+    histBars = liveDays.map((d) => ({ pct: d.uptime, label: weekdayOf(d.date) }));
+    histSource = "live";
+    histAvg = reach?.uptime_pct ?? null;
+  } else if (hist && hist.length > 0) {
+    histBars = hist.map((p, i) => ({ pct: p, label: days[i] }));
+    histSource = "manual";
+    histAvg = hist.reduce((a, b) => a + b, 0) / hist.length;
+  }
+  const lastEvent = reach?.events?.[0] ?? null;
 
   return (
     <Shell
@@ -428,29 +463,50 @@ export function DetailView() {
           </div>
 
           <div className="d-card" data-title="connection · last 7 days" aria-label="connection · last 7 days">
-            {hist && hist.length > 0 ? (
+            {histBars ? (
               <>
                 <div className="d-hist">
-                  {hist.map((p, i) => {
-                    const cls = p > 0.95 ? "" : p > 0.7 ? "partial" : "poor";
+                  {histBars.map((b, i) => {
+                    if (b.pct == null) {
+                      // A day with no samples — show a gap, don't invent uptime.
+                      return (
+                        <div key={i} className="day">
+                          <div className="bar" />
+                          <div className="pct">—</div>
+                          <div className="lbl">{b.label}</div>
+                        </div>
+                      );
+                    }
+                    const cls = b.pct > 0.95 ? "" : b.pct > 0.7 ? "partial" : "poor";
                     return (
                       <div key={i} className="day">
                         <div className="bar">
-                          <div className={`fill ${cls}`} style={{ height: `${p * 100}%` }} />
+                          <div className={`fill ${cls}`} style={{ height: `${b.pct * 100}%` }} />
                         </div>
-                        <div className="pct">{Math.round(p * 100)}%</div>
-                        <div className="lbl">{days[i]}</div>
+                        <div className="pct">{Math.round(b.pct * 100)}%</div>
+                        <div className="lbl">{b.label}</div>
                       </div>
                     );
                   })}
                 </div>
                 <div className="d-pool">
-                  <span>avg uptime · {Math.round((hist.reduce((a, b) => a + b, 0) / hist.length) * 100)}%</span>
-                  <span title="hand-entered — reachability history isn't collected yet">manual · this week</span>
+                  <span>avg uptime · {histAvg != null ? `${Math.round(histAvg * 100)}%` : "—"}</span>
+                  {histSource === "live" ? (
+                    <span title="computed from live reachability samples">live · last 7 days</span>
+                  ) : (
+                    <span title="hand-entered — superseded once the collector gathers samples">manual · this week</span>
+                  )}
                 </div>
+                {histSource === "live" && lastEvent && (
+                  <div className="d-pool" style={{ marginTop: 4, opacity: 0.8 }}>
+                    <span>
+                      last change · went {lastEvent.kind} {formatLast(lastEvent.ts)}
+                    </span>
+                  </div>
+                )}
               </>
             ) : (
-              <div className="d-sparse">no uptime history yet · reachability is sampled live, history isn't kept</div>
+              <div className="d-sparse">no uptime history yet · samples accrue as the collector probes</div>
             )}
           </div>
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from datetime import UTC, datetime
+from time import perf_counter
 
 logger = logging.getLogger(__name__)
 
@@ -21,32 +21,39 @@ TCP_PROBE_PORTS = [22, 80, 443, 8080, 8443]  # try these in order
 # Cap simultaneous probes so a large or offline-heavy sweep can't exhaust file
 # descriptors / ping subprocesses on a small host like a Raspberry Pi (#89).
 MAX_CONCURRENT_PROBES = 16
+# Prune old reachability samples roughly hourly rather than every sweep, so the
+# indexed DELETE isn't paid on each 2-minute cycle (#93).
+PRUNE_EVERY_SWEEPS = max(1, 3600 // INTERVAL)
 
 
-async def _tcp_reachable(ip: str) -> bool:
-    """Return True if any common TCP port responds on the given IP."""
+async def _tcp_reachable(ip: str) -> float | None:
+    """Return the connect RTT in ms if any common TCP port responds, else None."""
     for port in TCP_PROBE_PORTS:
+        start = perf_counter()
         try:
             _, writer = await asyncio.wait_for(
                 asyncio.open_connection(ip, port),
                 timeout=CONNECT_TIMEOUT,
             )
+            rtt_ms = (perf_counter() - start) * 1000
             writer.close()
             with contextlib.suppress(Exception):
                 await writer.wait_closed()
-            return True
+            return rtt_ms
         except (TimeoutError, OSError):
             continue
-    return False
+    return None
 
 
-async def _ping_reachable(ip: str) -> bool:
+async def _ping_reachable(ip: str) -> float | None:
     """ICMP ping fallback — works without raw-socket privileges via setuid ping.
 
-    Used when all TCP probes fail (e.g. IoT devices with no open ports).
-    A missing or non-functional ping binary is silently treated as unreachable.
+    Used when all TCP probes fail (e.g. IoT devices with no open ports). Returns
+    the round-trip time in ms on success, else None (a missing or non-functional
+    ping binary is silently treated as unreachable).
     """
     try:
+        start = perf_counter()
         proc = await asyncio.wait_for(
             asyncio.create_subprocess_exec(
                 "ping",
@@ -61,36 +68,49 @@ async def _ping_reachable(ip: str) -> bool:
             timeout=3.0,
         )
         await proc.wait()
-        return proc.returncode == 0
+        if proc.returncode == 0:
+            return (perf_counter() - start) * 1000
+        return None
     except Exception:
-        return False
+        return None
 
 
-async def _is_reachable(ip: str) -> bool:
-    """Return True if the device is reachable via TCP or ICMP ping."""
-    if await _tcp_reachable(ip):
-        return True
-    return await _ping_reachable(ip)
+async def _probe(ip: str) -> tuple[bool, float | None, str | None]:
+    """Probe an IP; return (reachable, rtt_ms, method) where method is the probe
+    that confirmed reachability ('tcp' / 'icmp') or None when unreachable."""
+    rtt = await _tcp_reachable(ip)
+    if rtt is not None:
+        return True, rtt, "tcp"
+    rtt = await _ping_reachable(ip)
+    if rtt is not None:
+        return True, rtt, "icmp"
+    return False, None, None
 
 
-async def _probe_device(device: dict, sem: asyncio.Semaphore | None = None) -> tuple[str, bool]:
-    """Probe a single device; returns (id, reachable).
+async def _probe_device(
+    device: dict, sem: asyncio.Semaphore | None = None
+) -> tuple[str, bool, float | None, str | None]:
+    """Probe a single device; returns (id, reachable, rtt_ms, method).
 
     An optional semaphore bounds how many probes run at once (see
     MAX_CONCURRENT_PROBES); omit it to probe immediately (used in tests).
     """
     ip = device.get("ip", "")
     if not ip:
-        return device["id"], False
+        return device["id"], False, None, None
     if sem is not None:
         async with sem:
-            return device["id"], await _is_reachable(ip)
-    return device["id"], await _is_reachable(ip)
+            reachable, rtt, method = await _probe(ip)
+    else:
+        reachable, rtt, method = await _probe(ip)
+    return device["id"], reachable, rtt, method
 
 
 async def run_collector(storage_module) -> None:
-    """Continuously probe all devices and update online/last in storage."""
+    """Continuously probe all devices, append a reachability sample per device and
+    refresh the online/last cache (#84, #93)."""
     logger.info("collector.start interval=%ds", INTERVAL)
+    sweep = 0
     while True:
         try:
             # storage reads/writes are blocking (and fsync on write) — run them
@@ -102,33 +122,30 @@ async def run_collector(storage_module) -> None:
                     *[_probe_device(d, sem) for d in devices],
                     return_exceptions=True,
                 )
-                # Store an ISO8601 instant, not a frozen human string like
-                # "just now" (which never ages — see issue #84). The frontend
-                # renders it as a relative time. On offline we send last=None so
-                # storage keeps the previous value = the real last-seen instant.
-                now_iso = datetime.now(UTC).isoformat(timespec="seconds")
-                updates: list[dict] = []
+                # record_reachability stamps one ISO8601 sweep instant for the
+                # batch and appends each result as a sample (the frozen "just now"
+                # string is gone — issue #84), deriving last-seen / events from it.
+                samples: list[dict] = []
                 for r in results:
                     if isinstance(r, Exception):
                         logger.warning("collector.probe error=%s", r)
                         continue
-                    dev_id, reachable = r
-                    updates.append(
-                        {
-                            "id": dev_id,
-                            "online": reachable,
-                            "last": now_iso if reachable else None,
-                        }
+                    dev_id, reachable, rtt, method = r
+                    samples.append(
+                        {"id": dev_id, "reachable": reachable, "rtt_ms": rtt, "method": method}
                     )
-                if updates:
-                    await asyncio.to_thread(storage_module.bulk_update_reachability, updates)
-                    online = sum(1 for u in updates if u["online"])
+                if samples:
+                    await asyncio.to_thread(storage_module.record_reachability, samples)
+                    online = sum(1 for s in samples if s["reachable"])
                     logger.info(
                         "collector.sweep devices=%d online=%d offline=%d",
-                        len(updates),
+                        len(samples),
                         online,
-                        len(updates) - online,
+                        len(samples) - online,
                     )
+                sweep += 1
+                if sweep % PRUNE_EVERY_SWEEPS == 0:
+                    await asyncio.to_thread(storage_module.prune_reachability)
         except Exception as exc:
             logger.error("collector.error %s", exc, exc_info=True)
         await asyncio.sleep(INTERVAL)

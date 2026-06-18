@@ -181,12 +181,13 @@ def oui_lookup(mac: str) -> dict[str, str | None]:
 
 @app.get("/api/meta", response_model=Meta)
 def meta() -> Meta:
-    devices = storage.list_devices()
-    online = sum(1 for d in devices if d.get("online"))
+    # Counts come from a SQL COUNT, not a full device load + JSON decode (the
+    # summary only needs the numbers).
+    total, online = storage.catalog_counts()
     return Meta(
-        total=len(devices),
+        total=total,
         online=online,
-        offline=len(devices) - online,
+        offline=total - online,
         updated_at=storage.updated_at(),
     )
 

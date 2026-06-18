@@ -50,6 +50,20 @@ def test_meta_counts(client):
     assert meta["online"] == _SEED_ONLINE
 
 
+def test_catalog_counts_matches_listing(client):
+    # The COUNT-based summary must agree with the full device listing (#167).
+    devices = client.get("/api/devices").json()
+    total, online = storage.catalog_counts()
+    assert total == len(devices)
+    assert online == sum(1 for d in devices if d["online"])
+
+    # And it tracks creates: adding an online device bumps both counts.
+    client.post("/api/devices", json=_sample_device())
+    total2, online2 = storage.catalog_counts()
+    assert total2 == total + 1
+    assert online2 == online + 1
+
+
 def test_get_one_device_with_detail(client):
     nas = client.get("/api/devices/nas").json()
     assert nas["name"] == "NAS"

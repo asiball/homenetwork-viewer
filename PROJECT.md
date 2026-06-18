@@ -4,7 +4,7 @@
 - **Backend**: FastAPI (Python 3.11+, uv), single `app/` package with main.py, models.py, storage.py
 - **Frontend**: Vite + React + TypeScript SPA, components/ + views/ + lib/ structure
 - **Infra**: Docker Compose with nginx reverse proxy → backend on port 8080
-- **Data**: JSON file storage at /data/devices.json (seed data in backend/app/seed/)
+- **Data**: SQLite at /data/homenet.db (seed data in backend/app/seed/; JSON used for import/export). Catalog (devices/switches/cables) and reachability state (online/last) are separate tables; schema evolves via numbered migrations (PRAGMA user_version).
 
 ## Code Layout
 ```

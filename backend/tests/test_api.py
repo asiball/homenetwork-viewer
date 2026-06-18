@@ -149,44 +149,40 @@ def test_persistence_across_reads(client):
     assert again["notes"] == "hello"
 
 
-def test_corrupt_data_file_returns_clear_error(client):
-    """A hand-edited devices.json with bad JSON gives a clear 503, not a 500."""
-    storage.DATA_FILE.write_text("{ not valid json", encoding="utf-8")
+def _corrupt_db():
+    """Replace the SQLite database with garbage so the next read can't open it.
+    Removes the WAL/SHM sidecars first so they can't serve cached pages."""
+    import pathlib
+
+    for suffix in ("-wal", "-shm"):
+        p = pathlib.Path(str(storage.DB_FILE) + suffix)
+        if p.exists():
+            p.unlink()
+    storage.DB_FILE.write_bytes(b"this is not a sqlite database")
+
+
+def test_corrupt_db_returns_clear_error(client):
+    """A corrupt database gives a clear 503, not an opaque 500."""
+    _corrupt_db()
     r = client.get("/api/devices")
     assert r.status_code == 503
-    assert "not valid JSON" in r.json()["detail"]
-    # /api/health does not read the data file, so it stays up.
+    assert "SQLite database" in r.json()["detail"]
+    # /api/health does not read the database, so it stays up.
     assert client.get("/api/health").status_code == 200
 
 
 def test_ready_ok_with_valid_data(client):
-    """Readiness probe passes when the data file parses (#89)."""
+    """Readiness probe passes when the database is readable (#89)."""
     r = client.get("/api/ready")
     assert r.status_code == 200
     assert r.json()["status"] == "ready"
 
 
 def test_ready_fails_on_corrupt_data(client):
-    """Readiness reports 503 on a corrupt data file, while liveness stays 200."""
-    storage.DATA_FILE.write_text("{ not valid json", encoding="utf-8")
+    """Readiness reports 503 on a corrupt database, while liveness stays 200."""
+    _corrupt_db()
     assert client.get("/api/ready").status_code == 503
     assert client.get("/api/health").status_code == 200
-
-
-def test_wrong_shape_data_file_returns_clear_error(client):
-    """Valid JSON of the wrong shape (e.g. a top-level array) also -> 503."""
-    storage.DATA_FILE.write_text("[1, 2, 3]", encoding="utf-8")
-    r = client.get("/api/devices")
-    assert r.status_code == 503
-    assert "JSON object" in r.json()["detail"]
-
-
-def test_non_array_collection_returns_clear_error(client):
-    """An object root whose 'devices' isn't an array -> 503, not a crash."""
-    storage.DATA_FILE.write_text('{"devices": {}}', encoding="utf-8")
-    r = client.get("/api/devices")
-    assert r.status_code == 503
-    assert "must be a JSON array" in r.json()["detail"]
 
 
 # ─── whoami ─────────────────────────────────────────────────────────────────

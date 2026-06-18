@@ -31,22 +31,22 @@
 | サービス | 技術 | 役割 |
 |---|---|---|
 | **frontend** | Vite + React + TypeScript（nginx配信） | ホーム（トポロジーマップ）・詳細・編集の SPA。`/api` を backend へリバースプロキシ |
-| **backend** | FastAPI（Python 3.11 / uv 管理） | devices / switches / cables の取得 + 機器の追加・編集・削除。`devices.json` に永続化 |
+| **backend** | FastAPI（Python 3.11 / uv 管理） | devices / switches / cables の取得 + 機器の追加・編集・削除。SQLite（`data/homenet.db`）に永続化 |
 
-データは単一の JSON ファイル（`data/devices.json`）が正。UI から編集でき、手で直接編集することもできます
-（バインドマウント）。書き込みはアトミック（temp + `os.replace`）です。
+データは SQLite データベース（`data/homenet.db`）が正。UI から編集でき、一括編集は **エクスポート → JSON を編集 → インポート** で行います
+（バインドマウント）。人が書く静的カタログ（devices/switches/cables）と、コレクタが書く到達性の状態（online/last）はテーブルが分離されており、スイープがカタログを書き換えることはありません。スキーマは `PRAGMA user_version` による番号付きマイグレーションで前方互換に進化します。
 
 ```
 homenetwork-viewer/
 ├── docker-compose.yml          # frontend + backend の2サービス
-├── data/                       # 実行時データ（devices.json を bind-mount・gitignore）
+├── data/                       # 実行時データ（homenet.db を bind-mount・gitignore）
 ├── backend/
 │   ├── pyproject.toml          # 依存管理（uv / PEP 621）
 │   ├── uv.lock                 # 依存バージョンロックファイル
 │   ├── app/
 │   │   ├── main.py             # FastAPI ルート（/api/...）
 │   │   ├── models.py           # Pydantic モデル（spec §3 準拠・IP/MAC/id 検証）
-│   │   ├── storage.py          # JSON 永続化（アトミック書き込み + ロック + シード）
+│   │   ├── storage.py          # SQLite 永続化（マイグレーション + ロック + シード）
 │   │   └── seed/devices.json   # 初期データ（22機器 + 4スイッチ + 9ケーブル）
 │   ├── tests/                  # pytest（API/バリデーション/永続化）
 │   └── Dockerfile
@@ -71,7 +71,7 @@ docker compose up -d --build
 ```
 
 - 公開ポートは **frontend の 8080 のみ**。nginx が `/api` を内部ネットワーク経由で backend に中継します。
-- 初回起動時、`data/devices.json` が無ければ同梱シード（22機器）で自動初期化されます。
+- 初回起動時、`data/homenet.db` が無ければ同梱シード（22機器）で自動初期化されます。旧版の `data/devices.json` が残っていれば、その内容を DB に取り込んでから起動します（JSON 版からの移行）。
 - LAN内の他端末からは `http://<ホストのIP>:8080` でアクセスできます。
 
 停止 / ログ:
@@ -121,12 +121,12 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
   host / IP / MAC はクリックでコピー。`url` を設定した機器は **↗ open** から管理画面を別タブで開け、
   ポートスキャン結果（services）の HTTP 系ポートも自動でリンクになります。
 - **編集 / 追加** `/d/:id/edit`, `/add` — 識別情報・配置（web ui の `url` 含む）・スペック概要・所有情報・メモを編集。
-  保存すると `devices.json` に書き戻されます。`id` は不変（追加時のみ設定、名前から kebab-case を自動提案）。
+  保存すると SQLite（`data/homenet.db`）に書き込まれます。`id` は不変（追加時のみ設定、名前から kebab-case を自動提案）。
   自動収集系の詳細（メトリクス/ポート等）は編集対象外で、編集時もそのまま保持されます。
 
 ### ヘッダーの「poll / refresh」について
 
-`refresh` と自動更新（off / 30s / 5m）は **API からカタログを再取得**します。`devices.json` を手で書き換えた場合も
+`refresh` と自動更新（off / 30s / 5m）は **API からカタログを再取得**します。インポートで一括更新した場合も
 これで反映されます。到達性（`online` / `last`）は backend のコレクタが **TCP プローブ + ICMP ping**（120秒間隔）で
 実測して自動更新しており、`refresh` はその結果を取り直すものです。ルーター ARP 取得・SNMP メトリクス・ポートスキャンは
 将来拡張で、`detail.metrics` / `services` は現時点では手動入力です（メトリクスを捏造しない方針）。
@@ -164,8 +164,9 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 ## ロードマップ
 
-- **v1.0（実装済み）** ホーム（radial / spine / tree）+ 詳細の2画面、`devices.json` 読み込み、オフライン表示。
-- **v1.1 編集（前倒し実装済み）** ブラウザからの追加 / 編集 / 削除と `devices.json` 書き戻し（本リポジトリ）。
+- **v1.0（実装済み）** ホーム（radial / spine / tree）+ 詳細の2画面、カタログ読み込み、オフライン表示。
+- **v1.1 編集（前倒し実装済み）** ブラウザからの追加 / 編集 / 削除と永続化（本リポジトリ）。
+- **データ基盤（実装済み）** SQLite 永続化（番号付きマイグレーション基盤、正本=静的カタログ／状態=到達性をテーブル分離）。JSON は import / export 形式として継続。
 - **到達性コレクタ（実装済み）** バックグラウンドで全機器を **TCP プローブ + ICMP ping フォールバック**（120秒間隔）で実測し、
   `online` / `last` を自動更新します。`detail.metrics` / `hist7` / `services`（ポートスキャン）は手動入力のままです。
 - **その他 実装済み** ケーブル/スイッチ・インベントリ画面、Wake-on-LAN、カタログの import / export（バックアップ付き）。

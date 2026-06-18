@@ -1,11 +1,19 @@
-"""File-backed storage for the device catalog.
+"""SQLite-backed storage for the device catalog.
 
-The single source of truth is a JSON document (`devices.json`) holding
-`devices`, `switches` and `cables` (spec §3 / §2 note). This keeps the data
-human-editable, exactly as the spec intends ("手動編集 or 編集フォーム経由").
+The single source of truth is a SQLite database (`homenet.db`). The static,
+human-curated catalog (devices / switches / cables — spec §3) is kept separate
+from the machine-written reachability *state* (online / last): the background
+collector updates reachability in its own table, so a sweep never rewrites the
+record the user edits, and never pays the per-sweep full-file fsync the old JSON
+store did. JSON stays the import/export interchange format, so the catalog is
+still portable, diff-able on export and easy to back up.
 
-Writes are atomic (temp file + os.replace) and guarded by a process-wide lock
-so concurrent edits from the single-user UI never corrupt the file.
+Schema changes go through numbered migrations keyed off ``PRAGMA user_version``,
+applied on startup, so the database can evolve forward safely.
+
+Writes are serialized by a process-wide lock and run in a transaction (commit on
+success, rollback on error) so a rejected operation never persists a half-applied
+change. Reads use WAL so they don't block the writer.
 """
 
 from __future__ import annotations
@@ -13,12 +21,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import shutil
-import tempfile
+import sqlite3
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -28,8 +35,18 @@ logger = logging.getLogger(__name__)
 APP_DIR = Path(__file__).resolve().parent
 SEED_FILE = APP_DIR / "seed" / "devices.json"
 
-# Runtime data file. Override with HOMENET_DATA_FILE (docker mounts /data).
-DATA_FILE = Path(os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json")))
+# Runtime database. Override with HOMENET_DB_FILE (docker mounts /data).
+DB_FILE = Path(os.environ.get("HOMENET_DB_FILE", str(APP_DIR.parent / "data" / "homenet.db")))
+
+# Legacy JSON catalog. If it exists on first start and the DB is still empty, it
+# is migrated in, so deployments upgrading from the JSON store keep their data.
+LEGACY_JSON = Path(
+    os.environ.get("HOMENET_DATA_FILE", str(APP_DIR.parent / "data" / "devices.json"))
+)
+
+# Reachability fields the collector owns. Kept out of the catalog "doc" (they
+# live in the device_state table) so a sweep never rewrites the curated record.
+_STATE_FIELDS = ("online", "last")
 
 _lock = threading.RLock()
 
@@ -39,83 +56,152 @@ class NotFoundError(KeyError):
 
 
 class ConflictError(ValueError):
-    """Raised when creating a device whose id already exists."""
+    """Raised when creating a device whose id / ip / mac already exists."""
 
 
 class DataFileError(RuntimeError):
-    """Raised when the data file exists but cannot be parsed as JSON."""
+    """Raised when the database file exists but cannot be opened / read."""
 
 
-def _empty_doc() -> dict[str, Any]:
-    return {"devices": [], "switches": [], "cables": []}
+# ─── Connection / migrations ─────────────────────────────────────────────────
+
+
+def _connect() -> sqlite3.Connection:
+    DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_FILE, timeout=5.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
+def _wrap_db_error(exc: sqlite3.DatabaseError) -> DataFileError:
+    logger.error("storage.db error=%s file=%s", exc, DB_FILE.name)
+    return DataFileError(f"{DB_FILE.name} is not a valid SQLite database: {exc}")
+
+
+@contextmanager
+def _db() -> Iterator[sqlite3.Connection]:
+    """Yield a read connection, translating a corrupt DB into DataFileError."""
+    try:
+        conn = _connect()
+    except sqlite3.DatabaseError as exc:
+        raise _wrap_db_error(exc) from exc
+    try:
+        yield conn
+    except sqlite3.DatabaseError as exc:
+        raise _wrap_db_error(exc) from exc
+    finally:
+        conn.close()
+
+
+@contextmanager
+def _write() -> Iterator[sqlite3.Connection]:
+    """Read-modify-write under the lock, in one transaction.
+
+    Commits on normal exit; rolls back if the body raises (a ConflictError /
+    NotFoundError thus never persists a half-applied change). This is the single
+    primitive every writer goes through, so the lock/transaction pair can't drift
+    between them.
+    """
+    with _lock:
+        try:
+            conn = _connect()
+        except sqlite3.DatabaseError as exc:
+            raise _wrap_db_error(exc) from exc
+        try:
+            with conn:  # commit on success, rollback on exception
+                yield conn
+        except sqlite3.DatabaseError as exc:
+            raise _wrap_db_error(exc) from exc
+        finally:
+            conn.close()
+
+
+def _m001_initial(conn: sqlite3.Connection) -> None:
+    """Catalog tables + machine-state table + a key/value meta table.
+
+    `seq` preserves insertion order for list endpoints (ORDER BY seq). Device
+    reachability lives in device_state, separate from the curated `doc`.
+    """
+    conn.executescript(
+        """
+        CREATE TABLE devices (
+            id   TEXT PRIMARY KEY,
+            ip   TEXT,
+            mac  TEXT,
+            doc  TEXT NOT NULL,
+            seq  INTEGER NOT NULL
+        );
+        CREATE TABLE device_state (
+            id     TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE,
+            online INTEGER NOT NULL DEFAULT 0,
+            last   TEXT
+        );
+        CREATE TABLE switches (
+            id   TEXT PRIMARY KEY,
+            doc  TEXT NOT NULL,
+            seq  INTEGER NOT NULL
+        );
+        CREATE TABLE cables (
+            id   TEXT PRIMARY KEY,
+            doc  TEXT NOT NULL,
+            seq  INTEGER NOT NULL
+        );
+        CREATE TABLE meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        );
+        CREATE INDEX idx_devices_ip ON devices(ip);
+        CREATE INDEX idx_devices_mac ON devices(mac);
+        """
+    )
+
+
+# Append-only: each migration is applied once, in order, the first time the DB's
+# user_version is below its index. Never edit a shipped migration — add a new one.
+_MIGRATIONS = [_m001_initial]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    for i, migration in enumerate(_MIGRATIONS, start=1):
+        if version < i:
+            migration(conn)
+            conn.execute(f"PRAGMA user_version = {i}")
+            logger.info("storage.migrate applied=%d", i)
+    conn.commit()
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def ensure_seeded() -> None:
-    """Create the data file from the bundled seed on first run."""
+    """Create + migrate the database, seeding it on first run.
+
+    Seeds from a legacy ``devices.json`` if one is present (so an upgrade keeps
+    existing data), otherwise from the bundled seed.
+    """
     with _lock:
-        if DATA_FILE.exists():
+        with closing(_connect()) as conn:
+            _migrate(conn)
+            already = conn.execute("SELECT 1 FROM devices LIMIT 1").fetchone()
+        if already:
             return
-        DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-        if SEED_FILE.exists():
-            shutil.copyfile(SEED_FILE, DATA_FILE)
-            logger.info("storage.seed action=copy src=%s dst=%s", SEED_FILE, DATA_FILE)
-        else:  # pragma: no cover - seed is shipped with the image
-            _write_doc(_empty_doc())
-            logger.info("storage.seed action=empty dst=%s", DATA_FILE)
-
-
-def _read_doc() -> dict[str, Any]:
-    with _lock:
-        if not DATA_FILE.exists():
-            ensure_seeded()
-        with DATA_FILE.open("r", encoding="utf-8") as fh:
-            try:
-                doc = json.load(fh)
-            except json.JSONDecodeError as exc:
-                logger.error("storage.read error=invalid_json file=%s", DATA_FILE.name)
-                raise DataFileError(f"{DATA_FILE.name} is not valid JSON: {exc}") from exc
-    # Valid JSON but the wrong shape (e.g. a top-level array) would otherwise
-    # blow up on .setdefault below — surface it as a clear DataFileError too.
-    if not isinstance(doc, dict):
-        logger.error("storage.read error=wrong_shape file=%s", DATA_FILE.name)
-        raise DataFileError(
-            f"{DATA_FILE.name} must be a JSON object with devices / switches / cables arrays"
-        )
-    # Defensive: guarantee the three collections always exist and are arrays
-    # (a hand-edit like {"devices": {}} would otherwise crash the iterators).
-    for key in ("devices", "switches", "cables"):
-        doc.setdefault(key, [])
-        if not isinstance(doc[key], list):
-            logger.error("storage.read error=bad_collection key=%s file=%s", key, DATA_FILE.name)
-            raise DataFileError(f"{DATA_FILE.name}: '{key}' must be a JSON array")
-    logger.debug("storage.read action=read file=%s", DATA_FILE.name)
-    return doc
-
-
-def _write_doc(doc: dict[str, Any]) -> None:
-    """Atomically replace the data file."""
-    with _lock:
-        DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=str(DATA_FILE.parent), prefix=".devices.", suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump(doc, fh, ensure_ascii=False, indent=2)
-                fh.write("\n")
-                fh.flush()
-                os.fsync(fh.fileno())
-            os.replace(tmp, DATA_FILE)
-            # fsync the directory too, otherwise a crash right after the rename
-            # can lose the new directory entry and leave the old file in place —
-            # which would defeat the point of the atomic write.
-            dir_fd = os.open(str(DATA_FILE.parent), os.O_DIRECTORY)
-            try:
-                os.fsync(dir_fd)
-            finally:
-                os.close(dir_fd)
-            logger.debug("storage.write action=write file=%s", DATA_FILE.name)
-        finally:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
+        source = LEGACY_JSON if LEGACY_JSON.exists() else SEED_FILE
+        if source.exists():
+            doc = json.loads(source.read_text(encoding="utf-8"))
+            replace_catalog(
+                doc.get("devices", []),
+                doc.get("switches", []),
+                doc.get("cables", []),
+            )
+            logger.info("storage.seed action=load src=%s", source.name)
+        else:  # pragma: no cover - seed ships with the image
+            with _write() as conn:
+                _touch_catalog(conn)
+            logger.info("storage.seed action=empty dst=%s", DB_FILE.name)
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -183,138 +269,250 @@ def find_duplicate_identities(devices: list[dict[str, Any]]) -> list[str]:
     return errors
 
 
+def _split_state(device: dict[str, Any]) -> tuple[dict[str, Any], int, str | None]:
+    """Split a device dict into its curated `doc` and its (online, last) state."""
+    doc = {k: v for k, v in device.items() if k not in _STATE_FIELDS}
+    return doc, int(bool(device.get("online", False))), device.get("last")
+
+
+def _row_to_device(row: sqlite3.Row) -> dict[str, Any]:
+    """Re-merge a stored doc with its reachability state into one device dict."""
+    device = json.loads(row["doc"])
+    device["online"] = bool(row["online"])
+    if row["last"] is not None:
+        device["last"] = row["last"]
+    return device
+
+
+_DEVICE_SELECT = (
+    "SELECT d.doc, s.online, s.last FROM devices d LEFT JOIN device_state s ON s.id = d.id"
+)
+
+
+def _identity_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Minimal {id, ip, mac, name} rows for the uniqueness check."""
+    rows = conn.execute(
+        "SELECT id, ip, mac, json_extract(doc, '$.name') AS name FROM devices"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _touch_catalog(conn: sqlite3.Connection) -> None:
+    """Stamp the catalog's last-edited time. Reachability sweeps deliberately do
+    NOT call this, so updated_at reflects human edits, not machine state."""
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES('catalog_updated_at', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (_now_iso(),),
+    )
+
+
+def _next_seq(conn: sqlite3.Connection, table: str) -> int:
+    # table is an internal constant, never user input.
+    return conn.execute(f"SELECT COALESCE(MAX(seq), -1) + 1 FROM {table}").fetchone()[0]
+
+
 # ─── Reads ──────────────────────────────────────────────────────────────────
 
 
 def list_devices() -> list[dict[str, Any]]:
     logger.debug("storage.op action=list_devices")
-    return _read_doc()["devices"]
+    with _db() as conn:
+        rows = conn.execute(_DEVICE_SELECT + " ORDER BY d.seq").fetchall()
+    return [_row_to_device(r) for r in rows]
 
 
 def get_device(device_id: str) -> dict[str, Any]:
-    for d in _read_doc()["devices"]:
-        if d.get("id") == device_id:
-            logger.debug("storage.op action=get_device id=%s", device_id)
-            return d
-    logger.warning("storage.op action=get_device id=%s error=not_found", device_id)
-    raise NotFoundError(device_id)
+    with _db() as conn:
+        row = conn.execute(_DEVICE_SELECT + " WHERE d.id = ?", (device_id,)).fetchone()
+    if row is None:
+        logger.warning("storage.op action=get_device id=%s error=not_found", device_id)
+        raise NotFoundError(device_id)
+    logger.debug("storage.op action=get_device id=%s", device_id)
+    return _row_to_device(row)
 
 
 def list_switches() -> list[dict[str, Any]]:
-    return _read_doc()["switches"]
+    with _db() as conn:
+        rows = conn.execute("SELECT doc FROM switches ORDER BY seq").fetchall()
+    return [json.loads(r["doc"]) for r in rows]
 
 
 def list_cables() -> list[dict[str, Any]]:
-    return _read_doc()["cables"]
+    with _db() as conn:
+        rows = conn.execute("SELECT doc FROM cables ORDER BY seq").fetchall()
+    return [json.loads(r["doc"]) for r in rows]
 
 
 def updated_at() -> str | None:
-    if not DATA_FILE.exists():
+    try:
+        with _db() as conn:
+            row = conn.execute("SELECT value FROM meta WHERE key = 'catalog_updated_at'").fetchone()
+    except DataFileError:
         return None
-    ts = DATA_FILE.stat().st_mtime
-    return datetime.fromtimestamp(ts, tz=UTC).isoformat()
+    return row["value"] if row else None
 
 
 # ─── Writes ─────────────────────────────────────────────────────────────────
 
 
-@contextmanager
-def _mutate() -> Iterator[dict[str, Any]]:
-    """Read-modify-write the document under the lock.
-
-    Yields the parsed doc; the body mutates it in place and, on normal exit,
-    it is written back atomically. If the body raises (e.g. a ConflictError or
-    NotFoundError), the write is skipped — so a rejected operation never
-    persists a half-applied change. This is the single primitive every writer
-    goes through, so the lock/read/write triple can't drift between them.
-    """
-    with _lock:
-        doc = _read_doc()
-        yield doc
-        _write_doc(doc)
-
-
 def create_device(device: dict[str, Any]) -> dict[str, Any]:
-    with _mutate() as doc:
+    doc, online, last = _split_state(device)
+    with _write() as conn:
         _check_identity_unique(
-            doc["devices"],
+            _identity_rows(conn),
             id=device["id"],
             ip=device.get("ip"),
             mac=device.get("mac"),
         )
-        doc["devices"].append(device)
+        conn.execute(
+            "INSERT INTO devices(id, ip, mac, doc, seq) VALUES (?, ?, ?, ?, ?)",
+            (
+                device["id"],
+                device.get("ip"),
+                device.get("mac"),
+                json.dumps(doc, ensure_ascii=False),
+                _next_seq(conn, "devices"),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?)",
+            (device["id"], online, last),
+        )
+        _touch_catalog(conn)
         logger.info("storage.op action=create_device id=%s", device.get("id"))
-        return device
+    return device
 
 
 def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
-    with _mutate() as doc:
-        for i, d in enumerate(doc["devices"]):
-            if d.get("id") == device_id:
-                _check_identity_unique(
-                    doc["devices"],
-                    ip=device.get("ip"),
-                    mac=device.get("mac"),
-                    exclude_id=device_id,
-                )
-                merged = _deep_merge(d, device)
-                merged["id"] = device_id  # id is immutable
-                doc["devices"][i] = merged
-                logger.info("storage.op action=update_device id=%s", device_id)
-                return merged
-        logger.warning("storage.op action=update_device id=%s error=not_found", device_id)
-        raise NotFoundError(device_id)
+    with _write() as conn:
+        row = conn.execute(_DEVICE_SELECT + " WHERE d.id = ?", (device_id,)).fetchone()
+        if row is None:
+            logger.warning("storage.op action=update_device id=%s error=not_found", device_id)
+            raise NotFoundError(device_id)
+        _check_identity_unique(
+            _identity_rows(conn),
+            ip=device.get("ip"),
+            mac=device.get("mac"),
+            exclude_id=device_id,
+        )
+        merged = _deep_merge(_row_to_device(row), device)
+        merged["id"] = device_id  # id is immutable
+        doc, online, last = _split_state(merged)
+        conn.execute(
+            "UPDATE devices SET ip = ?, mac = ?, doc = ? WHERE id = ?",
+            (merged.get("ip"), merged.get("mac"), json.dumps(doc, ensure_ascii=False), device_id),
+        )
+        conn.execute(
+            "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET online = excluded.online, last = excluded.last",
+            (device_id, online, last),
+        )
+        _touch_catalog(conn)
+        logger.info("storage.op action=update_device id=%s", device_id)
+    return merged
 
 
 def delete_device(device_id: str) -> None:
-    with _mutate() as doc:
-        before = len(doc["devices"])
-        doc["devices"] = [d for d in doc["devices"] if d.get("id") != device_id]
-        if len(doc["devices"]) == before:
+    with _write() as conn:
+        # device_state is removed by the ON DELETE CASCADE foreign key.
+        cur = conn.execute("DELETE FROM devices WHERE id = ?", (device_id,))
+        if cur.rowcount == 0:
             logger.warning("storage.op action=delete_device id=%s error=not_found", device_id)
             raise NotFoundError(device_id)
+        _touch_catalog(conn)
         logger.info("storage.op action=delete_device id=%s", device_id)
 
 
 def bulk_update_reachability(updates: list[dict]) -> None:
-    """Update online/last for multiple devices atomically."""
-    with _mutate() as data:
-        by_id = {u["id"]: u for u in updates}
-        for d in data["devices"]:
-            upd = by_id.get(d.get("id"))
-            if upd is None:
+    """Update online/last for multiple devices. Touches only device_state — never
+    the curated catalog — and writes a row only when it actually changes, so an
+    unchanged sweep does no disk write at all (saves SD-card wear)."""
+    if not updates:
+        return
+    with _write() as conn:
+        for upd in updates:
+            dev_id = upd["id"]
+            row = conn.execute(
+                "SELECT online, last FROM device_state WHERE id = ?", (dev_id,)
+            ).fetchone()
+            if (
+                row is None
+                and not conn.execute("SELECT 1 FROM devices WHERE id = ?", (dev_id,)).fetchone()
+            ):
+                continue  # unknown device id — nothing to update
+            cur_online = row["online"] if row else None
+            cur_last = row["last"] if row else None
+            new_online = int(bool(upd["online"]))
+            # Keep the previous last-seen instant when going offline (issue #84).
+            new_last = upd["last"] if (upd["online"] and upd.get("last")) else cur_last
+            if new_online == cur_online and new_last == cur_last:
                 continue
-            d["online"] = upd["online"]
-            if upd["online"] and upd.get("last"):
-                d["last"] = upd["last"]
+            conn.execute(
+                "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET online = excluded.online, last = excluded.last",
+                (dev_id, new_online, new_last),
+            )
 
 
 # ─── Backup / Restore ───────────────────────────────────────────────────────
 
 
 def backup_catalog() -> None:
-    """Save a timestamped backup of the current data file."""
+    """Save a timestamped backup of the database via SQLite's online backup API
+    (safe to run alongside a writer, unlike a raw file copy with WAL)."""
     with _lock:
-        if DATA_FILE.exists():
-            # Nanosecond precision so two imports in the same second don't clobber
-            # each other's backup (the value stays fixed-width, so name-sort below
-            # is still chronological).
-            bak = DATA_FILE.parent / f"devices.json.bak-{time.time_ns()}"
-            shutil.copy2(DATA_FILE, bak)
-            logger.info("storage.op action=backup dst=%s", bak.name)
-            # Keep only the 5 most recent backups
-            baks = sorted(DATA_FILE.parent.glob("devices.json.bak-*"))
-            for old in baks[:-5]:
-                old.unlink(missing_ok=True)
-                logger.info("storage.op action=prune_backup file=%s", old.name)
+        if not DB_FILE.exists():
+            return
+        # Nanosecond precision so two imports in the same second don't clobber
+        # each other's backup; fixed-width keeps the name-sort chronological.
+        bak = DB_FILE.parent / f"{DB_FILE.name}.bak-{time.time_ns()}"
+        try:
+            with closing(_connect()) as src, closing(sqlite3.connect(bak)) as dst:
+                src.backup(dst)
+        except sqlite3.DatabaseError as exc:
+            raise _wrap_db_error(exc) from exc
+        logger.info("storage.op action=backup dst=%s", bak.name)
+        # Keep only the 5 most recent backups.
+        for old in sorted(DB_FILE.parent.glob(f"{DB_FILE.name}.bak-*"))[:-5]:
+            old.unlink(missing_ok=True)
+            logger.info("storage.op action=prune_backup file=%s", old.name)
 
 
 def replace_catalog(devices: list, switches: list, cables: list) -> None:
-    """Atomically replace the catalog with new data."""
-    with _mutate() as current:
-        current["devices"] = devices
-        current["switches"] = switches
-        current["cables"] = cables
+    """Atomically replace the whole catalog with new data."""
+    with _write() as conn:
+        conn.execute("DELETE FROM device_state")
+        conn.execute("DELETE FROM devices")
+        conn.execute("DELETE FROM switches")
+        conn.execute("DELETE FROM cables")
+        for seq, dev in enumerate(devices):
+            doc, online, last = _split_state(dev)
+            conn.execute(
+                "INSERT INTO devices(id, ip, mac, doc, seq) VALUES (?, ?, ?, ?, ?)",
+                (
+                    dev["id"],
+                    dev.get("ip"),
+                    dev.get("mac"),
+                    json.dumps(doc, ensure_ascii=False),
+                    seq,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?)",
+                (dev["id"], online, last),
+            )
+        for seq, sw in enumerate(switches):
+            conn.execute(
+                "INSERT INTO switches(id, doc, seq) VALUES (?, ?, ?)",
+                (sw["id"], json.dumps(sw, ensure_ascii=False), seq),
+            )
+        for seq, cb in enumerate(cables):
+            conn.execute(
+                "INSERT INTO cables(id, doc, seq) VALUES (?, ?, ?)",
+                (cb["id"], json.dumps(cb, ensure_ascii=False), seq),
+            )
+        _touch_catalog(conn)
         logger.info(
             "storage.op action=replace_catalog devices=%d switches=%d cables=%d",
             len(devices),

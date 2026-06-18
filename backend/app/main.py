@@ -111,8 +111,8 @@ async def log_requests(request: Request, call_next):
 
 @app.exception_handler(storage.DataFileError)
 async def _data_file_error(_request: Request, exc: storage.DataFileError) -> JSONResponse:
-    # A hand-edited devices.json with a syntax error should give a clear message
-    # ("not valid JSON: ...") instead of an opaque 500.
+    # An unreadable / corrupt database should give a clear message instead of an
+    # opaque 500, so an operator can tell "data problem" apart from "app bug".
     return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
@@ -136,9 +136,9 @@ def health() -> dict[str, str]:
 
 @app.get("/api/ready")
 def ready() -> dict[str, str]:
-    """Readiness: liveness *and* the data file parses (#89).
+    """Readiness: liveness *and* the database is readable (#89).
 
-    Unlike /api/health this returns 503 when devices.json is corrupt, so an
+    Unlike /api/health this returns 503 when the database is corrupt, so an
     operator can tell "process up" apart from "actually able to serve data".
     """
     try:

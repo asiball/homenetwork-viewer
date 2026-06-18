@@ -4,6 +4,7 @@ import { useCatalog } from "../CatalogContext";
 import { Shell } from "../components/Shell";
 import { RefreshControls } from "../components/RefreshControls";
 import { CableSwatch } from "../components/CableSwatch";
+import { switchPortRows } from "../lib/helpers";
 
 export function InventoryView() {
   const { devices, switches, cables } = useCatalog();
@@ -32,16 +33,10 @@ export function InventoryView() {
             <div className="d-sparse">no switches in catalog</div>
           ) : (
             switches.map((sw) => {
-              const ports = Object.entries(sw.portMap ?? {}).sort(
-                ([a], [b]) => Number(a) - Number(b)
-              );
-              const usedPorts = ports.filter(([, slot]) => slot !== null).length;
-              // Never let a portCount that's smaller than the actual port map
-              // hide rows or report negative free ports — take the largest of
-              // declared count, highest mapped port number, and entry count.
-              const maxMapped = ports.reduce((m, [p]) => Math.max(m, Number(p) || 0), 0);
-              const totalPorts = Math.max(sw.portCount ?? 0, maxMapped, ports.length);
-              const freePorts = totalPorts - usedPorts;
+              // Rows cover numbered ports 1..N *and* any labelled ports (sfp1…)
+              // so an SFP/uplink slot is never dropped from the table (#151).
+              const { rows, used: usedPorts, free: freePorts } = switchPortRows(sw);
+              const totalPorts = rows.length;
 
               return (
                 <div key={sw.id} className="inv-card">
@@ -67,18 +62,14 @@ export function InventoryView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from({ length: totalPorts }, (_, i) => {
-                        const port = String(i + 1);
-                        const slot = sw.portMap?.[port] ?? null;
-                        return (
-                          <tr key={port} className={slot ? "" : "inv-port-empty"}>
-                            <td className="port">{port}</td>
-                            <td>{slot ? deviceName(slot.device) : <span className="dim-note">—</span>}</td>
-                            <td>{slot?.role ?? <span className="dim-note">—</span>}</td>
-                            <td>{slot?.cable ?? <span className="dim-note">—</span>}</td>
-                          </tr>
-                        );
-                      })}
+                      {rows.map(({ port, slot }) => (
+                        <tr key={port} className={slot ? "" : "inv-port-empty"}>
+                          <td className="port">{port}</td>
+                          <td>{slot ? deviceName(slot.device) : <span className="dim-note">—</span>}</td>
+                          <td>{slot?.role ?? <span className="dim-note">—</span>}</td>
+                          <td>{slot?.cable ?? <span className="dim-note">—</span>}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

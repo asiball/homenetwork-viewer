@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo } from "./helpers";
-import type { Device, Part } from "../types";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo, comparePortKeys, switchPortRows } from "./helpers";
+import type { Device, Part, Switch } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
   id: "test",
@@ -189,6 +189,67 @@ describe("parts helpers (#97)", () => {
     expect(warrantyState("2027-01-01", now)).toBe("ok");
     expect(warrantyState(null, now)).toBeNull();
     expect(warrantyState("garbage", now)).toBeNull();
+  });
+});
+
+describe("comparePortKeys", () => {
+  it("orders numbered ports numerically, not lexically", () => {
+    expect(["10", "2", "1"].sort(comparePortKeys)).toEqual(["1", "2", "10"]);
+  });
+
+  it("sorts labelled ports after numbered ones, lexically", () => {
+    expect(["sfp2", "1", "sfp1", "10"].sort(comparePortKeys)).toEqual([
+      "1",
+      "10",
+      "sfp1",
+      "sfp2",
+    ]);
+  });
+});
+
+describe("switchPortRows (#151)", () => {
+  const makeSwitch = (over: Partial<Switch> = {}): Switch => ({
+    id: "sw",
+    name: "Core",
+    type: "switch",
+    online: true,
+    portMap: {},
+    ...over,
+  });
+
+  it("renders empty numbered ports up to portCount with correct free count", () => {
+    const { rows, used, free } = switchPortRows(
+      makeSwitch({ portCount: 4, portMap: { "1": { device: "nas" } } }),
+    );
+    expect(rows.map((r) => r.port)).toEqual(["1", "2", "3", "4"]);
+    expect(used).toBe(1);
+    expect(free).toBe(3);
+  });
+
+  it("includes non-numeric labelled ports (sfp1) that the old loop dropped", () => {
+    const { rows, used } = switchPortRows(
+      makeSwitch({
+        portCount: 8,
+        portMap: {
+          "1": { device: "nas" },
+          sfp1: { device: "router", role: "uplink" },
+        },
+      }),
+    );
+    const sfp = rows.find((r) => r.port === "sfp1");
+    expect(sfp).toBeDefined();
+    expect(sfp?.slot?.device).toBe("router");
+    // sfp1 + 1 numbered port are in use.
+    expect(used).toBe(2);
+    // Labelled ports sort after the numbered range.
+    expect(rows[rows.length - 1].port).toBe("sfp1");
+  });
+
+  it("grows the numbered range when a mapped port exceeds portCount", () => {
+    const { rows } = switchPortRows(
+      makeSwitch({ portCount: 2, portMap: { "5": { device: "pc" } } }),
+    );
+    expect(rows.map((r) => r.port)).toEqual(["1", "2", "3", "4", "5"]);
   });
 });
 

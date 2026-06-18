@@ -5,6 +5,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
+import { comparePortKeys } from "../lib/helpers";
 import type { Switch } from "../types";
 
 interface Props {
@@ -17,7 +18,9 @@ export function SwitchPanel({ sw }: Props) {
     devices.find((d) => d.id === id)?.name ?? switches.find((s) => s.id === id)?.name ?? id;
   const isDevice = (id: string) => devices.some((d) => d.id === id);
 
-  const ports = Object.entries(sw.portMap ?? {}).sort((a, b) => Number(a[0]) - Number(b[0]));
+  // Labelled ports (e.g. "sfp1") must sort after the numbered ones, not collapse
+  // to NaN under a plain Number() compare (#151).
+  const ports = Object.entries(sw.portMap ?? {}).sort((a, b) => comparePortKeys(a[0], b[0]));
   const used = ports.filter(([, slot]) => slot != null).length;
 
   return (

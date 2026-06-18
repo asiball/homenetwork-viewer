@@ -4,6 +4,7 @@
 
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useParams, useBlocker, useLocation, type Location } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Spinner } from "../components/Spinner";
 import { useCatalog } from "../CatalogContext";
@@ -162,31 +163,22 @@ export function EditView({ mode }: Props) {
   // types and offer it as a one-click fill for the manufacturer field — never
   // auto-overwriting what they typed (#107). Randomized phone MACs aren't in
   // the table, so they quietly yield no suggestion.
-  const [ouiVendor, setOuiVendor] = useState<string | null>(null);
   const macHex = form.mac.replace(/[^0-9a-fA-F]/g, "");
+  // Debounce the MAC into the query key so each keystroke doesn't fire a lookup;
+  // react-query then caches per-prefix and dedupes (#159 — was a hand-rolled
+  // debounce + ignore-flag effect). The OUI table is static, so cache forever.
+  const [debouncedMac, setDebouncedMac] = useState(macHex);
   useEffect(() => {
-    let ignore = false;
-    // All setState happens inside the (async) timeout so the lookup is
-    // debounced and we never set state synchronously during the effect.
-    const t = setTimeout(() => {
-      if (macHex.length < 6) {
-        if (!ignore) setOuiVendor(null);
-        return;
-      }
-      api
-        .oui(macHex)
-        .then((r) => {
-          if (!ignore) setOuiVendor(r.manufacturer);
-        })
-        .catch(() => {
-          if (!ignore) setOuiVendor(null);
-        });
-    }, 300);
-    return () => {
-      ignore = true;
-      clearTimeout(t);
-    };
+    const t = setTimeout(() => setDebouncedMac(macHex), 300);
+    return () => clearTimeout(t);
   }, [macHex]);
+  const { data: ouiVendor = null } = useQuery({
+    queryKey: ["oui", debouncedMac],
+    queryFn: () => api.oui(debouncedMac).then((r) => r.manufacturer),
+    enabled: debouncedMac.length >= 6,
+    retry: false,
+    staleTime: Infinity,
+  });
   // Hide the suggestion once the manufacturer field already holds it.
   const showOuiSuggestion = !!ouiVendor && form.manufacturer.trim() !== ouiVendor;
 

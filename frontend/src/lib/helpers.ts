@@ -1,6 +1,14 @@
 // Lookup + formatting helpers, ported from the prototype's data.jsx.
 
-import { GROUP_ORDER, type Cable, type Device, type Group, type Part, type Switch } from "../types";
+import {
+  GROUP_ORDER,
+  type Cable,
+  type Device,
+  type Group,
+  type Part,
+  type PortSlot,
+  type Switch,
+} from "../types";
 
 export function countOnline(devs: Device[]): number {
   return devs.filter((d) => d.online).length;
@@ -50,6 +58,55 @@ export function switchForDevice(
     }
   }
   return null;
+}
+
+// Compare two switch/hub port-map keys for display order. Numbered ports sort
+// numerically (1, 2, …, 10 — not "1, 10, 2"); non-numeric labels (e.g. an SFP
+// port "sfp1") sort after the numbers, lexically. Plain Number() would turn
+// "sfp1" into NaN and scatter labelled ports unpredictably (#151).
+export function comparePortKeys(a: string, b: string): number {
+  const aNum = /^\d+$/.test(a);
+  const bNum = /^\d+$/.test(b);
+  if (aNum && bNum) return Number(a) - Number(b);
+  if (aNum) return -1;
+  if (bNum) return 1;
+  return a.localeCompare(b);
+}
+
+export interface PortRow {
+  port: string;
+  slot: PortSlot | null;
+}
+
+// Build the ordered rows for a switch's port table:
+//   • the numbered ports 1..total (so empty numbered ports still render as
+//     "free"), where total = max(declared portCount, highest mapped number);
+//   • unioned with any non-numeric labelled ports present in the map (e.g.
+//     "sfp1"), which the old length-based loop dropped entirely (#151).
+// Returns the rows plus used / free counts derived from the same set, so the
+// header summary and the table can never disagree.
+export function switchPortRows(sw: Switch): { rows: PortRow[]; used: number; free: number } {
+  const portMap = sw.portMap ?? {};
+  const entries = Object.entries(portMap);
+  const maxNumeric = entries.reduce(
+    (m, [k]) => (/^\d+$/.test(k) ? Math.max(m, Number(k)) : m),
+    0,
+  );
+  const total = Math.max(sw.portCount ?? 0, maxNumeric);
+  const numbered: PortRow[] = Array.from({ length: total }, (_, i) => {
+    const port = String(i + 1);
+    return { port, slot: portMap[port] ?? null };
+  });
+  // Anything not already covered by a numbered row (labelled ports, or oddly
+  // formatted keys like "01") is appended so it is never silently dropped.
+  const covered = new Set(numbered.map((r) => r.port));
+  const extra: PortRow[] = entries
+    .filter(([port]) => !covered.has(port))
+    .map(([port, slot]) => ({ port, slot }))
+    .sort((a, b) => comparePortKeys(a.port, b.port));
+  const rows = [...numbered, ...extra];
+  const used = rows.filter((r) => r.slot != null).length;
+  return { rows, used, free: rows.length - used };
 }
 
 // Cable jacket colour → swatch (prototype palette, view-detail.jsx).

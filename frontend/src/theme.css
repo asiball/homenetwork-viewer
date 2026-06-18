@@ -458,6 +458,14 @@ body {
   fill: transparent;
   cursor: pointer;
 }
+/* Keyboard focus ring for the SVG node hit targets — these are tabbable
+   role="button" elements, but transparent, so without this a keyboard user
+   has no idea which node is focused (#165). */
+.node-hit:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
 .node-label {
   font-family: var(--mono);
   font-size: 10px;

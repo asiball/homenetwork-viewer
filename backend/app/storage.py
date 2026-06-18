@@ -137,20 +137,50 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
-def _check_ip_mac_unique(
+def _check_identity_unique(
     devices: list[dict[str, Any]],
-    ip: str | None,
-    mac: str | None,
+    *,
+    id: str | None = None,
+    ip: str | None = None,
+    mac: str | None = None,
     exclude_id: str | None = None,
 ) -> None:
-    """Raise `ConflictError` if *ip* or *mac* already belong to another device."""
+    """Raise `ConflictError` if *id*, *ip* or *mac* already belong to another
+    device. The single place id / ip / mac uniqueness is enforced against the
+    stored catalog — create *and* update go through here, so the rule can't
+    drift between them (issue #123)."""
     for d in devices:
-        if exclude_id is not None and d.get("id") == exclude_id:
+        did = d.get("id")
+        if exclude_id is not None and did == exclude_id:
             continue
+        if id is not None and did == id:
+            raise ConflictError(f"id already in use: {id}")
         if ip and d.get("ip") == ip:
-            raise ConflictError(f"ip already in use by '{d.get('name', d.get('id'))}'")
+            raise ConflictError(f"ip already in use by '{d.get('name', did)}'")
         if mac and d.get("mac") and mac.upper() == d["mac"].upper():
-            raise ConflictError(f"mac already in use by '{d.get('name', d.get('id'))}'")
+            raise ConflictError(f"mac already in use by '{d.get('name', did)}'")
+
+
+def find_duplicate_identities(devices: list[dict[str, Any]]) -> list[str]:
+    """Return error strings for devices that collide on id / ip / mac *within*
+    the given list. Used by the import path so a bulk upload is held to the same
+    id/ip/mac uniqueness contract that create_device enforces — the check lives
+    here, next to _check_identity_unique, rather than being reimplemented in the
+    route (issue #123)."""
+    errors: list[str] = []
+    seen_id: set[str] = set()
+    seen_ip: set[str] = set()
+    seen_mac: set[str] = set()
+    for i, d in enumerate(devices):
+        for key, seen in (("id", seen_id), ("ip", seen_ip), ("mac", seen_mac)):
+            val = d.get(key)
+            if not val:
+                continue
+            norm = val.upper() if key == "mac" else val
+            if norm in seen:
+                errors.append(f"device[{i}]: duplicate {key} {val!r}")
+            seen.add(norm)
+    return errors
 
 
 # ─── Reads ──────────────────────────────────────────────────────────────────
@@ -206,9 +236,12 @@ def _mutate() -> Iterator[dict[str, Any]]:
 
 def create_device(device: dict[str, Any]) -> dict[str, Any]:
     with _mutate() as doc:
-        if any(d.get("id") == device["id"] for d in doc["devices"]):
-            raise ConflictError(device["id"])
-        _check_ip_mac_unique(doc["devices"], device.get("ip"), device.get("mac"))
+        _check_identity_unique(
+            doc["devices"],
+            id=device["id"],
+            ip=device.get("ip"),
+            mac=device.get("mac"),
+        )
         doc["devices"].append(device)
         logger.info("storage.op action=create_device id=%s", device.get("id"))
         return device
@@ -218,10 +251,10 @@ def update_device(device_id: str, device: dict[str, Any]) -> dict[str, Any]:
     with _mutate() as doc:
         for i, d in enumerate(doc["devices"]):
             if d.get("id") == device_id:
-                _check_ip_mac_unique(
+                _check_identity_unique(
                     doc["devices"],
-                    device.get("ip"),
-                    device.get("mac"),
+                    ip=device.get("ip"),
+                    mac=device.get("mac"),
                     exclude_id=device_id,
                 )
                 merged = _deep_merge(d, device)

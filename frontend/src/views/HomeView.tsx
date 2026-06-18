@@ -85,13 +85,27 @@ export function HomeView() {
   }, [layout, mapVisible, switches]);
 
   const selected = mapVisible.find((d) => d.id === selId) ?? mapVisible[0];
-  const selSw = selSwId ? (switches.find((s) => s.id === selSwId) ?? null) : null;
+  // Switch nodes only exist on the wiring tree, so the switch side panel is only
+  // meaningful there — in radial/spine it always falls back to the device
+  // summary. Gating on the layout (not just selSwId) stops a stale panel from
+  // showing after the layout changes (#153).
+  const selSw =
+    layout === "tree" && selSwId ? (switches.find((s) => s.id === selSwId) ?? null) : null;
 
   // Keep selection valid as visibility changes.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selected && selected.id !== selId) setSelId(selected.id);
   }, [selected, selId]);
+
+  // The tree's switch set depends on which devices are visible, so a search /
+  // offline-toggle change can hide the selected switch's node while its side
+  // panel lingers. Drop the switch selection whenever the visible set changes so
+  // the panel falls back to the device summary instead of going stale (#153).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelSwId(null);
+  }, [searchQuery, showOffline]);
 
   function changeLayout(next: LayoutKind) {
     setLayout(next);

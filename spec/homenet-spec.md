@@ -88,6 +88,8 @@ v1.0 では以下の **2画面のみ**。編集機能は v1.1 でフォームを
 
 データはJSONファイル `devices.json` で管理する (v1.0)。ファイルは手動編集 or 編集フォーム経由で書き換える。
 
+> 📌 実装メモ（v1.1+）: 永続化は **SQLite（`homenet.db`）** に移行済み。人が書く静的カタログ（devices/switches/cables）と機械が書く到達性状態（online/last）をテーブル分離し、スキーマは `PRAGMA user_version` のマイグレーションで進化する。**JSON は import/export の交換形式として継続**し、本章のデータ構造はそのまま export/import 形式となる。一括編集は「export → JSON 編集 → import」で行う。
+
 自動取得した値とユーザー編集した値を区別するため、各値は `{ value, source, updated_at }` の形で保持する方針（v1.1で導入）。**v1.0はフラットな値で良い。**
 
 ### 3.1 Device — 必須フィールド

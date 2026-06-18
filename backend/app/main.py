@@ -255,7 +255,7 @@ def wake_device(device_id: str) -> dict[str, str]:
 def get_switches() -> list[dict]:
     """List switches/hubs. Read-only by design (#123): the switch/cable ledger
     is edited as a whole via export → hand-edit → import, not per-row CRUD. If
-    per-row editing is ever added, route it through storage._mutate so it stays
+    per-row editing is ever added, route it through storage._write so it stays
     symmetric with the device endpoints."""
     return storage.list_switches()
 

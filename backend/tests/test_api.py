@@ -1,6 +1,17 @@
 """API tests for the homenet backend."""
 
+import json
+
 from app import storage
+
+# Derive expected counts from the bundled seed instead of hard-coding magic
+# numbers (issue #90, item 5): the assertions then track the seed automatically
+# and don't go stale the next time a device is added to it.
+_SEED = json.loads(storage.SEED_FILE.read_text(encoding="utf-8"))
+_SEED_DEVICES = len(_SEED["devices"])
+_SEED_ONLINE = sum(1 for d in _SEED["devices"] if d.get("online"))
+_SEED_SWITCHES = len(_SEED["switches"])
+_SEED_CABLES = len(_SEED["cables"])
 
 
 def _sample_device(**overrides):
@@ -25,16 +36,18 @@ def test_health(client):
 
 def test_seed_loaded(client):
     devices = client.get("/api/devices").json()
-    assert len(devices) == 22
+    assert len(devices) == _SEED_DEVICES
     ids = {d["id"] for d in devices}
     assert {"gw", "nas", "pix"} <= ids
 
 
 def test_meta_counts(client):
     meta = client.get("/api/meta").json()
-    assert meta["total"] == 22
-    assert meta["online"] + meta["offline"] == 22
-    assert meta["online"] == 15
+    assert meta["total"] == _SEED_DEVICES
+    # The invariant that must always hold, regardless of seed contents.
+    assert meta["online"] + meta["offline"] == meta["total"]
+    assert 0 <= meta["online"] <= meta["total"]
+    assert meta["online"] == _SEED_ONLINE
 
 
 def test_get_one_device_with_detail(client):
@@ -49,8 +62,8 @@ def test_get_missing_device_404(client):
 
 
 def test_switches_and_cables(client):
-    assert len(client.get("/api/switches").json()) == 4
-    assert len(client.get("/api/cables").json()) == 9
+    assert len(client.get("/api/switches").json()) == _SEED_SWITCHES
+    assert len(client.get("/api/cables").json()) == _SEED_CABLES
 
 
 def test_create_device(client):
@@ -590,7 +603,7 @@ def test_export_has_filename_and_three_collections(client):
     assert ".json" in r.headers["content-disposition"]
     body = r.json()
     assert set(body) == {"devices", "switches", "cables"}
-    assert len(body["devices"]) == 22
+    assert len(body["devices"]) == _SEED_DEVICES
 
 
 def test_export_preserves_non_ascii_names(client):

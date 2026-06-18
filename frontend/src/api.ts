@@ -1,8 +1,16 @@
 // Thin API client. Same-origin /api (nginx proxy in prod, vite proxy in dev).
 
 import type { Cable, Device, DeviceWrite, Meta, ReachabilityHistory, Switch } from "./types";
+import type { components } from "./types/api-schema";
 
 const BASE = "/api";
+
+// FastAPI error bodies, typed from the generated OpenAPI schema rather than a
+// hand-rolled `any`: a plain `{detail: "..."}` or the 422 validation shape
+// `{detail: [{loc, msg, ...}]}` (#158).
+interface ErrorBody {
+  detail?: string | components["schemas"]["ValidationError"][];
+}
 
 export class ApiError extends Error {
   status: number;
@@ -21,12 +29,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let detail = res.statusText;
     try {
-      const body = await res.json();
+      const body: ErrorBody = await res.json();
       // FastAPI returns {detail: "..."} or validation {detail: [{msg,loc}]}
       if (typeof body.detail === "string") detail = body.detail;
       else if (Array.isArray(body.detail)) {
         detail = body.detail
-          .map((e: { loc?: unknown[]; msg?: string }) => {
+          .map((e) => {
             const field = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
             return field ? `${field}: ${e.msg}` : e.msg;
           })
@@ -83,7 +91,7 @@ export const api = {
       headers: { "X-Requested-With": "XMLHttpRequest" },
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
+      const body: ErrorBody = await res.json().catch(() => ({}));
       throw new Error(typeof body.detail === "string" ? body.detail : res.statusText);
     }
     return res.json() as Promise<{ devices: number; switches: number; cables: number }>;

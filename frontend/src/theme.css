@@ -1397,6 +1397,33 @@ body {
   }
 }
 
+/* Touch devices: grow interactive targets to the ~44px comfortable minimum
+   so taps don't miss (#100). Scoped to coarse pointers so the dense desktop
+   layout is untouched. */
+@media (pointer: coarse) {
+  .iconbtn,
+  .btn,
+  .nav-link,
+  .tg,
+  .f-btn,
+  .layout-tog button,
+  .ladd {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .n-left .lrow {
+    min-height: 44px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .copyable {
+    min-height: 32px;
+    padding: 4px 2px;
+  }
+}
+
 /* ─── Self-device (YOU) + wiring-tree additions ────────────────────────── */
 .lyou {
   font-size: 8px;

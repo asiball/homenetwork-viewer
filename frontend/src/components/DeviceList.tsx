@@ -1,10 +1,11 @@
 // Left sidebar device list, grouped by category (spec §5.4).
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
 import { compareIp, groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
+import { isTypingTarget, useGlobalKeydown } from "../lib/useGlobalKeydown";
 import { prefs, type SortMode } from "../lib/prefs";
 import { DeviceIcon } from "./DeviceIcon";
 
@@ -23,17 +24,13 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
   // "/" focuses the search box from anywhere (unless already typing in a
   // field) — fast path to the core "what is this IP?" lookup (#108).
   const searchRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== "/") return;
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag && /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+  useGlobalKeydown(
+    useCallback((e: KeyboardEvent) => {
+      if (e.key !== "/" || isTypingTarget(e)) return;
       e.preventDefault();
       searchRef.current?.focus();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    }, []),
+  );
 
   const needle = searchQuery.trim().toLowerCase();
   const filtered = needle ? devices.filter((d) => matchesQuery(d, needle)) : devices;

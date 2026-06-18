@@ -8,7 +8,7 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, clampPct, formatLast, groupColor, switchForDevice } from "../lib/helpers";
+import { cableForDevice, clampPct, formatJpy, formatLast, groupColor, partsTotalJpy, switchForDevice, warrantyState } from "../lib/helpers";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { DeviceIcon } from "../components/DeviceIcon";
@@ -480,6 +480,69 @@ export function DetailView() {
               </Link>
             </div>
           </div>
+
+          {((detail?.parts && detail.parts.length > 0) ||
+            (detail?.build_events && detail.build_events.length > 0)) && (
+            <div className="d-card full" data-title="build / parts" aria-label="build / parts">
+              {detail?.parts && detail.parts.length > 0 && (
+                <>
+                  <table className="d-table parts">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 70 }}>part</th>
+                        <th>model</th>
+                        <th style={{ width: 90 }}>purchased</th>
+                        <th style={{ width: 90 }}>price</th>
+                        <th style={{ width: 100 }}>warranty</th>
+                        <th style={{ width: 70 }}>status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.parts.map((p) => {
+                        const ws = warrantyState(p.warranty_until);
+                        return (
+                          <tr key={p.id}>
+                            <td className="proto">{p.category}</td>
+                            <td>
+                              {p.model}
+                              {p.serial ? <span className="part-serial"> · {p.serial}</span> : null}
+                            </td>
+                            <td>{p.purchased ?? "—"}</td>
+                            <td>{p.price_jpy != null ? formatJpy(p.price_jpy) : "—"}</td>
+                            <td className={ws ? `warr-${ws}` : ""}>
+                              {p.warranty_until ?? "—"}
+                              {ws === "soon" ? " ⚠" : ""}
+                            </td>
+                            <td className={`part-status st-${p.status}`}>{p.status}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="d-pool">
+                    <span>
+                      <b>{detail.parts.length}</b> parts
+                    </span>
+                    <span>total · <b>{formatJpy(partsTotalJpy(detail.parts))}</b></span>
+                  </div>
+                </>
+              )}
+              {detail?.build_events && detail.build_events.length > 0 && (
+                <ul className="d-builds">
+                  {[...detail.build_events]
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map((e, i) => (
+                      <li key={i}>
+                        <span className="bd-date">{e.date}</span>
+                        <span className={`bd-action ba-${e.action}`}>{e.action}</span>
+                        <span className="bd-part">{e.part_id}</span>
+                        {e.note ? <span className="bd-note">{e.note}</span> : null}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="d-card full" data-title="notes" aria-label="notes">
             <div className="d-notes">

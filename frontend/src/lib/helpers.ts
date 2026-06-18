@@ -1,6 +1,6 @@
 // Lookup + formatting helpers, ported from the prototype's data.jsx.
 
-import { GROUP_ORDER, type Cable, type Device, type Group, type Switch } from "../types";
+import { GROUP_ORDER, type Cable, type Device, type Group, type Part, type Switch } from "../types";
 
 export function countOnline(devs: Device[]): number {
   return devs.filter((d) => d.online).length;
@@ -171,6 +171,35 @@ export function suggestFreeIp(devices: Device[]): string | null {
     if (!used.has(host)) return `${prefix}.${host}`;
   }
   return null;
+}
+
+// ─── Custom-PC parts (#97) ──────────────────────────────────────────────────
+
+// Sum of known part prices (¥). Parts with no price_jpy are skipped.
+export function partsTotalJpy(parts: Part[] | null | undefined): number {
+  return (parts ?? []).reduce((sum, p) => sum + (p.price_jpy ?? 0), 0);
+}
+
+// "¥98,000" — yen, thousands-separated, no decimals.
+export function formatJpy(n: number): string {
+  return `¥${Math.round(n).toLocaleString("en-US")}`;
+}
+
+export type WarrantyState = "expired" | "soon" | "ok";
+
+// Warranty health for a YYYY-MM-DD date: expired (past), soon (≤30 days), or
+// ok. Returns null when there's no/invalid date. `now` is injectable for tests.
+export function warrantyState(
+  until: string | null | undefined,
+  now: number = Date.now(),
+): WarrantyState | null {
+  if (!until) return null;
+  const t = Date.parse(until);
+  if (Number.isNaN(t)) return null;
+  const days = (t - now) / 86_400_000;
+  if (days < 0) return "expired";
+  if (days <= 30) return "soon";
+  return "ok";
 }
 
 // Generate a kebab-case id suggestion from a free-text name.

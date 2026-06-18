@@ -10,6 +10,7 @@ import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
 import { cableForDevice, clampPct, formatJpy, formatLast, groupColor, partsTotalJpy, switchForDevice, warrantyState } from "../lib/helpers";
+import { resolveHistory } from "../lib/history";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { DeviceIcon } from "../components/DeviceIcon";
@@ -78,31 +79,13 @@ export function DetailView() {
   const m = detail?.metrics ?? null;
   const sw = switchForDevice(switches, device.id);
   const cbl = cableForDevice(cables, device.id);
-  // §6.4: never invent data — no history means "no history", not a perfect week.
-  // Prefer the real collected series (#93); fall back to the legacy hand-entered
-  // detail.hist7 only when no samples exist yet.
-  const hist = detail?.hist7 ?? null;
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toLocaleDateString("en-US", { weekday: "narrow" });
-  });
-  const liveDays = reach?.history ?? null;
-  const hasLive = liveDays?.some((d) => d.samples > 0) ?? false;
-  const weekdayOf = (iso: string) =>
-    new Date(iso + "T00:00:00").toLocaleDateString("en-US", { weekday: "narrow" });
-  let histBars: { pct: number | null; label: string }[] | null = null;
-  let histSource: "live" | "manual" | null = null;
-  let histAvg: number | null = null;
-  if (hasLive && liveDays) {
-    histBars = liveDays.map((d) => ({ pct: d.uptime, label: weekdayOf(d.date) }));
-    histSource = "live";
-    histAvg = reach?.uptime_pct ?? null;
-  } else if (hist && hist.length > 0) {
-    histBars = hist.map((p, i) => ({ pct: p, label: days[i] }));
-    histSource = "manual";
-    histAvg = hist.reduce((a, b) => a + b, 0) / hist.length;
-  }
+  // §6.4: never invent data — prefer the real collected series (#93), fall back
+  // to the legacy hand-entered detail.hist7, else show nothing. Pure + tested in
+  // lib/history.ts (#171).
+  const { bars: histBars, source: histSource, avg: histAvg } = resolveHistory(
+    reach,
+    detail?.hist7 ?? null,
+  );
   const lastEvent = reach?.events?.[0] ?? null;
 
   return (

@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    HOMENET_DB_FILE=/data/homenet.db \
     HOMENET_DATA_FILE=/data/devices.json \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy

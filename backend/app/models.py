@@ -3,7 +3,7 @@
 The data model follows spec/homenet-spec.md §3. Required device fields are
 strict; everything else is optional because "detail data is normally absent"
 (§3.3). Validation is intentionally lenient on nested detail blocks so that
-hand-edited devices.json files keep working.
+hand-edited / imported catalog JSON keeps working.
 """
 
 from __future__ import annotations

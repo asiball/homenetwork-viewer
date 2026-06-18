@@ -9,7 +9,7 @@
 | **ブラウザ** | あなたが操作する。画面を表示し、クリックを送る | お客さん |
 | **nginx**（フロント側） | 画面ファイルを配り、データの問い合わせは backend へ取り次ぐ | お店の入口・案内係 |
 | **FastAPI**（バック側） | データを読み書きして答える | 厨房・倉庫係 |
-| **devices.json** | 機器データの保管先（ただのファイル） | 在庫ノート |
+| **homenet.db** | 機器データの保管先（SQLite データベース） | 在庫ノート |
 
 ---
 
@@ -40,8 +40,8 @@
    │  └───────────────────────┬─────────────────────────────┘        │
    │                          │ 読み書き                              │
    │                          ▼                                      │
-   │                   data/devices.json   ← あなたのPC上のファイル    │
-   │                   （手で開いて編集してもOK）                       │
+   │                   data/homenet.db   ← あなたのPC上のSQLite DB     │
+   │                   （編集は画面／export→import 経由）              │
    └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -73,7 +73,7 @@
 }
 ```
 
-`devices.json` は、この機器データがたくさん入った1つのファイルです（→ [05](05-data-and-customize.md)）。
+`homenet.db` は、この機器データが入った1つの SQLite データベースです（→ [05](05-data-and-customize.md)）。
 
 ### フロントエンド（React / SPA）
 
@@ -93,7 +93,7 @@
 
 ### バックエンド（FastAPI）
 
-**FastAPI** は Python 製の API サーバー。homenet では機器データの **取得・追加・更新・削除** を担当し、保存先は `devices.json`。保存時は **一度別ファイルに書いてから差し替える**方式（アトミック書き込み）なので、書き込み中に電源が落ちてもファイルが壊れにくくなっています。
+**FastAPI** は Python 製の API サーバー。homenet では機器データの **取得・追加・更新・削除** を担当し、保存先は SQLite（`homenet.db`）。書き込みは**トランザクション**で行われ、失敗すれば巻き戻るので、途中で電源が落ちてもデータが半端な状態になりにくくなっています。
 
 ### Docker（イメージ / コンテナ / ボリューム）
 
@@ -112,7 +112,7 @@
 1. ブラウザで http://localhost:8080 を開く
 2. nginx が React の画面一式を返す（フロント起動）
 3. フロントが起動時に「GET /api/devices」を送る
-4. nginx が backend に取り次ぐ → FastAPI が devices.json を読んで JSON を返す
+4. nginx が backend に取り次ぐ → FastAPI が DB（homenet.db）を読んで JSON を返す
 5. フロントが受け取った22件を地図と一覧に描く
 6. あなたが NAS のノードをクリック → 右パネルが NAS の情報に切り替わる（画面内だけで完結。サーバー通信なし）
 ```
@@ -123,11 +123,11 @@
 1. 「+ add」→ フォームに入力 → 保存
 2. フロントが入力を検査（IP の形式など）
 3. 「POST /api/devices」で backend に送る
-4. FastAPI が中身を検証し、devices.json に追記（アトミック書き込み）
+4. FastAPI が中身を検証し、DB に保存（トランザクション）
 5. 成功(201)が返る → フロントが一覧を取り直して画面に反映
 ```
 
-このとき `data/devices.json` も実際に書き換わるので、PC でファイルを開けば追加された機器が見られます。
+このとき `data/homenet.db`（SQLite）に保存されます。中身を見る・一括編集するときは、画面、または **export → JSON 編集 → import** を使います。
 
 ---
 
@@ -136,13 +136,13 @@
 ```
 homenetwork-viewer/
 ├── docker-compose.yml      ← 2つの箱の起動設定（入口の8080もここ）
-├── data/devices.json       ← あなたの機器データ（実体）。バックアップ対象はこれ
+├── data/homenet.db         ← あなたの機器データ（SQLite・実体）。バックアップ対象はこれ
 ├── backend/                ← バックエンド（FastAPI / Python）
 │   └── app/
 │       ├── main.py         ←  API の窓口（/api/... の入口）
 │       ├── models.py       ←  データの形と検証ルール（IP・MAC など）
-│       ├── storage.py      ←  devices.json の読み書き
-│       └── seed/devices.json ← 初期サンプル（初回起動時に data/ へコピー）
+│       ├── storage.py      ←  SQLite(homenet.db) の読み書き・マイグレーション
+│       └── seed/devices.json ← 初期サンプル（初回起動時に DB へ取り込み）
 ├── frontend/               ← フロントエンド（React + TypeScript）
 │   ├── nginx.conf          ←  画面配布 + /api 取り次ぎの設定
 │   └── src/

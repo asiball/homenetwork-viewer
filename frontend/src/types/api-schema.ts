@@ -33,9 +33,9 @@ export interface paths {
         };
         /**
          * Ready
-         * @description Readiness: liveness *and* the data file parses (#89).
+         * @description Readiness: liveness *and* the database is readable (#89).
          *
-         *     Unlike /api/health this returns 503 when devices.json is corrupt, so an
+         *     Unlike /api/health this returns 503 when the database is corrupt, so an
          *     operator can tell "process up" apart from "actually able to serve data".
          */
         get: operations["ready_api_ready_get"];
@@ -181,7 +181,7 @@ export interface paths {
          * Get Switches
          * @description List switches/hubs. Read-only by design (#123): the switch/cable ledger
          *     is edited as a whole via export → hand-edit → import, not per-row CRUD. If
-         *     per-row editing is ever added, route it through storage._mutate so it stays
+         *     per-row editing is ever added, route it through storage._write so it stays
          *     symmetric with the device endpoints.
          */
         get: operations["get_switches_api_switches_get"];

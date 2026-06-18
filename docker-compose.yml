@@ -5,13 +5,18 @@
 #
 # The SPA (port 8080) is the only published service; nginx reverse-proxies
 # /api to the backend over the internal compose network. Device data lives in
-# ./data/devices.json (bind-mounted) so you can edit it from the UI or by hand.
+# ./data/homenet.db (SQLite, bind-mounted); edit it from the UI, or in bulk via
+# the export → edit JSON → import flow.
 
 services:
   backend:
     build: ./backend
     image: homenet-backend
     environment:
+      # Catalog lives in a SQLite DB. HOMENET_DATA_FILE points at a legacy
+      # devices.json: if one is present on first start (an upgrade from the JSON
+      # store) it is migrated into the DB, otherwise the bundled seed is used.
+      HOMENET_DB_FILE: /data/homenet.db
       HOMENET_DATA_FILE: /data/devices.json
     volumes:
       - ./data:/data

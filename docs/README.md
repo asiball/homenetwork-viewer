@@ -18,7 +18,7 @@
 2. [セットアップと起動 — Docker の導入から画面表示まで](02-getting-started.md)
 3. [アーキテクチャ — 何がどう動いているか（図解）](03-architecture.md)
 4. [使い方 — 3つの画面とデータ編集](04-usage.md)
-5. [データとカスタマイズ — devices.json・色・ポート変更](05-data-and-customize.md)
+5. [データとカスタマイズ — homenet.db / export・import・色・ポート変更](05-data-and-customize.md)
 6. [運用とトラブルシューティング — 起動/停止/更新/バックアップ/困ったとき](06-operations.md)
 7. [用語集 — IP・API・コンテナ…をやさしく](07-glossary.md)
 

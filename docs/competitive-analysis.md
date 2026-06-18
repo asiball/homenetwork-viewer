@@ -4,6 +4,11 @@
 > 目的: homenet の立ち位置を、死活監視に限らず**機器台帳・IPAM・発見・トポロジ・資産管理**の全領域で正直に評価し、
 > 「続ける価値のあるニッチがあるか／アーカイブすべきか」の判断材料にする。
 
+> ⚠️ **更新メモ（SQLite 移行後 / #96）**: 永続化は **SQLite（`homenet.db`）が正本**に変更され、JSON は **export/import の交換形式**になった。
+> 本分析が最大の差別化として挙げる「**手編集できる Git-native な JSON 正本**」は、ライブ正本がバイナリDBになったことで**大きく弱まっている**。
+> 一括編集は「export → JSON 編集 → import」で可能、export した JSON は依然 `git diff`/レビュー可能だが、「ファイルを直接開いて直す＝即ライブ反映」という体験は失われた。
+> 以下 §0/§5/§6 等の「Git-native JSON 正本」を核に据えた結論は、この前提変化を踏まえて再評価が必要（差別化は B. 資産/所有・自作PC資産と、発見結果の"承認・意味づけ"体験へ比重を移すのが妥当）。本文は当時の分析として残す。
+
 ## 0. 結論（先に要約）
 
 - **homenet は単機能では competitor に勝てない。** 発見・死活・トポロジ・IPAM・資産管理の**各軸には、それぞれ成熟した専用ツールが存在**する。
@@ -21,7 +26,7 @@
 | **B. 資産/所有（ownership）** | manufacturer/model/**purchased/price/warranty**/location/tags、自作PCの cpu/gpu/storage |
 | **C. 死活監視（liveness）** | collector が TCP+ICMP を120秒間隔で実測し online/last を自動更新（履歴は未保持） |
 | **D. トポロジ可視化** | radial/spine/tree の3レイアウトを**手入力の ring/配線**から SVG 描画 |
-| **E. データ形式** | **単一 JSON ファイルが正**。UI 編集と手編集が等価・bind-mount・アトミック書き込み |
+| **E. データ形式** | **SQLite（`homenet.db`）が正**（正本=静的カタログ／状態=到達性をテーブル分離・トランザクション書き込み）。**JSON は export/import の交換形式**（export は `git diff` 可）。一括編集は export→編集→import |
 
 この **A〜E を1つにまとめている**点が homenet の形。各軸を個別に見ると以下の competitor がいる。
 
@@ -113,7 +118,7 @@
 - **自動発見（nmap -sV）→ 承認キュー**、**多彩な死活**（ping/TCP/HTTP/SSH/Prometheus/health、ノード毎に方式選択）、**Zigbee2MQTT 取込**、**Home Assistant 連携（HACS）**、**MCP/AI**、**公開 Live View**、**PNG 出力**。homenet が「将来」として Issue 化した機能（#92/#93/#94/#100 等）の多くを**既に実装済み**。
 
 ### それでも Homelable に「無い」＝ homenet だけができること（確度順）
-1. **手編集できるテキスト正本 ＋ Git 運用** — Homelable はバックエンドDB（手編集可否の明記なし）で、**構造化エクスポートは PNG（図）のみ**が言及。homenet の `devices.json` は **人が直接編集でき・`git diff`/PR でレビューでき・テキストでバックアップできる**。これが最も堅い差。
+1. **テキストで持ち出せる台帳 ＋ Git 運用** — Homelable はバックエンドDB（手編集可否の明記なし）で、**構造化エクスポートは PNG（図）のみ**が言及。homenet は SQLite が正本だが、**export した JSON は `git diff`/PR でレビューでき・テキストでバックアップできる**（import で復元）。※ SQLite 移行で「ファイルを直接開いて即編集」の即時性は失われた点に注意（上部の更新メモ参照）。
 2. **所有/資産/財務の管理** — Homelable のスキーマに **manufacturer / model / purchased / price / warranty / location** は**無い**（cpu/ram/disk の"性能"はあるが"所有"は無い）。homenet は「いつ買った・いくら・保証はいつ切れる・どこにある」を答えられる。**Homelable は資産管理ツールではない**。
 3. **自作PCのパーツ詳細と構成履歴** — homenet は GPU/マザボ/ドライブ単位（＋ #97 の Part/構成変更履歴・保証切れアラート）。Homelable は `cpu_model/ram_gb/disk_gb` 止まりで PC ビルド志向ではない。
 4. **「人が意図を書く台帳/ドシエ」＋ 引き継ぎ用テキスト出力** — Homelable は canvas（図）中心・自動発見中心。homenet は per-device のスペック/所有/サービス/ストレージの**仕様書**で、#113 の Markdown/HTML 引き継ぎ資料に発展できる。

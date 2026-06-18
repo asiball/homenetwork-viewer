@@ -1,6 +1,6 @@
 // Home screen: topology map + summary (spec §5).
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
@@ -13,6 +13,7 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { countOnline, gatewayInfo, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
 import { prefs } from "../lib/prefs";
+import { isTypingTarget, useGlobalKeydown } from "../lib/useGlobalKeydown";
 import { useIsNarrow } from "../lib/useIsNarrow";
 import { APP_VERSION } from "../version";
 
@@ -124,26 +125,29 @@ export function HomeView() {
   }
 
   // ↑↓ move selection, Enter opens detail (spec §5.6).
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag && /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        const i = ordered.findIndex((d) => d.id === selId);
-        if (i === -1) return;
-        const next = e.key === "ArrowDown" ? i + 1 : i - 1;
-        const wrapped = (next + ordered.length) % ordered.length;
-        selectDevice(ordered[wrapped].id);
-      } else if (e.key === "Enter" && selected) {
-        // Let a focused button/link handle its own Enter (don't double-fire).
-        if (tag === "BUTTON" || tag === "A") return;
-        navigate(`/d/${selected.id}`);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [ordered, selId, selected, navigate]);
+  useGlobalKeydown(
+    useCallback(
+      (e: KeyboardEvent) => {
+        if (isTypingTarget(e)) return;
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const i = ordered.findIndex((d) => d.id === selId);
+          if (i === -1) return;
+          const next = e.key === "ArrowDown" ? i + 1 : i - 1;
+          const wrapped = (next + ordered.length) % ordered.length;
+          // selectDevice() inlined so the handler needs no extra deps.
+          setSelId(ordered[wrapped].id);
+          setSelSwId(null);
+        } else if (e.key === "Enter" && selected) {
+          // Let a focused button/link handle its own Enter (don't double-fire).
+          const tag = (e.target as HTMLElement)?.tagName;
+          if (tag === "BUTTON" || tag === "A") return;
+          navigate(`/d/${selected.id}`);
+        }
+      },
+      [ordered, selId, selected, navigate],
+    ),
+  );
 
   const layoutLabel =
     layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";

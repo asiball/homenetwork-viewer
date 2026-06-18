@@ -10,7 +10,10 @@ import { prefs } from "./lib/prefs";
 import "./theme.css";
 
 // Apply the saved theme before first paint so there's no dark→light flash.
-document.documentElement.dataset.theme = prefs.theme.get();
+// `color-scheme` keeps native controls (selects, scrollbars) in step with it.
+const _theme = prefs.theme.get();
+document.documentElement.dataset.theme = _theme;
+document.documentElement.style.colorScheme = _theme;
 
 // useBlocker (編集フォームの離脱ガード) は data router でしか動かないため、
 // BrowserRouter ではなく createBrowserRouter + RouterProvider を使う。

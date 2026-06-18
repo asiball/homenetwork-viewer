@@ -135,6 +135,35 @@ export function shortHost(host: string): string {
   return host.split(".")[0];
 }
 
+// "192.168.1.1/24" or "192.168.1.10" → "192.168.1.0/24". Strips any CIDR suffix
+// and zeroes the host octet so a gateway address renders as its /24 network.
+// Falls back to the home-lab default for anything that isn't a dotted quad —
+// previously a bare IP (no CIDR) slipped through the old regex and showed the
+// host address as the "subnet" (#124).
+const DEFAULT_SUBNET = "192.168.1.0/24";
+function toSubnet24(ip: string): string {
+  const octets = ip.split("/")[0].split(".");
+  return octets.length === 4 ? `${octets[0]}.${octets[1]}.${octets[2]}.0/24` : DEFAULT_SUBNET;
+}
+
+export interface GatewayInfo {
+  subnet: string;
+  iface: string;
+}
+
+// Derive the network header info (subnet + interface) from the gateway device —
+// the router (type "router") or ring-0 node. Single source for the HomeView
+// breadcrumb and the spine-layout bus label, which previously each inlined this
+// lookup (#124). Falls back to home-lab defaults when there is no gateway.
+export function gatewayInfo(devices: Device[]): GatewayInfo {
+  const gw = devices.find((d) => d.type === "router" || d.ring === 0);
+  const ipv4 = gw?.detail?.net?.ipv4 ?? gw?.ip;
+  return {
+    subnet: ipv4 ? toSubnet24(ipv4) : DEFAULT_SUBNET,
+    iface: gw?.host?.split(".")[0] || "br-lan",
+  };
+}
+
 // Suggest the smallest free host address in the home /24 so adding a device
 // doesn't require cross-checking an IP table by hand (issue #121, IPAM-lite).
 //

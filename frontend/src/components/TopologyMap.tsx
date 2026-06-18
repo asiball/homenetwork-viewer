@@ -5,7 +5,7 @@
 import { useRef, useMemo } from "react";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { lastOctet } from "../lib/helpers";
+import { gatewayInfo, lastOctet } from "../lib/helpers";
 import {
   computeLayout,
   type LayoutKind,
@@ -40,7 +40,9 @@ export function TopologyMap({
   onSelectSwitch,
   compact = false,
 }: Props) {
-  const { switches, selfId } = useCatalog();
+  const { devices: allDevices, switches, selfId } = useCatalog();
+  // Spine bus label reflects the real gateway, not a hardcoded address (#124).
+  const net = useMemo(() => gatewayInfo(allDevices), [allDevices]);
   const { positions, edges, deco, pseudo } = useMemo(
     () => computeLayout(layout, devices, compact, switches),
     [layout, devices, compact, switches]
@@ -112,7 +114,7 @@ export function TopologyMap({
                 textTransform: "uppercase",
               }}
             >
-              br-lan · 192.168.1.0/24
+              {net.iface} · {net.subnet}
             </text>
             {deco.taps.map((t) => (
               <g key={t.cat}>

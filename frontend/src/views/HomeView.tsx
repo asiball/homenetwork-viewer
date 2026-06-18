@@ -10,7 +10,7 @@ import { SummaryPanel } from "../components/SummaryPanel";
 import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { countOnline, matchesQuery, orderedByGroup } from "../lib/helpers";
+import { countOnline, gatewayInfo, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
 import { prefs } from "../lib/prefs";
 import { useIsNarrow } from "../lib/useIsNarrow";
@@ -27,6 +27,9 @@ export function HomeView() {
   const { devices, switches, refresh, notify } = useCatalog();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+
+  // Network header info (subnet + iface) derived once from the gateway device.
+  const gw = useMemo(() => gatewayInfo(devices), [devices]);
 
   const [layout, setLayout] = useState<LayoutKind>(() => initialLayout(params.get("layout")));
   const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
@@ -176,10 +179,10 @@ export function HomeView() {
       onSearchChange={setSearchQuery}
       crumbs={
         <>
-          net <span>{devices.find(d => d.type === "router" || d.ring === 0)?.detail?.net?.ipv4?.replace(/\.\d+\/\d+$/, ".0/24") || "192.168.1.0/24"}</span>
+          net <span>{gw.subnet}</span>
           <span className="hide-sm">
             {" "}
-            &nbsp;·&nbsp; iface <span>{devices.find(d => d.type === "router" || d.ring === 0)?.host?.split(".")[0] || "br-lan"}</span>
+            &nbsp;·&nbsp; iface <span>{gw.iface}</span>
           </span>
           <span className="hide-md">
             {" "}

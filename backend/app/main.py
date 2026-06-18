@@ -253,11 +253,16 @@ def wake_device(device_id: str) -> dict[str, str]:
 
 @app.get("/api/switches", response_model=list[Switch])
 def get_switches() -> list[dict]:
+    """List switches/hubs. Read-only by design (#123): the switch/cable ledger
+    is edited as a whole via export → hand-edit → import, not per-row CRUD. If
+    per-row editing is ever added, route it through storage._mutate so it stays
+    symmetric with the device endpoints."""
     return storage.list_switches()
 
 
 @app.get("/api/cables", response_model=list[Cable])
 def get_cables() -> list[dict]:
+    """List cables. Read-only by design — see get_switches (#123)."""
     return storage.list_cables()
 
 
@@ -305,25 +310,6 @@ def _validate_and_dump(
         except Exception as exc:
             errors.append(f"{label}[{i}]: {exc}")
     return dumped, errors
-
-
-def _check_import_uniqueness(devices: list[dict]) -> list[str]:
-    """Reject an import whose devices collide on id / ip / mac (matches the
-    409 contract that create_device enforces — import must not be a back door)."""
-    errors: list[str] = []
-    seen_id: set[str] = set()
-    seen_ip: set[str] = set()
-    seen_mac: set[str] = set()
-    for i, d in enumerate(devices):
-        for key, seen in (("id", seen_id), ("ip", seen_ip), ("mac", seen_mac)):
-            val = d.get(key)
-            if not val:
-                continue
-            norm = val.upper() if key == "mac" else val
-            if norm in seen:
-                errors.append(f"device[{i}]: duplicate {key} {val!r}")
-            seen.add(norm)
-    return errors
 
 
 def _check_referential_integrity(
@@ -396,8 +382,9 @@ async def import_catalog(request: Request, file: UploadFile) -> dict[str, int]:
     norm_cables, cb_errors = _validate_and_dump(cables, Cable, "cable")
     errors = dev_errors + sw_errors + cb_errors
     if not errors:
-        # Only worth checking once every item parsed cleanly.
-        errors += _check_import_uniqueness(norm_devices)
+        # Only worth checking once every item parsed cleanly. Uniqueness is
+        # enforced by storage so import and create share one contract (#123).
+        errors += storage.find_duplicate_identities(norm_devices)
         errors += _check_referential_integrity(norm_devices, norm_switches, norm_cables)
     if errors:
         raise HTTPException(status_code=422, detail="; ".join(errors[:5]))

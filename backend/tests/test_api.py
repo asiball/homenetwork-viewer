@@ -99,6 +99,18 @@ def test_create_rejects_bad_group(client):
     assert r.status_code == 422
 
 
+def test_create_rejects_unknown_field(client):
+    """An unknown key (a typo like `groupp`) is a 422, not silently dropped (#123)."""
+    r = client.post("/api/devices", json=_sample_device(groupp="Computer"))
+    assert r.status_code == 422
+
+
+def test_update_rejects_unknown_field(client):
+    client.post("/api/devices", json=_sample_device())
+    r = client.put("/api/devices/test-pi", json=_sample_device(typoo="x"))
+    assert r.status_code == 422
+
+
 def test_update_device(client):
     client.post("/api/devices", json=_sample_device())
     r = client.put("/api/devices/test-pi", json=_sample_device(name="Renamed", online=False))

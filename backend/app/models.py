@@ -249,6 +249,11 @@ class DeviceBase(BaseModel):
 class DeviceCreate(DeviceBase):
     """Body for POST /api/devices — id is supplied by the client (kebab-case)."""
 
+    # Client input is strict: an unknown key (a typo like `groupp`) is a 422, not
+    # a silently-dropped field (#123). The nested detail blocks keep
+    # extra="ignore" so hand-edited / auto-collected JSON still loads.
+    model_config = ConfigDict(extra="forbid")
+
     id: str
 
     @field_validator("id")
@@ -270,6 +275,14 @@ class DeviceUpdate(DeviceBase):
     means "keep the stored value" rather than silently writing False.
     (Fixes issue #12.)
     """
+
+    # Strict input like DeviceCreate: unknown keys are 422, not dropped (#123).
+    model_config = ConfigDict(extra="forbid")
+
+    # The SPA's edit payload spreads the full stored device, so `id` arrives in
+    # the body. It is accepted but ignored — the route forces the path id (id is
+    # immutable) — and declaring it here keeps extra="forbid" from rejecting it.
+    id: str | None = None
 
     # DeviceBase defines `online: bool = False`.  That default is fine for
     # POST (DeviceCreate) but wrong for PUT: an omitted field should not

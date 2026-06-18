@@ -149,18 +149,22 @@ export function HomeView() {
     layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";
 
   async function handleExport() {
+    let url: string | null = null;
     try {
       const blob = await api.export();
-      const url = URL.createObjectURL(blob);
+      url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `homenet-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      a.remove();
     } catch (err) {
       notify(err instanceof Error ? err.message : "export failed", "err");
+    } finally {
+      // Always release the object URL, even if click()/append threw, so the blob
+      // isn't pinned in memory (#166).
+      if (url) URL.revokeObjectURL(url);
     }
   }
 

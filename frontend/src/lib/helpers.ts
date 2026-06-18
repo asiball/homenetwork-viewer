@@ -187,6 +187,25 @@ export function lastOctet(ip: string): string {
   return ip.split(".").pop() ?? "";
 }
 
+// Compare two IPv4 strings for sorting. Each octet is parsed to a number with a
+// 0 fallback for a missing / non-numeric part, so a malformed or non-IPv4 value
+// sorts deterministically instead of scattering on NaN (#166).
+export function compareIp(a: string, b: string): number {
+  const octets = (ip: string) => {
+    const parts = ip.split(".");
+    return [0, 1, 2, 3].map((i) => {
+      const n = Number(parts[i]);
+      return Number.isFinite(n) ? n : 0;
+    });
+  };
+  const ao = octets(a);
+  const bo = octets(b);
+  for (let i = 0; i < 4; i++) {
+    if (ao[i] !== bo[i]) return ao[i] - bo[i];
+  }
+  return 0;
+}
+
 // "nas.home.arpa" → "nas"
 export function shortHost(host: string): string {
   return host.split(".")[0];

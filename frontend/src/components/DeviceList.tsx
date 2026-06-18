@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
+import { compareIp, groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
 import { prefs, type SortMode } from "../lib/prefs";
 import { DeviceIcon } from "./DeviceIcon";
 
@@ -40,14 +40,7 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "ip") {
-      const aIp = a.ip.split(".").map(Number);
-      const bIp = b.ip.split(".").map(Number);
-      for (let i = 0; i < 4; i++) {
-        if (aIp[i] !== bIp[i]) return (aIp[i] || 0) - (bIp[i] || 0);
-      }
-      return 0;
-    }
+    if (sort === "ip") return compareIp(a.ip, b.ip);
     if (sort === "status") return (b.online ? 1 : 0) - (a.online ? 1 : 0);
     return 0; // 'group' sorting is handled by groupByOrder
   });

@@ -1,21 +1,21 @@
-# homenetwork-architecter
+# homenetwork-architecter（🧊 ARCHIVED / 凍結）
 
-家庭内LAN配下の機器を一覧・調査するための単体Webアプリ「**homenet**」の設計プロジェクト。
-このリポジトリには **仕様書** と **デザイン検討用キャンバス（React/JSX プロトタイプ）** が含まれます。
+> **⚠️ このディレクトリは凍結されたデザイン履歴です（#105）。**
+> ここにある `.jsx` は採用前のデザイン検討用キャンバスで、**正本ではありません**。
+> 本番実装は **[`frontend/src/`](../frontend/src/)** が唯一の真実（source of truth）で、
+> 実装はプロトタイプを追い越して乖離しています。デザイントークン（色・余白など）も
+> **[`frontend/src/theme.css`](../frontend/src/theme.css)** に一本化されています。
+> 新しく実装・レビューする人は、この `.jsx` を正と誤読しないでください。
+>
+> | 知りたいこと | 見る場所 |
+> | --- | --- |
+> | 仕様（正本） | [`spec/homenet-spec.md`](../spec/homenet-spec.md) |
+> | 実装（正本） | [`frontend/src/`](../frontend/src/)（views / components / lib） |
+> | デザイントークン | [`frontend/src/theme.css`](../frontend/src/theme.css) |
+> | デザイン履歴（このフォルダ） | 当時の検討キャンバス。参考のみ・実装対象外 |
 
----
-
-## 🤖 実装エージェント・開発者はここから
-
-正本の仕様書は **[`spec/homenet-spec.md`](spec/homenet-spec.md)** です。まずこれを読んでください。
-
-実装時に参照すべき採用済みビュー（参考実装）:
-
-- `src/variant-noc.jsx` — ホーム画面（radial / spine の2レイアウト）
-- `src/view-detail.jsx` — 機器の詳細ビュー
-- `src/data.jsx` — サンプルデータ（22機器分のスキーマ実例）
-
-`src/reference/` 配下は **不採用の比較案** なので実装には不要です。
+家庭内LAN配下の機器を一覧・調査するための単体Webアプリ「**homenet**」の**初期デザイン検討**プロジェクト。
+このディレクトリには当時の **デザイン検討用キャンバス（React/JSX プロトタイプ）** が、履歴として残されています。
 
 ---
 

@@ -52,3 +52,36 @@ jobs:
         run: npm run build
       - name: Test (vitest)
         run: npm test
+
+  # Generated TS types must stay in sync with the backend's OpenAPI schema, so
+  # they can be the single source of truth instead of drifting (#105). Regenerate
+  # here and fail if the committed src/types/api-schema.ts is stale.
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Sync backend dependencies
+        working-directory: backend
+        run: uv sync --frozen
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Regenerate API types
+        working-directory: frontend
+        run: npm run api:generate
+      - name: Fail if generated types are stale
+        run: |
+          if ! git diff --quiet -- frontend/src/types/api-schema.ts; then
+            echo "::error::frontend/src/types/api-schema.ts is out of date. Run 'npm run api:generate' in frontend/ and commit the result."
+            git diff -- frontend/src/types/api-schema.ts
+            exit 1
+          fi

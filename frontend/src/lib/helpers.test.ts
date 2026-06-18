@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState } from "./helpers";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo } from "./helpers";
 import type { Device, Part } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -25,6 +25,36 @@ describe("shortHost", () => {
   it("returns hostname without domain", () => {
     expect(shortHost("nas.home.arpa")).toBe("nas");
     expect(shortHost("router")).toBe("router");
+  });
+});
+
+describe("gatewayInfo", () => {
+  it("derives subnet + iface from the gateway's detail.net.ipv4 (with CIDR)", () => {
+    const gw = makeDevice({
+      id: "gw",
+      type: "router",
+      host: "gw.home.arpa",
+      ip: "192.168.1.1",
+      detail: { net: { ipv4: "192.168.1.1/24" } },
+    });
+    expect(gatewayInfo([gw])).toEqual({ subnet: "192.168.1.0/24", iface: "gw" });
+  });
+
+  it("zeroes the host octet for a bare IP without a CIDR suffix (#124 bug fix)", () => {
+    // The old regex required a /xx suffix, so a bare IP leaked through as the
+    // 'subnet'. Now it is normalised to the /24 network.
+    const gw = makeDevice({ ring: 0, host: "router.lan", ip: "10.0.5.42" });
+    expect(gatewayInfo([gw])).toEqual({ subnet: "10.0.5.0/24", iface: "router" });
+  });
+
+  it("identifies the gateway by ring 0 when no router type is present", () => {
+    const a = makeDevice({ id: "a", type: "desktop", ip: "192.168.2.50" });
+    const gw = makeDevice({ id: "g", ring: 0, host: "edge.home", ip: "192.168.2.1" });
+    expect(gatewayInfo([a, gw]).subnet).toBe("192.168.2.0/24");
+  });
+
+  it("falls back to home-lab defaults when there is no gateway", () => {
+    expect(gatewayInfo([])).toEqual({ subnet: "192.168.1.0/24", iface: "br-lan" });
   });
 });
 

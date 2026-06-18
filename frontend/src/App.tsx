@@ -15,6 +15,10 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const EMPTY_META: Meta = { total: 0, online: 0, offline: 0, updated_at: null };
 
+// How long a success toast stays before auto-dismissing (error toasts are
+// sticky so the user can read/act on them). Named so it isn't a bare literal.
+const OK_TOAST_MS = 3200;
+
 export default function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [switches, setSwitches] = useState<Switch[]>([]);
@@ -34,7 +38,7 @@ export default function App() {
     setToast({ msg: message, kind });
     window.clearTimeout(toastTimer.current);
     if (kind === "ok") {
-      toastTimer.current = window.setTimeout(() => setToast(null), 3200);
+      toastTimer.current = window.setTimeout(() => setToast(null), OK_TOAST_MS);
     }
   }, []);
 

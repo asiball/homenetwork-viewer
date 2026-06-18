@@ -189,6 +189,7 @@ export function TopologyMap({
                 role="button"
                 tabIndex={0}
                 aria-label={p.label}
+                aria-pressed={p.id === selectedSwitchId}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -260,6 +261,7 @@ export function TopologyMap({
                   role="button"
                   tabIndex={0}
                   aria-label={`${d.name} ${d.ip}`}
+                  aria-pressed={isSel}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -281,6 +283,7 @@ export function TopologyMap({
                   role="button"
                   tabIndex={0}
                   aria-label={`${d.name} ${d.ip}`}
+                  aria-pressed={isSel}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();

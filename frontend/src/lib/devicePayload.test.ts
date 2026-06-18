@@ -88,6 +88,39 @@ describe("buildPayload", () => {
     expect(p.detail?.hw?.storage_drives).toEqual(["SN850 2TB", "MX500 1TB"]);
   });
 
+  it("folds parts/build_events into detail and drops blank rows (#97)", () => {
+    const form = {
+      ...emptyForm(),
+      id: "rig",
+      name: "Rig",
+      host: "rig",
+      ip: "192.168.1.52",
+      mac: "DE:AD:BE:EF:00:03",
+      type: "desktop",
+    };
+    const parts = [
+      { id: "cpu-1", category: "cpu" as const, model: "N100", price_jpy: 20000, status: "active" as const },
+      { id: "", category: "gpu" as const, model: "", status: "active" as const }, // blank → dropped
+    ];
+    const events = [
+      { date: "2024-01-02", action: "add" as const, part_id: "cpu-1" },
+      { date: "", action: "add" as const, part_id: "" }, // blank → dropped
+    ];
+    const p = buildPayload(form, undefined, "add", "", parts, events);
+    expect(p.detail?.parts).toHaveLength(1);
+    expect(p.detail?.parts?.[0].model).toBe("N100");
+    expect(p.detail?.build_events).toHaveLength(1);
+  });
+
+  it("clears a previously-stored parts list when emptied (#97)", () => {
+    const dev: Device = {
+      ...existing,
+      detail: { ...existing.detail, parts: [{ id: "p1", category: "cpu", model: "old", status: "active" }] },
+    };
+    const p = buildPayload(formFromDevice(dev), dev, "edit", "nas", [], []);
+    expect(p.detail?.parts).toBeNull();
+  });
+
   it("writes arch/chassis/bios into detail.hw", () => {
     const form = {
       ...emptyForm(),

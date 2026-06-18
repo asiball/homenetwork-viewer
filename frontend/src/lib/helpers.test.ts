@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp } from "./helpers";
-import type { Device } from "../types";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState } from "./helpers";
+import type { Device, Part } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
   id: "test",
@@ -128,6 +128,37 @@ describe("suggestFreeIp", () => {
       makeDevice({ id: `d${i}`, ip: `192.168.1.${i + 2}` }),
     );
     expect(suggestFreeIp(devs)).toBeNull();
+  });
+});
+
+describe("parts helpers (#97)", () => {
+  const part = (over: Partial<Part> = {}): Part => ({
+    id: "p",
+    category: "gpu",
+    model: "X",
+    status: "active",
+    ...over,
+  });
+
+  it("sums known part prices and skips priceless ones", () => {
+    const parts = [part({ price_jpy: 58000 }), part({ price_jpy: 90000 }), part({ price_jpy: null })];
+    expect(partsTotalJpy(parts)).toBe(148000);
+    expect(partsTotalJpy([])).toBe(0);
+    expect(partsTotalJpy(null)).toBe(0);
+  });
+
+  it("formats yen with separators", () => {
+    expect(formatJpy(148000)).toBe("¥148,000");
+    expect(formatJpy(0)).toBe("¥0");
+  });
+
+  it("classifies warranty state relative to now", () => {
+    const now = Date.parse("2026-06-18");
+    expect(warrantyState("2026-01-01", now)).toBe("expired");
+    expect(warrantyState("2026-07-01", now)).toBe("soon"); // within 30 days
+    expect(warrantyState("2027-01-01", now)).toBe("ok");
+    expect(warrantyState(null, now)).toBeNull();
+    expect(warrantyState("garbage", now)).toBeNull();
   });
 });
 

@@ -1475,6 +1475,126 @@ body {
 .weblink:hover {
   border-bottom-style: solid;
 }
+/* Custom-PC parts / build editor (#97). */
+.parts-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.parts-edit .part-row,
+.parts-edit .event-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.parts-edit input,
+.parts-edit select {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--rule-2);
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 2px;
+  flex: 1 1 120px;
+  min-width: 80px;
+}
+.parts-edit input:focus,
+.parts-edit select:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.parts-edit .row-del {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  color: var(--err);
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 6px 9px;
+  flex: 0 0 auto;
+}
+.parts-edit .row-add {
+  align-self: flex-start;
+}
+.parts-edit .build-hint {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  color: var(--fg-faint);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* Custom-PC parts / build history (#97). */
+.d-table.parts td {
+  vertical-align: top;
+}
+.part-serial {
+  color: var(--fg-faint);
+}
+.warr-soon {
+  color: var(--warn);
+}
+.warr-expired {
+  color: var(--err);
+}
+.part-status {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.part-status.st-failing {
+  color: var(--err);
+}
+.part-status.st-retired {
+  color: var(--fg-faint);
+}
+.part-status.st-spare {
+  color: var(--fg-soft);
+}
+.d-builds {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.d-builds li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 11px;
+}
+.d-builds .bd-date {
+  color: var(--fg-faint);
+  flex-shrink: 0;
+}
+.d-builds .bd-action {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.d-builds .ba-add {
+  color: var(--ok);
+}
+.d-builds .ba-remove {
+  color: var(--err);
+}
+.d-builds .ba-replace {
+  color: var(--amber);
+}
+.d-builds .bd-part {
+  color: var(--fg);
+  flex-shrink: 0;
+}
+.d-builds .bd-note {
+  color: var(--fg-soft);
+}
+
 /* url shown as copyable text + a compact open-in-new-tab arrow (#122). */
 .weblink-row {
   display: flex;

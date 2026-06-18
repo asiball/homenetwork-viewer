@@ -102,6 +102,74 @@ class Ownership(BaseModel):
     tags: list[str] | None = None
 
 
+# spec §11 / issue #97: custom-PC build management. A Part is one component
+# (CPU, GPU, a single drive…) with its own purchase / warranty / lifecycle, so
+# a self-built rig can track per-part cost and warranty instead of squashing
+# everything into free-text hardware strings.
+PartCategory = Literal[
+    "cpu", "gpu", "ram", "storage", "mainboard", "psu", "cooler", "case", "other"
+]
+PartStatus = Literal["active", "spare", "retired", "failing"]
+BuildAction = Literal["add", "remove", "replace"]
+
+
+def _iso_date_or_none(v: str | None) -> str | None:
+    """Validate an optional YYYY-MM-DD date, kept as a string so the catalog
+    stays plain JSON (matching Ownership.purchased). Empty → None."""
+    if v is None or not str(v).strip():
+        return None
+    try:
+        from datetime import date as _date
+
+        _date.fromisoformat(v)
+    except ValueError as exc:
+        raise ValueError(f"invalid date {v!r} (expected YYYY-MM-DD)") from exc
+    return v
+
+
+class Part(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    category: PartCategory
+    model: str
+    serial: str | None = None
+    purchased: str | None = None
+    price_jpy: int | None = Field(default=None, ge=0)
+    warranty_until: str | None = None
+    status: PartStatus = "active"
+
+    @field_validator("id", "model")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("purchased", "warranty_until")
+    @classmethod
+    def _valid_dates(cls, v: str | None) -> str | None:
+        return _iso_date_or_none(v)
+
+
+class BuildEvent(BaseModel):
+    """A configuration change to a device's build (add / remove / replace a
+    part). Low-volume, hand-entered history — fits the JSON catalog (#97)."""
+
+    model_config = ConfigDict(extra="ignore")
+    date: str
+    action: BuildAction
+    part_id: str
+    note: str | None = None
+
+    @field_validator("date")
+    @classmethod
+    def _valid_date(cls, v: str) -> str:
+        out = _iso_date_or_none(v)
+        if out is None:
+            raise ValueError("date is required (YYYY-MM-DD)")
+        return out
+
+
 class DeviceDetail(BaseModel):
     """Detail-view-only payload (spec §3.3). All fields optional / nullable."""
 
@@ -113,6 +181,8 @@ class DeviceDetail(BaseModel):
     storage: StorageInfo | None = None
     hist7: list[float] | None = None
     own: Ownership | None = None
+    parts: list[Part] | None = None
+    build_events: list[BuildEvent] | None = None
 
 
 class DeviceBase(BaseModel):

@@ -10,7 +10,18 @@ import { useCatalog } from "../CatalogContext";
 import { Shell } from "../components/Shell";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { ApiError, api } from "../api";
-import { CONN_OPTIONS, type Conn, GROUP_ORDER, type Group, TYPE_OPTIONS } from "../types";
+import {
+  BUILD_ACTIONS,
+  type BuildEvent,
+  CONN_OPTIONS,
+  type Conn,
+  GROUP_ORDER,
+  type Group,
+  PART_CATEGORIES,
+  PART_STATUSES,
+  type Part,
+  TYPE_OPTIONS,
+} from "../types";
 import { ID_RE, IPV4_RE, kebabId, MAC_RE, suggestFreeIp } from "../lib/helpers";
 import {
   buildPayload,
@@ -59,13 +70,24 @@ export function EditView({ mode }: Props) {
   const cloneFromId =
     mode === "add" ? (location.state as { clone?: string } | null)?.clone : undefined;
 
+  const cloneSrc = cloneFromId ? devices.find((d) => d.id === cloneFromId) : undefined;
+
   function makeInitialForm(): FormState {
     if (existing) return formFromDevice(existing);
-    const src = cloneFromId ? devices.find((d) => d.id === cloneFromId) : undefined;
-    return src ? cloneForm(src) : emptyForm();
+    return cloneSrc ? cloneForm(cloneSrc) : emptyForm();
+  }
+  // Parts carry over when cloning (same build), but build history doesn't — it
+  // belongs to the physical unit (#97).
+  function makeInitialParts(): Part[] {
+    return (existing ?? cloneSrc)?.detail?.parts?.map((p) => ({ ...p })) ?? [];
+  }
+  function makeInitialEvents(): BuildEvent[] {
+    return existing?.detail?.build_events?.map((e) => ({ ...e })) ?? [];
   }
 
   const [form, setForm] = useState<FormState>(makeInitialForm);
+  const [parts, setParts] = useState<Part[]>(makeInitialParts);
+  const [buildEvents, setBuildEvents] = useState<BuildEvent[]>(makeInitialEvents);
   const [idTouched, setIdTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitErr, setSubmitErr] = useState<string | null>(null);
@@ -77,20 +99,31 @@ export function EditView({ mode }: Props) {
   // previous device). React's "adjust state during render" pattern.
   const [loadedId, setLoadedId] = useState(id);
   const initialForm = useRef<FormState>(makeInitialForm());
+  // Snapshot of the full editable state (form + parts + events) at load, so the
+  // unsaved-changes guard also fires when only parts/build history changed (#97).
+  const initialSnapshot = useRef<string>(
+    JSON.stringify({ form: makeInitialForm(), parts: makeInitialParts(), buildEvents: makeInitialEvents() }),
+  );
 
   if (id !== loadedId) {
     setLoadedId(id);
     const newForm = makeInitialForm();
+    const newParts = makeInitialParts();
+    const newEvents = makeInitialEvents();
     setForm(newForm);
+    setParts(newParts);
+    setBuildEvents(newEvents);
     // eslint-disable-next-line react-hooks/refs
     initialForm.current = newForm;
+    // eslint-disable-next-line react-hooks/refs
+    initialSnapshot.current = JSON.stringify({ form: newForm, parts: newParts, buildEvents: newEvents });
     setIdTouched(false);
     setErrors({});
     setSubmitErr(null);
   }
 
   // eslint-disable-next-line react-hooks/refs
-  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current);
+  const isDirty = JSON.stringify({ form, parts, buildEvents }) !== initialSnapshot.current;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }: { currentLocation: Location; nextLocation: Location }) =>
       isDirty && currentLocation.pathname !== nextLocation.pathname
@@ -177,6 +210,26 @@ export function EditView({ mode }: Props) {
     });
   }
 
+  // ── parts / build-history editing (#97) ──
+  function addPart() {
+    setParts((ps) => [...ps, { id: "", category: "other", model: "", status: "active" }]);
+  }
+  function updatePart(i: number, patch: Partial<Part>) {
+    setParts((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  }
+  function removePart(i: number) {
+    setParts((ps) => ps.filter((_, j) => j !== i));
+  }
+  function addEvent() {
+    setBuildEvents((es) => [...es, { date: "", action: "add", part_id: "", note: null }]);
+  }
+  function updateEvent(i: number, patch: Partial<BuildEvent>) {
+    setBuildEvents((es) => es.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+  }
+  function removeEvent(i: number) {
+    setBuildEvents((es) => es.filter((_, j) => j !== i));
+  }
+
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (mode === "add") {
@@ -209,12 +262,13 @@ export function EditView({ mode }: Props) {
       });
       return;
     }
-    const payload = buildPayload(form, existing, mode, id);
+    const payload = buildPayload(form, existing, mode, id, parts, buildEvents);
     setBusy(true);
     try {
       if (mode === "add") await api.create(payload);
       else await api.update(id, payload);
-      initialForm.current = form; // 保存済み → dirty 解除 (FormState 同士で比較する)
+      // 保存済み → dirty 解除（form + parts + events のスナップショットを更新）
+      initialSnapshot.current = JSON.stringify({ form, parts, buildEvents });
       await refresh();
       notify(mode === "add" ? `added · ${payload.name}` : `saved · ${payload.name}`);
       navigate(`/d/${payload.id}`);
@@ -234,7 +288,7 @@ export function EditView({ mode }: Props) {
   async function performDelete() {
     if (!existing) return;
     setDeleteModalOpen(false);
-    initialForm.current = form; // 削除確定後の遷移で離脱ガードを出さない
+    initialSnapshot.current = JSON.stringify({ form, parts, buildEvents }); // 削除確定後の遷移で離脱ガードを出さない
     setBusy(true);
     try {
       await api.remove(existing.id);
@@ -533,6 +587,55 @@ export function EditView({ mode }: Props) {
               <Field id="f-tags" label="tags" full hint="カンマ区切り（例 always-on, backup, critical）">
                 <input id="f-tags" value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="always-on, critical" />
               </Field>
+            </div>
+          </div>
+
+          <div className="f-section" data-title="build / parts" aria-label="build / parts">
+            <div className="parts-edit">
+              {parts.length === 0 && <div className="hint">部品単位で購入日・価格・保証・状態を管理（自作PC向け · 任意）</div>}
+              {parts.map((p, i) => (
+                <div className="part-row" key={i}>
+                  <select aria-label="category" value={p.category} onChange={(e) => updatePart(i, { category: e.target.value as Part["category"] })}>
+                    {PART_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <input aria-label="part id" value={p.id} onChange={(e) => updatePart(i, { id: e.target.value })} placeholder="id (例 gpu-1)" />
+                  <input aria-label="model" value={p.model} onChange={(e) => updatePart(i, { model: e.target.value })} placeholder="model" />
+                  <input aria-label="serial" value={p.serial ?? ""} onChange={(e) => updatePart(i, { serial: e.target.value || null })} placeholder="serial" />
+                  <input aria-label="purchased" value={p.purchased ?? ""} onChange={(e) => updatePart(i, { purchased: e.target.value || null })} placeholder="purchased YYYY-MM-DD" />
+                  <input aria-label="price (jpy)" inputMode="numeric" value={p.price_jpy ?? ""} onChange={(e) => updatePart(i, { price_jpy: e.target.value.trim() === "" ? null : Number(e.target.value) })} placeholder="price ¥" />
+                  <input aria-label="warranty until" value={p.warranty_until ?? ""} onChange={(e) => updatePart(i, { warranty_until: e.target.value || null })} placeholder="warranty YYYY-MM-DD" />
+                  <select aria-label="status" value={p.status} onChange={(e) => updatePart(i, { status: e.target.value as Part["status"] })}>
+                    {PART_STATUSES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="row-del" aria-label="remove part" onClick={() => removePart(i)}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="f-btn ghost row-add" onClick={addPart}>+ add part</button>
+
+              {buildEvents.length > 0 && <div className="hint build-hint">構成変更履歴</div>}
+              {buildEvents.map((ev, i) => (
+                <div className="event-row" key={i}>
+                  <input aria-label="event date" value={ev.date} onChange={(e) => updateEvent(i, { date: e.target.value })} placeholder="date YYYY-MM-DD" />
+                  <select aria-label="action" value={ev.action} onChange={(e) => updateEvent(i, { action: e.target.value as BuildEvent["action"] })}>
+                    {BUILD_ACTIONS.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  <select aria-label="part" value={ev.part_id} onChange={(e) => updateEvent(i, { part_id: e.target.value })}>
+                    <option value="">— part —</option>
+                    {parts.filter((p) => p.id.trim()).map((p) => (
+                      <option key={p.id} value={p.id}>{p.id}</option>
+                    ))}
+                  </select>
+                  <input aria-label="note" value={ev.note ?? ""} onChange={(e) => updateEvent(i, { note: e.target.value || null })} placeholder="note" />
+                  <button type="button" className="row-del" aria-label="remove event" onClick={() => removeEvent(i)}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="f-btn ghost row-add" onClick={addEvent} disabled={parts.filter((p) => p.id.trim()).length === 0}>+ add build event</button>
             </div>
           </div>
 

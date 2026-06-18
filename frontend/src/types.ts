@@ -120,6 +120,43 @@ export interface Ownership {
   tags?: string[] | null;
 }
 
+// Custom-PC build management (#97). A Part is one component with its own
+// purchase / warranty / lifecycle; BuildEvent records add/remove/replace.
+export const PART_CATEGORIES = [
+  "cpu",
+  "gpu",
+  "ram",
+  "storage",
+  "mainboard",
+  "psu",
+  "cooler",
+  "case",
+  "other",
+] as const;
+export type PartCategory = (typeof PART_CATEGORIES)[number];
+export const PART_STATUSES = ["active", "spare", "retired", "failing"] as const;
+export type PartStatus = (typeof PART_STATUSES)[number];
+export const BUILD_ACTIONS = ["add", "remove", "replace"] as const;
+export type BuildAction = (typeof BUILD_ACTIONS)[number];
+
+export interface Part {
+  id: string;
+  category: PartCategory;
+  model: string;
+  serial?: string | null;
+  purchased?: string | null;
+  price_jpy?: number | null;
+  warranty_until?: string | null;
+  status: PartStatus;
+}
+
+export interface BuildEvent {
+  date: string;
+  action: BuildAction;
+  part_id: string;
+  note?: string | null;
+}
+
 export interface DeviceDetail {
   net?: NetInfo | null;
   hw?: HwInfo | null;
@@ -128,6 +165,8 @@ export interface DeviceDetail {
   storage?: StorageInfo | null;
   hist7?: number[] | null;
   own?: Ownership | null;
+  parts?: Part[] | null;
+  build_events?: BuildEvent[] | null;
 }
 
 export interface Device {

@@ -5,6 +5,7 @@
 // test that pins them down.
 
 import type {
+  BuildEvent,
   Conn,
   Device,
   DeviceDetail,
@@ -12,6 +13,7 @@ import type {
   Group,
   HwInfo,
   Ownership,
+  Part,
 } from "../types";
 import { kebabId } from "./helpers";
 
@@ -145,6 +147,8 @@ export function buildPayload(
   existing: Device | undefined,
   mode: "add" | "edit",
   id: string,
+  parts?: Part[],
+  buildEvents?: BuildEvent[],
 ): DeviceWrite {
   // Ownership is fully form-owned. Emptied fields are sent as explicit null
   // (not omitted) because the backend deep-merges nested dicts — omitting a key
@@ -191,6 +195,18 @@ export function buildPayload(
   const hwHasAny = Object.values(formHw).some((v) => v != null);
   if (hwHasAny || detail?.hw) {
     detail = { ...(detail ?? {}), hw: { ...(detail?.hw ?? {}), ...formHw } };
+  }
+
+  // Custom-PC parts / build history (#97). Drop rows the user left blank
+  // (no id/model, or an event with no date/part). Emptied → explicit null so
+  // the merge clears a previously-stored list.
+  const cleanParts = (parts ?? []).filter((p) => p.id.trim() && p.model.trim());
+  if (cleanParts.length || detail?.parts) {
+    detail = { ...(detail ?? {}), parts: cleanParts.length ? cleanParts : null };
+  }
+  const cleanEvents = (buildEvents ?? []).filter((e) => e.date.trim() && e.part_id.trim());
+  if (cleanEvents.length || detail?.build_events) {
+    detail = { ...(detail ?? {}), build_events: cleanEvents.length ? cleanEvents : null };
   }
 
   const payload: DeviceWrite = {

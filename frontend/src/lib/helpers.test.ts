@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo, comparePortKeys, switchPortRows } from "./helpers";
+import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo, comparePortKeys, switchPortRows, compareIp } from "./helpers";
 import type { Device, Part, Switch } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -189,6 +189,25 @@ describe("parts helpers (#97)", () => {
     expect(warrantyState("2027-01-01", now)).toBe("ok");
     expect(warrantyState(null, now)).toBeNull();
     expect(warrantyState("garbage", now)).toBeNull();
+  });
+});
+
+describe("compareIp", () => {
+  it("orders IPv4 numerically by octet (not lexically)", () => {
+    const ips = ["192.168.1.10", "192.168.1.2", "192.168.1.100", "10.0.0.1"];
+    expect([...ips].sort(compareIp)).toEqual([
+      "10.0.0.1",
+      "192.168.1.2",
+      "192.168.1.10",
+      "192.168.1.100",
+    ]);
+  });
+
+  it("treats malformed / non-IPv4 octets as 0 instead of scattering on NaN", () => {
+    // No throw, deterministic ordering: blanks/garbage sort as 0.0.0.0.
+    expect(compareIp("", "0.0.0.0")).toBe(0);
+    expect(compareIp("192.168.1.1", "")).toBeGreaterThan(0);
+    expect(compareIp("not-an-ip", "0.0.0.1")).toBeLessThan(0);
   });
 });
 

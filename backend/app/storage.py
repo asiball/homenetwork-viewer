@@ -394,6 +394,19 @@ def updated_at() -> str | None:
     return row["value"] if row else None
 
 
+def catalog_counts() -> tuple[int, int]:
+    """Return (total devices, online devices) for the meta summary.
+
+    Counts in SQL rather than loading and JSON-decoding every device doc just to
+    tally them — /api/meta only needs the numbers. Devices always get a
+    device_state row (created alongside the device), so a missing/zero state
+    simply counts as offline, matching list_devices()."""
+    with _db() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+        online = conn.execute("SELECT COUNT(*) FROM device_state WHERE online = 1").fetchone()[0]
+    return total, online
+
+
 # ─── Writes ─────────────────────────────────────────────────────────────────
 
 

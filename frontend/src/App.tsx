@@ -46,13 +46,24 @@ export default function App() {
     return () => window.clearTimeout(toastTimer.current);
   }, []);
 
+  // Guards against overlapping refreshes: the auto-poll (RefreshControls) and a
+  // manual click can otherwise both be in flight, and the slower (older) one
+  // can land last and overwrite the fresher catalog. A simple in-flight flag
+  // coalesces them — a refresh requested while one runs is dropped, not queued.
+  const inFlight = useRef(false);
+
   // Lightweight refresh: devices + meta only, unless boot failed. Uses
   // `refreshing` (not `loading`) so a poll never collapses a detail/edit view
   // into the full-screen spinner.
   const refresh = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    // After a failed boot the catalog is empty, so a retry must re-pull the full
+    // set (switches/cables too), not just the lightweight devices+meta.
+    const recovering = bootError != null;
     setRefreshing(true);
     try {
-      if (bootError) {
+      if (recovering) {
         const [d, s, c, m] = await Promise.all([
           api.devices(),
           api.switches(),
@@ -73,9 +84,13 @@ export default function App() {
       setSyncError(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "failed to reach API";
-      setBootError(msg);
+      // A background-poll failure must NOT promote to the full-screen boot
+      // error (which would collapse a working session into "couldn't load
+      // catalog"). Surface it only as a non-blocking sync warning; bootError is
+      // owned solely by the initial-load effect below.
       setSyncError(msg);
     } finally {
+      inFlight.current = false;
       setRefreshing(false);
     }
   }, [bootError]);

@@ -13,6 +13,7 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { countOnline, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
 import { prefs } from "../lib/prefs";
+import { useIsNarrow } from "../lib/useIsNarrow";
 import { APP_VERSION } from "../version";
 
 function initialLayout(urlLayout: string | null): LayoutKind {
@@ -41,10 +42,20 @@ export function HomeView() {
   // ConfirmModal (matching delete / leave guards) instead of native confirm().
   const [pendingImport, setPendingImport] = useState<File | null>(null);
 
+  // On phones the right summary panel is hidden (theme.css ≤560px), so tapping
+  // a node could update nothing visible. There, route straight to the full
+  // detail page (which is mobile-friendly); otherwise drive the side panel (#100).
+  const isNarrow = useIsNarrow();
+
   // Selecting a device always takes the side panel back from a switch.
   function selectDevice(id: string) {
     setSelId(id);
     setSelSwId(null);
+  }
+
+  function handleSelect(id: string) {
+    if (isNarrow) navigate(`/d/${id}`);
+    else selectDevice(id);
   }
 
   const visible = useMemo(
@@ -160,7 +171,7 @@ export function HomeView() {
     <Shell
       devices={visible}
       selectedId={selected?.id}
-      onSelect={selectDevice}
+      onSelect={handleSelect}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       crumbs={
@@ -224,7 +235,7 @@ export function HomeView() {
             devices={mapVisible}
             layout={layout}
             selectedId={selected.id}
-            onSelect={selectDevice}
+            onSelect={handleSelect}
             selectedSwitchId={selSwId}
             onSelectSwitch={setSelSwId}
           />

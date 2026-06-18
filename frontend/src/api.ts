@@ -1,6 +1,6 @@
 // Thin API client. Same-origin /api (nginx proxy in prod, vite proxy in dev).
 
-import type { Cable, Device, DeviceWrite, Meta, Switch } from "./types";
+import type { Cable, Device, DeviceWrite, Meta, ReachabilityHistory, Switch } from "./types";
 
 const BASE = "/api";
 
@@ -44,6 +44,10 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   devices: () => req<Device[]>("/devices"),
   device: (id: string) => req<Device>(`/devices/${encodeURIComponent(id)}`),
+  reachability: (id: string, days = 7) =>
+    req<ReachabilityHistory>(
+      `/devices/${encodeURIComponent(id)}/reachability?days=${days}`,
+    ),
   switches: () => req<Switch[]>("/switches"),
   cables: () => req<Cable[]>("/cables"),
   meta: () => req<Meta>("/meta"),

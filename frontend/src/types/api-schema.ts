@@ -150,6 +150,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/devices/{device_id}/reachability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Device Reachability
+         * @description Per-day uptime history + recent up/down events for a device (#93).
+         *
+         *     Computed from the append-only reachability samples the collector writes, so
+         *     the detail view's 7-day chart and uptime reflect real probes rather than the
+         *     legacy hand-entered ``detail.hist7`` field. Days with no samples report
+         *     ``uptime: null`` (history is never invented — spec §6.4).
+         */
+        get: operations["device_reachability_api_devices__device_id__reachability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/devices/{device_id}/wake": {
         parameters: {
             query?: never;
@@ -609,6 +634,51 @@ export interface components {
             /** Role */
             role?: ("uplink" | "downlink") | null;
         };
+        /**
+         * ReachabilityDay
+         * @description One calendar day's uptime ratio (0..1), or null when no samples exist
+         *     that day — history is derived from real probes, never invented (spec §6.4).
+         */
+        ReachabilityDay: {
+            /** Date */
+            date: string;
+            /** Uptime */
+            uptime?: number | null;
+            /**
+             * Samples
+             * @default 0
+             */
+            samples: number;
+        };
+        /**
+         * ReachabilityEvent
+         * @description An up/down state transition detected by the collector.
+         */
+        ReachabilityEvent: {
+            /** Ts */
+            ts: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "up" | "down";
+        };
+        /** ReachabilityHistory */
+        ReachabilityHistory: {
+            /** Device Id */
+            device_id: string;
+            /** Days */
+            days: number;
+            /** History */
+            history: components["schemas"]["ReachabilityDay"][];
+            /** Uptime Pct */
+            uptime_pct?: number | null;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["ReachabilityEvent"][];
+        };
         /** Service */
         Service: {
             /** Port */
@@ -954,6 +1024,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    device_reachability_api_devices__device_id__reachability_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReachabilityHistory"];
+                };
             };
             /** @description Validation Error */
             422: {

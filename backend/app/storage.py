@@ -8,6 +8,12 @@ record the user edits, and never pays the per-sweep full-file fsync the old JSON
 store did. JSON stays the import/export interchange format, so the catalog is
 still portable, diff-able on export and easy to back up.
 
+Reachability is also kept as an append-only *time series* (``reachability_samples``)
+plus the state-transition edges (``reachability_events``), so uptime, the 7-day
+history and outage records are computed from real data instead of a frozen
+hand-entered field (issue #93). ``device_state`` stays as the fast "current"
+cache derived from the latest sample.
+
 Schema changes go through numbered migrations keyed off ``PRAGMA user_version``,
 applied on startup, so the database can evolve forward safely.
 
@@ -26,7 +32,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +53,11 @@ LEGACY_JSON = Path(
 # Reachability fields the collector owns. Kept out of the catalog "doc" (they
 # live in the device_state table) so a sweep never rewrites the curated record.
 _STATE_FIELDS = ("online", "last")
+
+# How long to keep raw reachability samples / events before pruning (#93). A home
+# LAN at one sweep / 2 min is ~720 rows/device/day; 30 days bounds the table while
+# leaving plenty for the 7-day history and recent outage list.
+RETENTION_DAYS = 30
 
 _lock = threading.RLock()
 
@@ -158,9 +169,39 @@ def _m001_initial(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m002_reachability_history(conn: sqlite3.Connection) -> None:
+    """Append-only reachability time series + state-transition edges (#93).
+
+    `reachability_samples` keeps one row per device per sweep (uptime / hist7 are
+    aggregated from it); `reachability_events` keeps only the up/down edges (the
+    source for outage history and, later, notifications). Both cascade-delete with
+    their device, so removing a device cleans up its history too.
+    """
+    conn.executescript(
+        """
+        CREATE TABLE reachability_samples (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+            ts        TEXT NOT NULL,
+            reachable INTEGER NOT NULL,
+            rtt_ms    REAL,
+            method    TEXT
+        );
+        CREATE TABLE reachability_events (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+            ts        TEXT NOT NULL,
+            kind      TEXT NOT NULL
+        );
+        CREATE INDEX idx_samples_device_ts ON reachability_samples(device_id, ts);
+        CREATE INDEX idx_events_device_ts ON reachability_events(device_id, ts);
+        """
+    )
+
+
 # Append-only: each migration is applied once, in order, the first time the DB's
 # user_version is below its index. Never edit a shipped migration — add a new one.
-_MIGRATIONS = [_m001_initial]
+_MIGRATIONS = [_m001_initial, _m002_reachability_history]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
@@ -455,6 +496,112 @@ def bulk_update_reachability(updates: list[dict]) -> None:
             )
 
 
+# ─── Reachability time series (#93) ──────────────────────────────────────────
+
+
+def record_reachability(samples: list[dict], ts: str | None = None) -> None:
+    """Append one reachability sample per device for a sweep, record up/down
+    transitions, and refresh the device_state "current" cache — all in one
+    transaction.
+
+    Each sample is ``{id, reachable, rtt_ms?, method?, ts?}``. The sweep instant
+    (``ts``) is stamped once for the whole batch unless a sample carries its own
+    ``ts`` (used by tests to place samples on specific days). Unknown device ids
+    are skipped. A transition (online flips vs the stored state) writes a
+    ``reachability_events`` row; the very first observation of a device writes no
+    event. ``last`` keeps the previous instant while a device is offline (#84)."""
+    if not samples:
+        return
+    sweep_ts = ts or _now_iso()
+    with _write() as conn:
+        for s in samples:
+            dev_id = s["id"]
+            row = conn.execute(
+                "SELECT online, last FROM device_state WHERE id = ?", (dev_id,)
+            ).fetchone()
+            if (
+                row is None
+                and not conn.execute("SELECT 1 FROM devices WHERE id = ?", (dev_id,)).fetchone()
+            ):
+                continue  # unknown device id — nothing to record
+            sample_ts = s.get("ts") or sweep_ts
+            reachable = bool(s["reachable"])
+            conn.execute(
+                "INSERT INTO reachability_samples(device_id, ts, reachable, rtt_ms, method) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (dev_id, sample_ts, int(reachable), s.get("rtt_ms"), s.get("method")),
+            )
+            cur_online = row["online"] if row else None
+            cur_last = row["last"] if row else None
+            new_online = int(reachable)
+            # Record the up/down edge only on an actual flip from a known state.
+            if cur_online is not None and cur_online != new_online:
+                conn.execute(
+                    "INSERT INTO reachability_events(device_id, ts, kind) VALUES (?, ?, ?)",
+                    (dev_id, sample_ts, "up" if reachable else "down"),
+                )
+            new_last = sample_ts if reachable else cur_last
+            if new_online != cur_online or new_last != cur_last:
+                conn.execute(
+                    "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?) "
+                    "ON CONFLICT(id) DO UPDATE SET online = excluded.online, last = excluded.last",
+                    (dev_id, new_online, new_last),
+                )
+
+
+def reachability_history(device_id: str, days: int = 7) -> dict[str, Any]:
+    """Per-day uptime over the last *days* calendar days (UTC), from samples.
+
+    Returns ``{device_id, days, history: [{date, uptime, samples}], uptime_pct}``
+    where ``uptime``/``uptime_pct`` are ratios in 0..1 and are ``None`` for a day
+    (or window) with no samples — history is never invented (spec §6.4)."""
+    days = max(1, days)
+    today = datetime.now(UTC).date()
+    start = today - timedelta(days=days - 1)
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT date(ts) AS day, AVG(reachable) AS up, COUNT(*) AS n "
+            "FROM reachability_samples WHERE device_id = ? AND ts >= ? "
+            "GROUP BY date(ts)",
+            (device_id, start.isoformat()),
+        ).fetchall()
+    by_day = {r["day"]: (r["up"], r["n"]) for r in rows}
+    history: list[dict[str, Any]] = []
+    total_n = 0
+    total_up = 0.0
+    for i in range(days):
+        d = (start + timedelta(days=i)).isoformat()
+        up, n = by_day.get(d, (None, 0))
+        history.append({"date": d, "uptime": up, "samples": n})
+        if n:
+            total_n += n
+            total_up += up * n
+    uptime_pct = (total_up / total_n) if total_n else None
+    return {"device_id": device_id, "days": days, "history": history, "uptime_pct": uptime_pct}
+
+
+def list_reachability_events(device_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Most-recent up/down transitions for a device, newest first."""
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT ts, kind FROM reachability_events WHERE device_id = ? "
+            "ORDER BY ts DESC, id DESC LIMIT ?",
+            (device_id, max(1, limit)),
+        ).fetchall()
+    return [{"ts": r["ts"], "kind": r["kind"]} for r in rows]
+
+
+def prune_reachability(retention_days: int = RETENTION_DAYS) -> int:
+    """Delete samples / events older than *retention_days*; returns rows removed."""
+    cutoff = (datetime.now(UTC) - timedelta(days=retention_days)).isoformat(timespec="seconds")
+    with _write() as conn:
+        n = conn.execute("DELETE FROM reachability_samples WHERE ts < ?", (cutoff,)).rowcount
+        n += conn.execute("DELETE FROM reachability_events WHERE ts < ?", (cutoff,)).rowcount
+    if n:
+        logger.info("storage.op action=prune_reachability removed=%d", n)
+    return n
+
+
 # ─── Backup / Restore ───────────────────────────────────────────────────────
 
 
@@ -480,7 +627,11 @@ def backup_catalog() -> None:
 
 
 def replace_catalog(devices: list, switches: list, cables: list) -> None:
-    """Atomically replace the whole catalog with new data."""
+    """Atomically replace the whole catalog with new data.
+
+    A full replace also drops reachability history: deleting devices cascades to
+    device_state, reachability_samples and reachability_events (so an import never
+    leaves history orphaned to ids that no longer exist)."""
     with _write() as conn:
         conn.execute("DELETE FROM device_state")
         conn.execute("DELETE FROM devices")

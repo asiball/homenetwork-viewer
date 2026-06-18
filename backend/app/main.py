@@ -32,6 +32,7 @@ from .models import (
     DeviceCreate,
     DeviceUpdate,
     Meta,
+    ReachabilityHistory,
     Switch,
 )
 
@@ -226,6 +227,22 @@ def update_device(device_id: str, payload: DeviceUpdate) -> dict:
 def delete_device(device_id: str) -> Response:
     storage.delete_device(device_id)  # NotFoundError -> 404 via the handler above
     return Response(status_code=204)
+
+
+@app.get("/api/devices/{device_id}/reachability", response_model=ReachabilityHistory)
+def device_reachability(device_id: str, days: int = 7) -> dict:
+    """Per-day uptime history + recent up/down events for a device (#93).
+
+    Computed from the append-only reachability samples the collector writes, so
+    the detail view's 7-day chart and uptime reflect real probes rather than the
+    legacy hand-entered ``detail.hist7`` field. Days with no samples report
+    ``uptime: null`` (history is never invented — spec §6.4).
+    """
+    storage.get_device(device_id)  # NotFoundError -> 404 via the handler above
+    days = max(1, min(days, 90))
+    data = storage.reachability_history(device_id, days)
+    data["events"] = storage.list_reachability_events(device_id, limit=20)
+    return data
 
 
 @app.post("/api/devices/{device_id}/wake", status_code=200)

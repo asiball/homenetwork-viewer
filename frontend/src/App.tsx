@@ -1,35 +1,61 @@
 // App root: catalog data provider + router + toast host.
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";
 import { CatalogContext, type CatalogValue } from "./CatalogContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const EMPTY_META: Meta = { total: 0, online: 0, offline: 0, updated_at: null };
+// Shared empty arrays so the "no data yet" fallbacks keep a stable identity
+// across renders (a fresh `[]` each render would defeat downstream memoisation).
+const EMPTY_DEVICES: Device[] = [];
+const EMPTY_SWITCHES: Switch[] = [];
+const EMPTY_CABLES: Cable[] = [];
 
 // How long a success toast stays before auto-dismissing (error toasts are
 // sticky so the user can read/act on them). Named so it isn't a bare literal.
 const OK_TOAST_MS = 3200;
 
+interface CatalogData {
+  devices: Device[];
+  switches: Switch[];
+  cables: Cable[];
+  meta: Meta;
+}
+
+async function fetchCatalog(): Promise<CatalogData> {
+  const [devices, switches, cables, meta] = await Promise.all([
+    api.devices(),
+    api.switches(),
+    api.cables(),
+    api.meta(),
+  ]);
+  return { devices, switches, cables, meta };
+}
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : "failed to reach API";
+}
+
 export default function App() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [switches, setSwitches] = useState<Switch[]>([]);
-  const [cables, setCables] = useState<Cable[]>([]);
-  const [meta, setMeta] = useState<Meta>(EMPTY_META);
-  const [clientIp, setClientIp] = useState<string | null>(null);
-  const [lastSync, setLastSync] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [bootError, setBootError] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  // One query owns the whole catalog. react-query dedupes concurrent refetches
+  // (so the old poll-vs-click race can't land responses out of order), keeps the
+  // previous data on a background-refetch failure (so a poll error never blanks
+  // a working session), and tracks loading / fetching / error / updated-at for
+  // us — replacing the hand-rolled state machine and cancellation flags (#159).
+  const catalog = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog });
+
+  // Best-effort client IP so the UI can tag "this device". Never blocks or
+  // errors the catalog; the value is static for a session.
+  const whoami = useQuery({
+    queryKey: ["whoami"],
+    queryFn: () => api.whoami(),
+    retry: false,
+    staleTime: Infinity,
+  });
 
   const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -46,94 +72,32 @@ export default function App() {
     return () => window.clearTimeout(toastTimer.current);
   }, []);
 
-  // Guards against overlapping refreshes: the auto-poll (RefreshControls) and a
-  // manual click can otherwise both be in flight, and the slower (older) one
-  // can land last and overwrite the fresher catalog. A simple in-flight flag
-  // coalesces them — a refresh requested while one runs is dropped, not queued.
-  const inFlight = useRef(false);
+  const devices = catalog.data?.devices ?? EMPTY_DEVICES;
+  const switches = catalog.data?.switches ?? EMPTY_SWITCHES;
+  const cables = catalog.data?.cables ?? EMPTY_CABLES;
+  const meta = catalog.data?.meta ?? EMPTY_META;
 
-  // Lightweight refresh: devices + meta only, unless boot failed. Uses
-  // `refreshing` (not `loading`) so a poll never collapses a detail/edit view
-  // into the full-screen spinner.
+  // `loading` gates the full-screen spinner: only the very first load (no data
+  // yet). `refreshing` is a background re-fetch, which must never blank a view.
+  const loading = catalog.isLoading;
+  const refreshing = catalog.isFetching && !catalog.isLoading;
+  // A query error with no data is a boot failure (full-screen); with data it's a
+  // background sync failure (non-blocking warning) — the #152 distinction, now
+  // structural rather than hand-managed.
+  const bootError = catalog.isError && !catalog.data ? errMsg(catalog.error) : null;
+  const syncError = catalog.isError && catalog.data ? errMsg(catalog.error) : null;
+  // Memoise on the numeric timestamp: a fresh Date object every render would make
+  // RefreshControls' lastSync effect fire on every render (it pulses on change).
+  const lastSync = useMemo(
+    () => (catalog.dataUpdatedAt ? new Date(catalog.dataUpdatedAt) : null),
+    [catalog.dataUpdatedAt],
+  );
+
   const refresh = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    // After a failed boot the catalog is empty, so a retry must re-pull the full
-    // set (switches/cables too), not just the lightweight devices+meta.
-    const recovering = bootError != null;
-    setRefreshing(true);
-    try {
-      if (recovering) {
-        const [d, s, c, m] = await Promise.all([
-          api.devices(),
-          api.switches(),
-          api.cables(),
-          api.meta(),
-        ]);
-        setDevices(d);
-        setSwitches(s);
-        setCables(c);
-        setMeta(m);
-      } else {
-        const [d, m] = await Promise.all([api.devices(), api.meta()]);
-        setDevices(d);
-        setMeta(m);
-      }
-      setLastSync(new Date());
-      setBootError(null);
-      setSyncError(null);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "failed to reach API";
-      // A background-poll failure must NOT promote to the full-screen boot
-      // error (which would collapse a working session into "couldn't load
-      // catalog"). Surface it only as a non-blocking sync warning; bootError is
-      // owned solely by the initial-load effect below.
-      setSyncError(msg);
-    } finally {
-      inFlight.current = false;
-      setRefreshing(false);
-    }
-  }, [bootError]);
+    await catalog.refetch();
+  }, [catalog]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const [d, s, c, m] = await Promise.all([
-          api.devices(),
-          api.switches(),
-          api.cables(),
-          api.meta(),
-        ]);
-        if (cancelled) return;
-        setDevices(d);
-        setSwitches(s);
-        setCables(c);
-        setMeta(m);
-        setLastSync(new Date());
-        setBootError(null);
-      } catch (e) {
-        if (!cancelled) {
-          setBootError(e instanceof Error ? e.message : "failed to reach API");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    // Best-effort: lets the UI tag "this device". Never blocks the catalog.
-    api
-      .whoami()
-      .then((w) => {
-        if (!cancelled) setClientIp(w.ip);
-      })
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  const clientIp = whoami.data?.ip ?? null;
   const selfId = useMemo(
     () => (clientIp ? (devices.find((d) => d.ip === clientIp)?.id ?? null) : null),
     [clientIp, devices],

@@ -3,6 +3,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
 import { Shell } from "../components/Shell";
@@ -15,7 +16,7 @@ import { DeviceIcon } from "../components/DeviceIcon";
 import { CableSwatch } from "../components/CableSwatch";
 import { prefs } from "../lib/prefs";
 import { Spinner } from "../components/Spinner";
-import type { ReachabilityHistory, ServiceRow } from "../types";
+import type { ServiceRow } from "../types";
 
 function mean(xs: number[]): number {
   return Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
@@ -39,22 +40,17 @@ export function DetailView() {
   const { devices, switches, cables, selfId, loading, notify } = useCatalog();
   const device = devices.find((d) => d.id === id);
   const [waking, setWaking] = useState(false);
-  const [reach, setReach] = useState<ReachabilityHistory | null>(null);
 
-  // Pull the real 7-day reachability history (#93). Re-fetch when a new sweep
-  // stamps device.last, so the chart tracks live samples instead of the legacy
-  // hand-entered detail.hist7. A failure just leaves us on the manual fallback.
-  useEffect(() => {
-    if (!id) return;
-    let alive = true;
-    api.reachability(id, 7).then(
-      (r) => alive && setReach(r),
-      () => alive && setReach(null),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [id, device?.last]);
+  // Pull the real 7-day reachability history (#93). Keying on device.last means a
+  // new sweep (which stamps last) refetches, so the chart tracks live samples
+  // rather than the legacy hand-entered detail.hist7. A failure leaves `reach`
+  // null, which falls back to the manual hist7 (#159 — was a hand-rolled effect).
+  const { data: reach = null } = useQuery({
+    queryKey: ["reachability", id, device?.last],
+    queryFn: () => api.reachability(id, 7),
+    enabled: !!id,
+    retry: false,
+  });
 
   // Remember this device as recently-opened so the home screen can reopen it
   // instead of always selecting devices[0] (#122).

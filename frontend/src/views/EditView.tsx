@@ -120,8 +120,14 @@ export function EditView({ mode }: Props) {
     setSubmitErr(null);
   }
 
+  // Serialise the editable state only when it actually changes, not on every
+  // unrelated re-render (OUI query updates, busy toggles, modal open…) (#166).
+  const liveSnapshot = useMemo(
+    () => JSON.stringify({ form, parts, buildEvents }),
+    [form, parts, buildEvents],
+  );
   // eslint-disable-next-line react-hooks/refs
-  const isDirty = JSON.stringify({ form, parts, buildEvents }) !== initialSnapshot.current;
+  const isDirty = liveSnapshot !== initialSnapshot.current;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }: { currentLocation: Location; nextLocation: Location }) =>
       isDirty && currentLocation.pathname !== nextLocation.pathname

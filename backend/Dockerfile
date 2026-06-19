@@ -29,7 +29,8 @@ COPY app ./app
 # Run as a non-root user so the bind-mounted /data volume is owned by UID 1000,
 # matching a typical Linux desktop user and allowing hand-editing without sudo.
 RUN groupadd -r homenet && useradd -r -g homenet -u 1000 homenet \
-    && mkdir -p /data && chown homenet:homenet /data
+    && mkdir -p /data /home/homenet \
+    && chown homenet:homenet /data /home/homenet
 USER homenet
 
 # Runtime data lives on a mounted volume; seeded on first start.
@@ -41,6 +42,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # --timeout-graceful-shutdown: let an in-flight reachability sweep finish on
 # `docker stop` instead of being SIGKILLed at the 10s default (#89).
-CMD ["uv", "run", "uvicorn", "app.main:app", \
+CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", \
      "--host", "0.0.0.0", "--port", "8000", \
      "--timeout-graceful-shutdown", "10"]

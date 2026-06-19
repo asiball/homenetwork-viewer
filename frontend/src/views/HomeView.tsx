@@ -72,18 +72,25 @@ export function HomeView() {
     [visible, searchQuery],
   );
 
+  // Compute the layout once and share it with TopologyMap, instead of both this
+  // view (for keyboard-nav ordering) and the map computing it for the tree (#166).
+  const layoutResult = useMemo(
+    () => computeLayout(layout, mapVisible, false, switches),
+    [layout, mapVisible, switches],
+  );
+
   // Keyboard-nav order matches what's actually on the map (mapVisible, i.e.
   // search-filtered) — otherwise ↑/↓ would jump to devices hidden by the search
   // and the side panel could show a node that isn't drawn.
   const ordered = useMemo(() => {
     if (layout === "tree") {
-      const { positions } = computeLayout("tree", mapVisible, false, switches);
+      const { positions } = layoutResult;
       return [...mapVisible].sort(
         (a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0),
       );
     }
     return orderedByGroup(mapVisible);
-  }, [layout, mapVisible, switches]);
+  }, [layout, mapVisible, layoutResult]);
 
   // `selId` holds the user's last explicit device pick; `selected` resolves it
   // against what's actually on the map, falling back to the first visible device
@@ -261,6 +268,7 @@ export function HomeView() {
           <TopologyMap
             devices={mapVisible}
             layout={layout}
+            layoutResult={layoutResult}
             selectedId={selected.id}
             onSelect={handleSelect}
             selectedSwitchId={selSwId}

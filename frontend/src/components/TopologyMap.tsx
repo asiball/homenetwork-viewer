@@ -8,6 +8,7 @@ import type { Device } from "../types";
 import { gatewayInfo, lastOctet } from "../lib/helpers";
 import {
   computeLayout,
+  type Layout,
   type LayoutKind,
   MAP_H,
   MAP_W,
@@ -23,6 +24,9 @@ interface Props {
   selectedSwitchId?: string | null;
   onSelectSwitch?: (id: string) => void;
   compact?: boolean;
+  /** Precomputed layout from the parent, to avoid computing it twice (#166).
+   *  Falls back to computing here when omitted. */
+  layoutResult?: Layout;
 }
 
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
@@ -39,13 +43,16 @@ export function TopologyMap({
   selectedSwitchId = null,
   onSelectSwitch,
   compact = false,
+  layoutResult,
 }: Props) {
   const { devices: allDevices, switches, selfId } = useCatalog();
   // Spine bus label reflects the real gateway, not a hardcoded address (#124).
   const net = useMemo(() => gatewayInfo(allDevices), [allDevices]);
+  // Reuse the parent's layout when given (HomeView already computes it for its
+  // keyboard-nav ordering), else compute it here (#166).
   const { positions, edges, deco, pseudo } = useMemo(
-    () => computeLayout(layout, devices, compact, switches),
-    [layout, devices, compact, switches]
+    () => layoutResult ?? computeLayout(layout, devices, compact, switches),
+    [layoutResult, layout, devices, compact, switches]
   );
   const getPos = (id: string): Pos => positions[id] ?? { x: 0, y: 0 };
   const selPos = getPos(selectedId);

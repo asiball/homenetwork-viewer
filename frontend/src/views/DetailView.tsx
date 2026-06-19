@@ -11,28 +11,16 @@ import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
 import { cableForDevice, clampPct, formatJpy, formatLast, groupColor, partsTotalJpy, switchForDevice, warrantyState } from "../lib/helpers";
 import { resolveHistory } from "../lib/history";
+import { serviceUrl } from "../lib/services";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
 import { Copyable } from "../components/Copyable";
 import { DeviceIcon } from "../components/DeviceIcon";
 import { CableSwatch } from "../components/CableSwatch";
 import { prefs } from "../lib/prefs";
 import { Spinner } from "../components/Spinner";
-import type { ServiceRow } from "../types";
 
 function mean(xs: number[]): number {
   return Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
-}
-
-// Open-in-browser link for HTTP-ish scanned services (best effort).
-function serviceUrl(ip: string, s: ServiceRow): string | null {
-  if (s.proto !== "tcp") return null;
-  if (s.port === 443 || s.port === 8443) return `https://${ip}:${s.port}`;
-  if (s.port === 80) return `http://${ip}`;
-  const httpish = new Set([3000, 5000, 8080, 8081, 9090, 32400]);
-  if (httpish.has(s.port) || s.svc.toUpperCase().includes("HTTP")) {
-    return `http://${ip}:${s.port}`;
-  }
-  return null;
 }
 
 export function DetailView() {

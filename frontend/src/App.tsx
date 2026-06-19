@@ -1,7 +1,7 @@
 // App root: catalog data provider + router + toast host.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import type { Cable, Device, Meta, Switch } from "./types";
@@ -41,6 +41,7 @@ function errMsg(e: unknown): string {
 }
 
 export default function App() {
+  const location = useLocation();
   // One query owns the whole catalog. react-query dedupes concurrent refetches
   // (so the old poll-vs-click race can't land responses out of order), keeps the
   // previous data on a background-refetch failure (so a poll error never blanks
@@ -142,7 +143,7 @@ export default function App() {
 
   return (
     <CatalogContext.Provider value={value}>
-      <ErrorBoundary>
+      <ErrorBoundary resetKey={location.pathname}>
         <Outlet />
       </ErrorBoundary>
       {toast && (

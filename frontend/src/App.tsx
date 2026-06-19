@@ -58,19 +58,41 @@ export default function App() {
     staleTime: Infinity,
   });
 
-  const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
-  const toastTimer = useRef<number | undefined>(undefined);
+  // Toasts stack instead of overwriting (#166): rapid notifies (e.g. a copy
+  // confirmation landing on a save success) no longer clobber each other. Each
+  // gets its own id + auto-dismiss timer; the stack is capped so a burst can't
+  // grow without bound.
+  const [toasts, setToasts] = useState<{ id: number; msg: string; kind: "ok" | "err" }[]>([]);
+  const nextToastId = useRef(0);
+  const toastTimers = useRef<Map<number, number>>(new Map());
 
-  const notify = useCallback((message: string, kind: "ok" | "err" = "ok") => {
-    setToast({ msg: message, kind });
-    window.clearTimeout(toastTimer.current);
-    if (kind === "ok") {
-      toastTimer.current = window.setTimeout(() => setToast(null), OK_TOAST_MS);
+  const dismissToast = useCallback((id: number) => {
+    setToasts((ts) => ts.filter((t) => t.id !== id));
+    const h = toastTimers.current.get(id);
+    if (h !== undefined) {
+      window.clearTimeout(h);
+      toastTimers.current.delete(id);
     }
   }, []);
 
+  const notify = useCallback(
+    (message: string, kind: "ok" | "err" = "ok") => {
+      const id = nextToastId.current++;
+      // Keep at most the 4 most recent so a flood can't fill the screen.
+      setToasts((ts) => [...ts, { id, msg: message, kind }].slice(-4));
+      if (kind === "ok") {
+        toastTimers.current.set(
+          id,
+          window.setTimeout(() => dismissToast(id), OK_TOAST_MS)
+        );
+      }
+    },
+    [dismissToast]
+  );
+
   useEffect(() => {
-    return () => window.clearTimeout(toastTimer.current);
+    const timers = toastTimers.current;
+    return () => timers.forEach((h) => window.clearTimeout(h));
   }, []);
 
   const devices = catalog.data?.devices ?? EMPTY_DEVICES;
@@ -146,16 +168,25 @@ export default function App() {
       <ErrorBoundary resetKey={location.pathname}>
         <Outlet />
       </ErrorBoundary>
-      {toast && (
-        <div
-          className={`toast ${toast.kind === "err" ? "err" : ""}`}
-          role={toast.kind === "err" ? "alert" : "status"}
-          aria-live={toast.kind === "err" ? "assertive" : "polite"}
-        >
-          <span>{toast.msg}</span>
-          <button className="toast-close" onClick={() => setToast(null)} aria-label="閉じる">
-            ×
-          </button>
+      {toasts.length > 0 && (
+        <div className="toast-stack">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className={`toast ${t.kind === "err" ? "err" : ""}`}
+              role={t.kind === "err" ? "alert" : "status"}
+              aria-live={t.kind === "err" ? "assertive" : "polite"}
+            >
+              <span>{t.msg}</span>
+              <button
+                className="toast-close"
+                onClick={() => dismissToast(t.id)}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </CatalogContext.Provider>

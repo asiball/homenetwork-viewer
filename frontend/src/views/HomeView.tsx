@@ -85,19 +85,18 @@ export function HomeView() {
     return orderedByGroup(mapVisible);
   }, [layout, mapVisible, switches]);
 
+  // `selId` holds the user's last explicit device pick; `selected` resolves it
+  // against what's actually on the map, falling back to the first visible device
+  // when that pick is filtered out. We read `selected` everywhere (never write it
+  // back into selId), so there's no derive-then-store feedback loop — a stale
+  // selId is simply re-resolved each render (#164).
   const selected = mapVisible.find((d) => d.id === selId) ?? mapVisible[0];
-  // Switch nodes only exist on the wiring tree, so the switch side panel is only
-  // meaningful there — in radial/spine it always falls back to the device
-  // summary. Gating on the layout (not just selSwId) stops a stale panel from
-  // showing after the layout changes (#153).
+  // Switch selection is a second, optional axis overlaid on the wiring tree (the
+  // map highlights the selected device *and* switch at once). Switch nodes only
+  // exist on the tree, so the panel falls back to the device summary elsewhere;
+  // gating on the layout stops a stale panel after a layout change (#153).
   const selSw =
     layout === "tree" && selSwId ? (switches.find((s) => s.id === selSwId) ?? null) : null;
-
-  // Keep selection valid as visibility changes.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (selected && selected.id !== selId) setSelId(selected.id);
-  }, [selected, selId]);
 
   // The tree's switch set depends on which devices are visible, so a search /
   // offline-toggle change can hide the selected switch's node while its side
@@ -131,7 +130,10 @@ export function HomeView() {
         if (isTypingTarget(e)) return;
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
-          const i = ordered.findIndex((d) => d.id === selId);
+          // Navigate from the *resolved* selection, so a stale/filtered selId
+          // never leaves findIndex at -1 (the old write-back effect existed only
+          // to keep selId in sync — now unnecessary, #164).
+          const i = ordered.findIndex((d) => d.id === selected?.id);
           if (i === -1) return;
           const next = e.key === "ArrowDown" ? i + 1 : i - 1;
           const wrapped = (next + ordered.length) % ordered.length;
@@ -145,7 +147,7 @@ export function HomeView() {
           navigate(`/d/${selected.id}`);
         }
       },
-      [ordered, selId, selected, navigate],
+      [ordered, selected, navigate],
     ),
   );
 

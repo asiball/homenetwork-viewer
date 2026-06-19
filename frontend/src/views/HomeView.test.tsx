@@ -83,6 +83,23 @@ describe("HomeView", () => {
     expect(within(list).queryByText("Bravo")).not.toBeInTheDocument();
   });
 
+  it("moves the selection with the arrow keys", async () => {
+    const user = userEvent.setup();
+    const devices = [
+      dev({ id: "gw", name: "Gateway", group: "Infra", ring: 0 }),
+      dev({ id: "pc", name: "Desktop", group: "Computer" }),
+    ];
+    renderHome(devices);
+    const current = () =>
+      within(sidebar())
+        .getAllByRole("button")
+        .find((b) => b.getAttribute("aria-current") === "true")?.textContent;
+    // Default selection is the first device; ArrowDown advances to the next.
+    expect(current()).toContain("Gateway");
+    await user.keyboard("{ArrowDown}");
+    expect(current()).toContain("Desktop");
+  });
+
   it("toggles offline-device visibility via the footer control", async () => {
     const user = userEvent.setup();
     const devices = [

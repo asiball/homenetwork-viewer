@@ -52,9 +52,9 @@ homenetwork-viewer/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── views/              # HomeView / DetailView / EditView
+│   │   ├── views/              # HomeView / DetailView / EditView / InventoryView / BottleneckView
 │   │   ├── components/         # Shell / DeviceList / TopologyMap / SummaryPanel / ...
-│   │   ├── lib/                # topology.ts（radial/spine）, helpers.ts
+│   │   ├── lib/                # topology.ts（radial/spine）, bottleneck.ts（リンク速度解析）, helpers.ts
 │   │   ├── api.ts  types.ts  theme.css
 │   └── Dockerfile  nginx.conf
 ├── spec/                       # 正本仕様書（homenet-spec.md / Specification.html）
@@ -123,6 +123,11 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 - **編集 / 追加** `/d/:id/edit`, `/add` — 識別情報・配置（web ui の `url` 含む）・スペック概要・所有情報・メモを編集。
   保存すると SQLite（`data/homenet.db`）に書き込まれます。`id` は不変（追加時のみ設定、名前から kebab-case を自動提案）。
   自動収集系の詳細（メトリクス/ポート等）は編集対象外で、編集時もそのまま保持されます。
+- **解析** `/analysis` — リンク速度のボトルネック解析。ヘッダーの **analysis** から開き、**「解析を実行」** を押すと
+  カタログの `cat`（ケーブル規格）・`conn`（NIC）・スイッチ速度から各リンクの上限速度を推定し、遅い順に一覧します。
+  **cable ↑** はケーブルを上位規格に替えれば速くなるリンク（LAN 高速化の狙い目）、**endpoint** は機器/スイッチ側が上限、
+  **unknown** は速度を判定できない要素を含むリンク。下段の「per-device ceiling」では各機器のゲートウェイまでの実効上限と
+  ボトルネック箇所を表示します。前提: Cat5e=1G / Cat6・6a=10G / Wired 1G・2.5G=NIC速度、Wi-Fi 接続は有線経路に含めません。
 
 ### ヘッダーの「poll / refresh」について
 
@@ -169,7 +174,7 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 - **データ基盤（実装済み）** SQLite 永続化（番号付きマイグレーション基盤、正本=静的カタログ／状態=到達性をテーブル分離）。JSON は import / export 形式として継続。
 - **到達性コレクタ（実装済み）** バックグラウンドで全機器を **TCP プローブ + ICMP ping フォールバック**（120秒間隔）で実測し、
   `online` / `last` を自動更新します。`detail.metrics` / `hist7` / `services`（ポートスキャン）は手動入力のままです。
-- **その他 実装済み** ケーブル/スイッチ・インベントリ画面、Wake-on-LAN、カタログの import / export（バックアップ付き）。
+- **その他 実装済み** ケーブル/スイッチ・インベントリ画面、リンク速度ボトルネック解析画面（`/analysis`・オンデマンド実行）、Wake-on-LAN、カタログの import / export（バックアップ付き）。
 - **将来（未実装）** ルーター ARP / DHCP リース / mDNS による自動デバイス発見、SNMP / node_exporter メトリクス、
   到達性の履歴・稼働率 SLO・ダウン通知、サブネット / VLAN（IPAM）ビュー。詳細は GitHub Issues（`[Feature/Epic]`）参照。
 

@@ -52,6 +52,7 @@ export function Shell({
           <span className="dot" /> <b>HOMENET / NOC</b>
         </Link>
         <Link className="nav-link" to="/inventory" title="switch & cable inventory">inventory</Link>
+        <Link className="nav-link" to="/analysis" title="link-speed bottleneck analysis">analysis</Link>
         <div className="crumbs">{crumbs}</div>
         <div className="right">
           {right}

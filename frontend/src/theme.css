@@ -428,6 +428,74 @@ body {
   stroke: var(--amber);
   stroke-width: 1.4;
 }
+/* Wiring-tree link-speed overlay (#analysis): colour edges by derived speed,
+   and make a cable bottleneck (bn-act) stand out so it's findable at a glance.
+   Placed after .link.on so the tier colour wins over the default green. */
+.link.bn {
+  stroke-width: 1.3;
+}
+.link.bn-fast {
+  stroke: var(--ok);
+}
+.link.bn-med {
+  stroke: var(--fg-faint);
+}
+.link.bn-slow {
+  stroke: var(--err);
+}
+.link.bn-unknown {
+  stroke: var(--rule-2);
+  stroke-dasharray: 2 3;
+}
+.link.bn-act {
+  stroke: var(--warn);
+  stroke-width: 2.2;
+}
+.link-speed {
+  font-family: var(--mono);
+  font-size: 8px;
+  fill: var(--fg-faint);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.link-speed.act {
+  fill: var(--warn);
+  font-weight: 600;
+}
+/* Speed legend in the tree's bottom-right corner. */
+.n-map .map-corner.br {
+  bottom: 0;
+  right: 0;
+  text-align: right;
+}
+.map-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.map-legend .lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.map-legend .lg::before {
+  content: "";
+  width: 12px;
+  height: 0;
+  border-top: 2px solid currentColor;
+}
+.map-legend .lg.fast {
+  color: var(--ok);
+}
+.map-legend .lg.med {
+  color: var(--fg-faint);
+}
+.map-legend .lg.slow {
+  color: var(--err);
+}
+.map-legend .lg.act {
+  color: var(--warn);
+}
 .node-box {
   fill: var(--bg-2);
   stroke: var(--fg-faint);
@@ -537,6 +605,14 @@ body {
 .pill.off {
   color: var(--err);
   border-color: rgba(232, 122, 106, 0.4);
+}
+.pill.warn {
+  color: var(--warn);
+  border-color: rgba(240, 182, 87, 0.4);
+}
+/* Bottleneck analysis: a cable-limited link (swapping the cable would help). */
+.bn-actionable td {
+  background: rgba(240, 182, 87, 0.08);
 }
 .n-side .dname {
   font-size: 15px;

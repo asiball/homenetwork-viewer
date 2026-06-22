@@ -41,6 +41,12 @@ export const prefs = {
     get: (): boolean => localStorage.getItem("homenet.showOffline") !== "false",
     set: (v: boolean) => localStorage.setItem("homenet.showOffline", String(v)),
   },
+  // Wiring-tree link-speed overlay (colour edges by derived speed + flag cable
+  // bottlenecks). Default off so the map stays clean until asked for it.
+  showSpeeds: {
+    get: (): boolean => localStorage.getItem("homenet.showSpeeds") === "true",
+    set: (v: boolean) => localStorage.setItem("homenet.showSpeeds", String(v)),
+  },
   // Most-recently-opened device ids, newest first (capped). Lets the home
   // screen reopen where you last looked instead of always devices[0] (#122).
   recent: {

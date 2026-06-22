@@ -111,4 +111,24 @@ describe("HomeView", () => {
     expect(within(sidebar()).getByText("Onine")).toBeInTheDocument();
     expect(offieShown()).toBe(!before);
   });
+
+  it("renders radial + tree together in compare view", async () => {
+    const user = userEvent.setup();
+    const devices = [
+      dev({ id: "gw", name: "Gateway", group: "Infra", ring: 0, type: "router" }),
+      dev({ id: "pc", name: "Desktop", group: "Computer" }),
+    ];
+    const { container } = renderHome(devices);
+    // Single map by default.
+    expect(container.querySelector(".map-compare")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /compare/ }));
+
+    const compare = container.querySelector(".map-compare");
+    expect(compare).not.toBeNull();
+    // Two stacked maps: radial + the wiring tree.
+    expect(compare?.querySelectorAll(".n-map")).toHaveLength(2);
+    expect(within(compare as HTMLElement).getByText("radial")).toBeInTheDocument();
+    expect(within(compare as HTMLElement).getByText("wiring tree")).toBeInTheDocument();
+  });
 });

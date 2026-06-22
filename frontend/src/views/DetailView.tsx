@@ -1,7 +1,7 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useCatalog } from "../CatalogContext";
@@ -19,6 +19,7 @@ import {
   switchForDevice,
   warrantyState,
 } from "../lib/helpers";
+import { analyzeBottlenecks, fmtMbps } from "../lib/bottleneck";
 import { resolveHistory } from "../lib/history";
 import { serviceUrl } from "../lib/services";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
@@ -55,6 +56,14 @@ export function DetailView() {
   useEffect(() => {
     if (device) prefs.recent.push(device.id);
   }, [device?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effective wired speed ceiling to the gateway + the limiting hop, derived
+  // from the same analysis as /analysis and the map overlay. Null for the
+  // gateway itself or a device with no wired path (e.g. Wi-Fi-only).
+  const devicePath = useMemo(() => {
+    const { paths } = analyzeBottlenecks(devices, switches, cables);
+    return paths.find((p) => p.deviceId === id) ?? null;
+  }, [devices, switches, cables, id]);
 
   async function handleWake() {
     if (!device) return;
@@ -332,6 +341,30 @@ export function DetailView() {
                       {cbl.id} · {cbl.cat} · {cbl.len}
                     </span>
                   </dd>
+                </>
+              )}
+              {devicePath && (
+                <>
+                  {/* Effective wired throughput ceiling along the path to the
+                      gateway (#analysis). Links to the full breakdown. */}
+                  <dt>path ↑</dt>
+                  <dd>
+                    <Link className="weblink" to="/analysis" title="link-speed analysis">
+                      {fmtMbps(devicePath.effectiveMbps)}
+                      {devicePath.hasUnknown ? " ?" : ""}
+                    </Link>
+                    <span className="dim-note">
+                      {" "}
+                      · {devicePath.hops.length} hop
+                      {devicePath.hops.length === 1 ? "" : "s"} to gw
+                    </span>
+                  </dd>
+                  {devicePath.bottleneckCableId && (
+                    <>
+                      <dt>bottleneck</dt>
+                      <dd className="port">{devicePath.bottleneckCableId}</dd>
+                    </>
+                  )}
                 </>
               )}
             </dl>

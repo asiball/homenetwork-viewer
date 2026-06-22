@@ -8,6 +8,9 @@ import type { LayoutKind } from "./topology";
 export type PollInterval = "off" | "30s" | "5m";
 export type SortMode = "group" | "name" | "ip" | "status";
 export type Theme = "dark" | "light";
+// Home map view: the two geometric layouts plus a side-by-side "compare"
+// (radial + tree) that isn't itself a single layout.
+export type ViewMode = LayoutKind | "compare";
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   const v = localStorage.getItem(key);
@@ -16,7 +19,7 @@ function read<T extends string>(key: string, allowed: readonly T[], fallback: T)
 
 const POLL = ["off", "30s", "5m"] as const;
 const SORT = ["group", "name", "ip", "status"] as const;
-const LAYOUT = ["radial", "tree"] as const;
+const LAYOUT = ["radial", "tree", "compare"] as const;
 const THEME = ["dark", "light"] as const;
 
 export const prefs = {
@@ -33,8 +36,8 @@ export const prefs = {
     set: (v: SortMode) => localStorage.setItem("homenet.sort", v),
   },
   layout: {
-    get: (): LayoutKind => read("homenet.layout", LAYOUT, "radial"),
-    set: (v: LayoutKind) => localStorage.setItem("homenet.layout", v),
+    get: (): ViewMode => read("homenet.layout", LAYOUT, "radial"),
+    set: (v: ViewMode) => localStorage.setItem("homenet.layout", v),
   },
   showOffline: {
     // Default on; only the explicit string "false" hides offline devices.

@@ -9,7 +9,16 @@ import { api } from "../api";
 import { Shell } from "../components/Shell";
 import { Sparkline } from "../components/Sparkline";
 import { RefreshControls } from "../components/RefreshControls";
-import { cableForDevice, clampPct, formatJpy, formatLast, groupColor, partsTotalJpy, switchForDevice, warrantyState } from "../lib/helpers";
+import {
+  cableForDevice,
+  clampPct,
+  formatJpy,
+  formatLast,
+  groupColor,
+  partsTotalJpy,
+  switchForDevice,
+  warrantyState,
+} from "../lib/helpers";
 import { resolveHistory } from "../lib/history";
 import { serviceUrl } from "../lib/services";
 import { DeviceNotFound, ViewFooter } from "../components/ViewChrome";
@@ -70,10 +79,11 @@ export function DetailView() {
   // §6.4: never invent data — prefer the real collected series (#93), fall back
   // to the legacy hand-entered detail.hist7, else show nothing. Pure + tested in
   // lib/history.ts (#171).
-  const { bars: histBars, source: histSource, avg: histAvg } = resolveHistory(
-    reach,
-    detail?.hist7 ?? null,
-  );
+  const {
+    bars: histBars,
+    source: histSource,
+    avg: histAvg,
+  } = resolveHistory(reach, detail?.hist7 ?? null);
   const lastEvent = reach?.events?.[0] ?? null;
 
   return (
@@ -83,7 +93,10 @@ export function DetailView() {
       onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to="/">← map</Link> &nbsp;<span>{device.host}</span>
+          <Link className="d-back" to="/">
+            ← map
+          </Link>{" "}
+          &nbsp;<span>{device.host}</span>
         </>
       }
       right={
@@ -108,7 +121,12 @@ export function DetailView() {
               {device.group} · {device.type}
             </div>
             <div className="name">
-              <DeviceIcon type={device.type} size={20} className="name-icon" style={{ color: groupColor(device.group) }} />
+              <DeviceIcon
+                type={device.type}
+                size={20}
+                className="name-icon"
+                style={{ color: groupColor(device.group) }}
+              />
               {device.name}
             </div>
             <div className="host">
@@ -142,16 +160,18 @@ export function DetailView() {
                 manual metrics
               </span>
             )}
-            {!device.online && device.ring !== 0 && (!device.conn || !device.conn.startsWith("Wi-Fi")) && (
-              <button
-                className="d-edit"
-                onClick={handleWake}
-                disabled={waking}
-                title="Send Wake-on-LAN magic packet"
-              >
-                {waking ? "sending…" : "⏻ wake"}
-              </button>
-            )}
+            {!device.online &&
+              device.ring !== 0 &&
+              (!device.conn || !device.conn.startsWith("Wi-Fi")) && (
+                <button
+                  className="d-edit"
+                  onClick={handleWake}
+                  disabled={waking}
+                  title="Send Wake-on-LAN magic packet"
+                >
+                  {waking ? "sending…" : "⏻ wake"}
+                </button>
+              )}
             {device.url && (
               <a className="d-edit" href={device.url} target="_blank" rel="noreferrer">
                 ↗ open
@@ -220,14 +240,17 @@ export function DetailView() {
                 {m.net_in_series && <Sparkline values={m.net_in_series} color="amber" />}
                 <div className="sub">
                   ↑ {m.net_out ?? "—"} Mbps
-                  {m.net_in_series && m.net_in_series.length > 0 &&
+                  {m.net_in_series &&
+                    m.net_in_series.length > 0 &&
                     ` · peak ${Math.max(...m.net_in_series)}`}
                 </div>
               </>
             ) : (
               <>
                 <div className="v dim">—</div>
-                <div className="sub">{device.online ? "no agent" : `offline · last ${formatLast(device.last)}`}</div>
+                <div className="sub">
+                  {device.online ? "no agent" : `offline · last ${formatLast(device.last)}`}
+                </div>
               </>
             )}
           </div>
@@ -237,7 +260,9 @@ export function DetailView() {
             <div className="v">{device.online ? (device.uptime ?? "—") : "—"}</div>
             <div className="sub">
               {device.online
-                ? device.uptime ? "since boot" : "online"
+                ? device.uptime
+                  ? "since boot"
+                  : "online"
                 : `last online ${formatLast(device.last)}`}
             </div>
           </div>
@@ -272,7 +297,13 @@ export function DetailView() {
                   <dt>web ui</dt>
                   <dd className="weblink-row">
                     <Copyable text={device.url} />
-                    <a className="weblink" href={device.url} target="_blank" rel="noreferrer" title="open in new tab">
+                    <a
+                      className="weblink"
+                      href={device.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="open in new tab"
+                    >
                       ↗
                     </a>
                   </dd>
@@ -348,7 +379,11 @@ export function DetailView() {
             </dl>
           </div>
 
-          <div className="d-card" data-title="services / open ports" aria-label="services / open ports">
+          <div
+            className="d-card"
+            data-title="services / open ports"
+            aria-label="services / open ports"
+          >
             {detail?.services && detail.services.length > 0 ? (
               <>
                 <table className="d-table">
@@ -429,7 +464,11 @@ export function DetailView() {
             )}
           </div>
 
-          <div className="d-card" data-title="connection · last 7 days" aria-label="connection · last 7 days">
+          <div
+            className="d-card"
+            data-title="connection · last 7 days"
+            aria-label="connection · last 7 days"
+          >
             {histBars ? (
               <>
                 <div className="d-hist">
@@ -457,11 +496,15 @@ export function DetailView() {
                   })}
                 </div>
                 <div className="d-pool">
-                  <span>avg uptime · {histAvg != null ? `${Math.round(histAvg * 100)}%` : "—"}</span>
+                  <span>
+                    avg uptime · {histAvg != null ? `${Math.round(histAvg * 100)}%` : "—"}
+                  </span>
                   {histSource === "live" ? (
                     <span title="computed from live reachability samples">live · last 7 days</span>
                   ) : (
-                    <span title="hand-entered — superseded once the collector gathers samples">manual · this week</span>
+                    <span title="hand-entered — superseded once the collector gathers samples">
+                      manual · this week
+                    </span>
                   )}
                 </div>
                 {histSource === "live" && lastEvent && (
@@ -473,7 +516,9 @@ export function DetailView() {
                 )}
               </>
             ) : (
-              <div className="d-sparse">no uptime history yet · samples accrue as the collector probes</div>
+              <div className="d-sparse">
+                no uptime history yet · samples accrue as the collector probes
+              </div>
             )}
           </div>
 
@@ -546,7 +591,9 @@ export function DetailView() {
                     <span>
                       <b>{detail.parts.length}</b> parts
                     </span>
-                    <span>total · <b>{formatJpy(partsTotalJpy(detail.parts))}</b></span>
+                    <span>
+                      total · <b>{formatJpy(partsTotalJpy(detail.parts))}</b>
+                    </span>
                   </div>
                 </>
               )}

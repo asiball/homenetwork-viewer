@@ -10,7 +10,7 @@ export function InventoryView() {
   const { devices, switches, cables } = useCatalog();
 
   function deviceName(id: string): string {
-    return devices.find(d => d.id === id)?.name ?? id;
+    return devices.find((d) => d.id === id)?.name ?? id;
   }
 
   return (
@@ -20,8 +20,12 @@ export function InventoryView() {
       right={<RefreshControls />}
       footer={
         <>
-          <span><b>{switches.length}</b> switches</span>
-          <span><b>{cables.length}</b> cables</span>
+          <span>
+            <b>{switches.length}</b> switches
+          </span>
+          <span>
+            <b>{cables.length}</b> cables
+          </span>
         </>
       }
     >
@@ -46,10 +50,15 @@ export function InventoryView() {
                       {sw.model && <span>{sw.model}</span>}
                       {sw.speed && <span>{sw.speed}</span>}
                       {sw.managed && <span className="pill">managed</span>}
-                      <span className={`pill ${sw.online ? "on" : "off"}`}>{sw.online ? "online" : "offline"}</span>
+                      <span className={`pill ${sw.online ? "on" : "off"}`}>
+                        {sw.online ? "online" : "offline"}
+                      </span>
                     </span>
                     <span className="inv-sw-ports">
-                      {usedPorts}/{totalPorts} ports · <b style={{ color: freePorts > 0 ? "var(--ok)" : "var(--warn)" }}>{freePorts} free</b>
+                      {usedPorts}/{totalPorts} ports ·{" "}
+                      <b style={{ color: freePorts > 0 ? "var(--ok)" : "var(--warn)" }}>
+                        {freePorts} free
+                      </b>
                     </span>
                   </div>
                   <table className="d-table inv-port-table">
@@ -65,7 +74,9 @@ export function InventoryView() {
                       {rows.map(({ port, slot }) => (
                         <tr key={port} className={slot ? "" : "inv-port-empty"}>
                           <td className="port">{port}</td>
-                          <td>{slot ? deviceName(slot.device) : <span className="dim-note">—</span>}</td>
+                          <td>
+                            {slot ? deviceName(slot.device) : <span className="dim-note">—</span>}
+                          </td>
                           <td>{slot?.role ?? <span className="dim-note">—</span>}</td>
                           <td>{slot?.cable ?? <span className="dim-note">—</span>}</td>
                         </tr>
@@ -105,8 +116,14 @@ export function InventoryView() {
                     <td>
                       <CableSwatch color={c.color} style={{ display: "inline-block" }} />
                     </td>
-                    <td>{deviceName(c.fromDev)}{c.fromPort != null ? ` · p${c.fromPort}` : ""}</td>
-                    <td>{deviceName(c.toDev)}{c.toPort != null ? ` · p${c.toPort}` : ""}</td>
+                    <td>
+                      {deviceName(c.fromDev)}
+                      {c.fromPort != null ? ` · p${c.fromPort}` : ""}
+                    </td>
+                    <td>
+                      {deviceName(c.toDev)}
+                      {c.toPort != null ? ` · p${c.toPort}` : ""}
+                    </td>
                     <td className="banner">{c.notes ?? ""}</td>
                   </tr>
                 ))}

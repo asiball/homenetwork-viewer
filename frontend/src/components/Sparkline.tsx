@@ -26,8 +26,7 @@ function sparkArea(values: number[], w: number, h: number, pad = 2): string {
   const line = sparkPath(values, w, h, pad);
   if (!line) return "";
   return (
-    line +
-    ` L ${(w - pad).toFixed(1)} ${(h - pad).toFixed(1)} L ${pad} ${(h - pad).toFixed(1)} Z`
+    line + ` L ${(w - pad).toFixed(1)} ${(h - pad).toFixed(1)} L ${pad} ${(h - pad).toFixed(1)} Z`
   );
 }
 

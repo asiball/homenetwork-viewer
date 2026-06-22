@@ -42,7 +42,7 @@ function renderHome(devices: Device[]) {
           <HomeView />
         </MemoryRouter>
       </CatalogContext.Provider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -70,10 +70,7 @@ describe("HomeView", () => {
 
   it("filters the list as the user types in the search box", async () => {
     const user = userEvent.setup();
-    const devices = [
-      dev({ id: "a", name: "Alpha" }),
-      dev({ id: "b", name: "Bravo" }),
-    ];
+    const devices = [dev({ id: "a", name: "Alpha" }), dev({ id: "b", name: "Bravo" })];
     renderHome(devices);
     const list = sidebar();
     expect(within(list).getByText("Bravo")).toBeInTheDocument();

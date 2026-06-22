@@ -1,11 +1,10 @@
-// Topology map SVG (radial / spine / wiring tree). Ported from
-// variant-noc.jsx render. The tree renders at fixed scale inside a
-// scroll/pan pane; radial & spine scale to fit as before.
+// Topology map SVG (radial / wiring tree). Ported from variant-noc.jsx render.
+// The tree renders at fixed scale inside a scroll/pan pane; radial scales to fit.
 
 import { useRef, useMemo } from "react";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { gatewayInfo, lastOctet } from "../lib/helpers";
+import { lastOctet } from "../lib/helpers";
 import {
   computeLayout,
   type Layout,
@@ -14,12 +13,7 @@ import {
   MAP_W,
   type Pos,
 } from "../lib/topology";
-import {
-  fmtMbps,
-  type LinkAnalysis,
-  pairKey,
-  speedTier,
-} from "../lib/bottleneck";
+import { fmtMbps, type LinkAnalysis, pairKey, speedTier } from "../lib/bottleneck";
 
 interface Props {
   devices: Device[]; // already filtered to "visible"
@@ -40,7 +34,6 @@ interface Props {
 
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
   radial: "radial",
-  spine: "spine / bus",
   tree: "wiring tree",
 };
 
@@ -55,9 +48,7 @@ export function TopologyMap({
   layoutResult,
   linkIndex,
 }: Props) {
-  const { devices: allDevices, switches, selfId } = useCatalog();
-  // Spine bus label reflects the real gateway, not a hardcoded address (#124).
-  const net = useMemo(() => gatewayInfo(allDevices), [allDevices]);
+  const { switches, selfId } = useCatalog();
   // Reuse the parent's layout when given (HomeView already computes it for its
   // keyboard-nav ordering), else compute it here (#166).
   const { positions, edges, deco, pseudo } = useMemo(
@@ -99,82 +90,43 @@ export function TopologyMap({
       preserveAspectRatio="xMidYMid meet"
       style={isTree ? { width: vbW, height: vbH } : undefined}
     >
-        {/* decorations */}
-        {deco.kind === "radial" && (
-          <>
-            <line className="crosshair" x1={deco.cx} y1={20} x2={deco.cx} y2={MAP_H - 20} />
-            <line className="crosshair" x1={20} y1={deco.cy} x2={MAP_W - 20} y2={deco.cy} />
-            <circle className="ring" cx={deco.cx} cy={deco.cy} r={deco.r1} />
-            <circle className="ring" cx={deco.cx} cy={deco.cy} r={deco.r2} />
-            <circle className="ring" cx={deco.cx} cy={deco.cy} r={(deco.r1 + deco.r2) / 2} />
-          </>
-        )}
-        {deco.kind === "spine" && (
-          <>
-            <line className="bus" x1={deco.startX - 12} y1={deco.busY} x2={deco.endX} y2={deco.busY} />
-            <line
-              x1={deco.startX - 12}
-              y1={deco.busY - 2}
-              x2={deco.endX}
-              y2={deco.busY - 2}
-              style={{ stroke: "var(--rule-2)", strokeWidth: 0.5 }}
-            />
-            <text
-              x={deco.startX - 12}
-              y={deco.busY - 18}
-              textAnchor="start"
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 9,
-                fill: "var(--fg-faint)",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-              }}
-            >
-              {net.iface} · {net.subnet}
-            </text>
-            {deco.taps.map((t) => (
-              <g key={t.cat}>
-                <circle cx={t.x} cy={t.y} r={2.5} fill="var(--fg-faint)" />
-                <text
-                  x={t.x}
-                  y={t.y + (t.labelBelow ? 14 : -8)}
-                  textAnchor="middle"
-                  className="group-title"
-                >
-                  {t.cat}
-                </text>
-              </g>
-            ))}
-          </>
-        )}
-
-        {/* edges — straight for radial/spine, right-angled for the tree */}
-        {(() => {
-          const selDevice = devices.find(d => d.id === selectedId);
-          const selIsGateway = selDevice?.ring === 0;
-          return edges.map((e, i) => {
+      {/* decorations */}
+      {deco.kind === "radial" && (
+        <>
+          <line className="crosshair" x1={deco.cx} y1={20} x2={deco.cx} y2={MAP_H - 20} />
+          <line className="crosshair" x1={20} y1={deco.cy} x2={MAP_W - 20} y2={deco.cy} />
+          <circle className="ring" cx={deco.cx} cy={deco.cy} r={deco.r1} />
+          <circle className="ring" cx={deco.cx} cy={deco.cy} r={deco.r2} />
+          <circle className="ring" cx={deco.cx} cy={deco.cy} r={(deco.r1 + deco.r2) / 2} />
+        </>
+      )}
+      {/* edges — straight for radial, right-angled for the tree */}
+      {(() => {
+        const selDevice = devices.find((d) => d.id === selectedId);
+        const selIsGateway = selDevice?.ring === 0;
+        return edges.map((e, i) => {
           const p1 = getPos(e.from);
           const p2 = getPos(e.to);
           const onSel = !selIsGateway && (e.to === selectedId || e.from === selectedId);
-          // Link-speed overlay (wiring tree): colour the edge by its derived
-          // speed tier and flag a cable that's the actionable bottleneck. Only
-          // for online edges — an offline link keeps its dashed "off" styling.
-          const link = !e.off ? linkIndex?.get(pairKey(e.from, e.to)) : undefined;
+          // Link-speed overlay (wiring tree only): colour the edge by its derived
+          // speed tier and flag a cable that's the actionable bottleneck. Guarded
+          // by isTree so a future radial/other reuse can't mis-colour logical
+          // edges. Only online edges — an offline link keeps its dashed styling.
+          const link = isTree && !e.off ? linkIndex?.get(pairKey(e.from, e.to)) : undefined;
           const bn = link
             ? ` bn bn-${speedTier(link.linkMbps)}${link.actionable ? " bn-act" : ""}`
             : "";
           const cls = `link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}${bn}`;
           const edgeShape =
             e.bendX != null ? (
-              <path
-                className={cls}
-                d={`M ${p1.x} ${p1.y} H ${e.bendX} V ${p2.y} H ${p2.x}`}
-              />
+              <path className={cls} d={`M ${p1.x} ${p1.y} H ${e.bendX} V ${p2.y} H ${p2.x}`} />
             ) : (
               <line className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
             );
-          if (!link) return <g key={`e${i}`}>{edgeShape}</g>;
+          // Declutter: every edge is colour-coded, but only label the ones worth
+          // acting on — a sub-1G link or a cable bottleneck. The rest stay clean.
+          const showLabel = !!link && (link.actionable || speedTier(link.linkMbps) === "slow");
+          if (!showLabel || !link) return <g key={`e${i}`}>{edgeShape}</g>;
           // Label the horizontal run into the child (tree) or the line midpoint.
           const lx = e.bendX != null ? (e.bendX + p2.x) / 2 : (p1.x + p2.x) / 2;
           const ly = (e.bendX != null ? p2.y : (p1.y + p2.y) / 2) - 3;
@@ -191,155 +143,156 @@ export function TopologyMap({
               </text>
             </g>
           );
-        });})()}
+        });
+      })()}
 
-        {/* selection pulse — only when the selected device is visible in this layout */}
-        {positions[selectedId] && <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />}
+      {/* selection pulse — only when the selected device is visible in this layout */}
+      {positions[selectedId] && <circle className="pulse" cx={selPos.x} cy={selPos.y} r={18} />}
 
-        {/* dashed ring around the device this browser is running on */}
-        {selfPos && <circle className="self-ring" cx={selfPos.x} cy={selfPos.y} r={11} />}
+      {/* dashed ring around the device this browser is running on */}
+      {selfPos && <circle className="self-ring" cx={selfPos.x} cy={selfPos.y} r={11} />}
 
-        {/* infrastructure pseudo nodes (switch/hub ledger, wiring tree only).
+      {/* infrastructure pseudo nodes (switch/hub ledger, wiring tree only).
             Clicking one shows the ledger info in the side panel. */}
-        {(pseudo ?? []).map((p) => (
-          <g key={p.id}>
+      {(pseudo ?? []).map((p) => (
+        <g key={p.id}>
+          <rect
+            className={`node-box sw ${p.id === selectedSwitchId ? "sel" : ""}`}
+            x={p.x - 6}
+            y={p.y - 6}
+            width={12}
+            height={12}
+          />
+          <text
+            className={`node-label ${p.id === selectedSwitchId ? "" : "dim"}`}
+            x={p.x + 14}
+            y={p.y}
+            textAnchor="start"
+            dy={3}
+          >
+            {p.label}
+          </text>
+          {deco.kind === "tree" && onSelectSwitch && (
             <rect
-              className={`node-box sw ${p.id === selectedSwitchId ? "sel" : ""}`}
-              x={p.x - 6}
-              y={p.y - 6}
-              width={12}
-              height={12}
-            />
-            <text
-              className={`node-label ${p.id === selectedSwitchId ? "" : "dim"}`}
-              x={p.x + 14}
-              y={p.y}
-              textAnchor="start"
-              dy={3}
+              className="node-hit"
+              x={p.x - 14}
+              y={p.y - deco.rowH / 2}
+              width={230}
+              height={deco.rowH}
+              onClick={() => onSelectSwitch(p.id)}
+              role="button"
+              tabIndex={0}
+              aria-label={p.label}
+              aria-pressed={p.id === selectedSwitchId}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectSwitch(p.id);
+                }
+              }}
             >
-              {p.label}
-            </text>
-            {deco.kind === "tree" && onSelectSwitch && (
+              <title>{p.label}</title>
+            </rect>
+          )}
+        </g>
+      ))}
+
+      {/* nodes */}
+      {devices.map((d) => {
+        const p = getPos(d.id);
+        const isSel = d.id === selectedId;
+        const isCenter = d.ring === 0;
+        const w = isCenter ? 56 : isSel ? 14 : 10;
+        const h = isCenter ? 22 : isSel ? 14 : 10;
+        const cls = `node-box ${isCenter ? "center" : d.online ? "on" : "off"} ${
+          isSel ? "sel" : ""
+        }`;
+        const lo = p.labelOffset;
+        const showLabel = !isCenter && !!lo;
+        return (
+          <g key={d.id}>
+            <rect className={cls} x={p.x - w / 2} y={p.y - h / 2} width={w} height={h} />
+            {isCenter && (
+              <text
+                className="node-label"
+                x={p.x}
+                y={p.y + 3}
+                textAnchor="middle"
+                style={{ fill: "var(--amber)", fontSize: 9, letterSpacing: "0.18em" }}
+              >
+                GATEWAY
+              </text>
+            )}
+            {showLabel && lo && (
+              <>
+                <text
+                  className={`node-label ${!d.online && !isSel ? "dim" : ""}`}
+                  x={lo.x}
+                  y={lo.y}
+                  textAnchor={lo.anchor}
+                  dy={lo.below ? 4 : 3}
+                  style={{ fontWeight: isSel ? 600 : 400 }}
+                >
+                  {d.name}
+                </text>
+                {!compact && !lo.below && (
+                  <text className="node-meta" x={lo.x} y={lo.y} textAnchor={lo.anchor} dy={14}>
+                    .{lastOctet(d.ip)}
+                  </text>
+                )}
+              </>
+            )}
+            {/* generous transparent hit target + hover tooltip; the tree
+                  makes the whole row (node + label) clickable */}
+            {deco.kind === "tree" ? (
               <rect
                 className="node-hit"
-                x={p.x - 14}
+                x={p.x - (isCenter ? 30 : 14)}
                 y={p.y - deco.rowH / 2}
                 width={230}
                 height={deco.rowH}
-                onClick={() => onSelectSwitch(p.id)}
+                onClick={() => onSelect(d.id)}
                 role="button"
                 tabIndex={0}
-                aria-label={p.label}
-                aria-pressed={p.id === selectedSwitchId}
+                aria-label={`${d.name} ${d.ip}`}
+                aria-pressed={isSel}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelectSwitch(p.id);
+                    onSelect(d.id);
                   }
                 }}
               >
-                <title>{p.label}</title>
+                <title>
+                  {d.name} · {d.ip}
+                </title>
               </rect>
+            ) : (
+              <circle
+                className="node-hit"
+                cx={p.x}
+                cy={p.y}
+                r={isCenter ? 20 : 13}
+                onClick={() => onSelect(d.id)}
+                role="button"
+                tabIndex={0}
+                aria-label={`${d.name} ${d.ip}`}
+                aria-pressed={isSel}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(d.id);
+                  }
+                }}
+              >
+                <title>
+                  {d.name} · {d.ip}
+                </title>
+              </circle>
             )}
           </g>
-        ))}
-
-        {/* nodes */}
-        {devices.map((d) => {
-          const p = getPos(d.id);
-          const isSel = d.id === selectedId;
-          const isCenter = d.ring === 0;
-          const w = isCenter ? 56 : isSel ? 14 : 10;
-          const h = isCenter ? 22 : isSel ? 14 : 10;
-          const cls = `node-box ${isCenter ? "center" : d.online ? "on" : "off"} ${
-            isSel ? "sel" : ""
-          }`;
-          const lo = p.labelOffset;
-          const showLabel = !isCenter && !!lo;
-          return (
-            <g key={d.id}>
-              <rect className={cls} x={p.x - w / 2} y={p.y - h / 2} width={w} height={h} />
-              {isCenter && (
-                <text
-                  className="node-label"
-                  x={p.x}
-                  y={p.y + 3}
-                  textAnchor="middle"
-                  style={{ fill: "var(--amber)", fontSize: 9, letterSpacing: "0.18em" }}
-                >
-                  GATEWAY
-                </text>
-              )}
-              {showLabel && lo && (
-                <>
-                  <text
-                    className={`node-label ${!d.online && !isSel ? "dim" : ""}`}
-                    x={lo.x}
-                    y={lo.y}
-                    textAnchor={lo.anchor}
-                    dy={lo.below ? 4 : 3}
-                    style={{ fontWeight: isSel ? 600 : 400 }}
-                  >
-                    {d.name}
-                  </text>
-                  {!compact && !lo.below && (
-                    <text className="node-meta" x={lo.x} y={lo.y} textAnchor={lo.anchor} dy={14}>
-                      .{lastOctet(d.ip)}
-                    </text>
-                  )}
-                </>
-              )}
-              {/* generous transparent hit target + hover tooltip; the tree
-                  makes the whole row (node + label) clickable */}
-              {deco.kind === "tree" ? (
-                <rect
-                  className="node-hit"
-                  x={p.x - (isCenter ? 30 : 14)}
-                  y={p.y - deco.rowH / 2}
-                  width={230}
-                  height={deco.rowH}
-                  onClick={() => onSelect(d.id)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${d.name} ${d.ip}`}
-                  aria-pressed={isSel}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelect(d.id);
-                    }
-                  }}
-                >
-                  <title>
-                    {d.name} · {d.ip}
-                  </title>
-                </rect>
-              ) : (
-                <circle
-                  className="node-hit"
-                  cx={p.x}
-                  cy={p.y}
-                  r={isCenter ? 20 : 13}
-                  onClick={() => onSelect(d.id)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${d.name} ${d.ip}`}
-                  aria-pressed={isSel}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelect(d.id);
-                    }
-                  }}
-                >
-                  <title>
-                    {d.name} · {d.ip}
-                  </title>
-                </circle>
-              )}
-            </g>
-          );
-        })}
+        );
+      })}
     </svg>
   );
 

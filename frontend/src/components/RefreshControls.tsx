@@ -39,8 +39,7 @@ export function RefreshControls() {
   return (
     <>
       <span>
-        up{" "}
-        <b style={{ color: "var(--amber)" }}>{meta.online}</b>/{meta.total}
+        up <b style={{ color: "var(--amber)" }}>{meta.online}</b>/{meta.total}
       </span>
       <select
         className="sel-interval"
@@ -58,7 +57,9 @@ export function RefreshControls() {
           ⚠ sync failed
         </span>
       ) : (
-        <span key={flashKey} className="flash" title="last catalog sync">synced {fmtTime(lastSync)}</span>
+        <span key={flashKey} className="flash" title="last catalog sync">
+          synced {fmtTime(lastSync)}
+        </span>
       )}
       <button
         className="btn"
@@ -67,7 +68,10 @@ export function RefreshControls() {
         title="re-fetch catalog now"
         aria-label="refresh data"
       >
-        <span className={refreshing ? "spin" : ""} style={{ display: "inline-block" }}>⟳</span> refresh
+        <span className={refreshing ? "spin" : ""} style={{ display: "inline-block" }}>
+          ⟳
+        </span>{" "}
+        refresh
       </button>
     </>
   );

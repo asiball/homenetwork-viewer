@@ -48,6 +48,8 @@ jobs:
         run: npm ci
       - name: Lint (eslint)
         run: npm run lint
+      - name: Format check (prettier)
+        run: npm run format:check
       - name: Build (tsc + vite)
         run: npm run build
       - name: Test (vitest)

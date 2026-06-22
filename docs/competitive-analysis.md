@@ -25,7 +25,7 @@
 | **A. 機器台帳（identity）** | id/name/host/**IP/MAC**/group/type を手入力。kebab-id・IPv4・MAC を検証 |
 | **B. 資産/所有（ownership）** | manufacturer/model/**purchased/price/warranty**/location/tags、自作PCの cpu/gpu/storage |
 | **C. 死活監視（liveness）** | collector が TCP+ICMP を120秒間隔で実測し online/last を自動更新（履歴は未保持） |
-| **D. トポロジ可視化** | radial/spine/tree の3レイアウトを**手入力の ring/配線**から SVG 描画 |
+| **D. トポロジ可視化** | radial/tree の2レイアウトを**手入力の ring/配線**から SVG 描画。tree はリンク速度のボトルネックを色分け表示 |
 | **E. データ形式** | **SQLite（`homenet.db`）が正**（正本=静的カタログ／状態=到達性をテーブル分離・トランザクション書き込み）。**JSON は export/import の交換形式**（export は `git diff` 可）。一括編集は export→編集→import |
 
 この **A〜E を1つにまとめている**点が homenet の形。各軸を個別に見ると以下の competitor がいる。
@@ -55,7 +55,7 @@
 ### カテゴリ③ トポロジ / ネットワーク図（自動生成）
 | ツール | コア価値 | homenet との差 |
 |---|---|---|
-| **Scanopy** | **SNMP/LLDP/ARP から多VLAN・多サイトのトポロジを自動生成**（手描き不要）、自己ホスト | homenet の tree/spine は**手入力の配線/ring 依存**。自動生成に対し手間で劣る。逆に homenet は所有/スペックを併せ持つ |
+| **Scanopy** | **SNMP/LLDP/ARP から多VLAN・多サイトのトポロジを自動生成**（手描き不要）、自己ホスト | homenet の tree は**手入力の配線/ring 依存**。自動生成に対し手間で劣る。逆に homenet は所有/スペックを併せ持つ |
 | **LibreNMS** | SNMP 監視＋weathermap でトポロジ | エージェントレス自動。homenet は手動だが軽量 |
 | **Homelable** ⭐ | **最接近**。nmap 発見→承認キュー→**インタラクティブ図＋ライブ死活**（ping/TCP/HTTP/SSH/Prometheus）、PNG出力、**MCPでAI連携**、公開Live View | 発見＋承認＋トポロジ＋死活＋AI を既に統合。ただし**資産/所有（保証/価格）・手編集設定ファイルは非対応**（=homenet の差別化が残る点） |
 

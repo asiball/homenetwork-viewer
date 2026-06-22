@@ -1,13 +1,13 @@
-// Topology layout calculators — radial + spine (spec §5.2) + wiring tree.
-// Ported from the prototype variant-noc.jsx (computeRadial / computeSpine).
+// Topology layout calculators — radial (spec §5.2) + wiring tree.
+// Ported from the prototype variant-noc.jsx (computeRadial).
 // Returns plain geometry; TopologyMap.tsx renders it.
 
-import { GROUP_ORDER, type Device, type Group, type Switch } from "../types";
+import { type Device, type Switch } from "../types";
 
 export const MAP_W = 800;
 export const MAP_H = 560;
 
-export type LayoutKind = "radial" | "spine" | "tree";
+export type LayoutKind = "radial" | "tree";
 
 export interface LabelOffset {
   x: number;
@@ -30,13 +30,6 @@ export interface Edge {
   bendX?: number;
 }
 
-export interface SpineTap {
-  cat: string;
-  x: number;
-  y: number;
-  labelBelow: boolean;
-}
-
 /** Non-device infrastructure (switches/hubs) drawn on the wiring tree. */
 export interface PseudoNode {
   id: string;
@@ -47,7 +40,6 @@ export interface PseudoNode {
 
 export type Deco =
   | { kind: "radial"; cx: number; cy: number; r1: number; r2: number }
-  | { kind: "spine"; busY: number; startX: number; endX: number; taps: SpineTap[] }
   | { kind: "tree"; rowH: number; width: number; height: number };
 
 export interface Layout {
@@ -84,8 +76,7 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
       // 2 infra keep the classic top-right / top-left look; 3+ spread evenly,
       // and we key off list position (not d.idx) so unset idx never collides.
       const i = infra.findIndex((x) => x.id === d.id);
-      const a =
-        infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
+      const a = infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
       const p = polar(a, r1, cx, cy);
       const out = polar(a, r1 + 16, cx, cy);
       let anchor: "start" | "middle" | "end" = "middle";
@@ -108,70 +99,10 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
   // gw is const, so narrowing it to a Device here carries into the map callback
   // and we avoid a non-null assertion on every edge.
   const edges: Edge[] = gw
-    ? visible
-        .filter((d) => d.ring !== 0)
-        .map((d) => ({ from: gw.id, to: d.id, off: !d.online }))
+    ? visible.filter((d) => d.ring !== 0).map((d) => ({ from: gw.id, to: d.id, off: !d.online }))
     : [];
 
   return { positions, edges, deco: { kind: "radial", cx, cy, r1, r2 } };
-}
-
-function computeSpine(visible: Device[], compact: boolean): Layout {
-  const positions: Record<string, Pos> = {};
-  const busY = MAP_H / 2;
-  const startX = 100;
-  const endX = MAP_W - 40;
-
-  const gw = visible.find((d) => d.ring === 0);
-  if (gw) {
-    positions[gw.id] = { x: startX, y: busY };
-  }
-
-  const infra = visible.filter((d) => d.ring === 1);
-  infra.forEach((d, i) => {
-    // alternate above/below the bus with a growing offset so 3+ infra never overlap
-    const above = i % 2 === 0;
-    const y = busY + (above ? -1 : 1) * (55 + Math.floor(i / 2) * 40);
-    const x = startX + 60;
-    positions[d.id] = { x, y, labelOffset: { x: x + 14, y, anchor: "start" } };
-  });
-
-  const cats = GROUP_ORDER.filter(
-    (g) => g !== "Infra" && visible.some((d) => d.group === g),
-  );
-  const catStart = startX + 150;
-  const catSpacing = (endX - catStart) / Math.max(1, cats.length);
-  const cellH = compact ? 24 : 28;
-  const taps: SpineTap[] = [];
-
-  cats.forEach((cat: Group, ci) => {
-    const cx = catStart + (ci + 0.5) * catSpacing;
-    const above = ci % 2 === 0;
-    positions["__cat_" + cat] = { x: cx, y: busY };
-    taps.push({ cat, x: cx, y: busY, labelBelow: above });
-    const items = visible.filter((d) => d.group === cat);
-    items.forEach((d, i) => {
-      const offset = 40 + i * cellH;
-      const y = above ? busY - offset : busY + offset;
-      positions[d.id] = {
-        x: cx,
-        y,
-        labelOffset: { x: cx + 12, y, anchor: "start" },
-      };
-    });
-  });
-
-  const edges: Edge[] = [];
-  if (gw) {
-    infra.forEach((d) => edges.push({ from: gw.id, to: d.id, off: !d.online }));
-  }
-  cats.forEach((cat) => {
-    visible
-      .filter((d) => d.group === cat)
-      .forEach((d) => edges.push({ from: "__cat_" + cat, to: d.id, off: !d.online }));
-  });
-
-  return { positions, edges, deco: { kind: "spine", busY, startX, endX, taps } };
 }
 
 // ─── Wiring tree ────────────────────────────────────────────────────────────
@@ -301,10 +232,8 @@ export function computeLayout(
   layout: LayoutKind,
   visible: Device[],
   compact: boolean,
-  switches: Switch[] = [],
+  switches: Switch[] = []
 ): Layout {
   if (layout === "tree") return computeTree(visible, switches, compact);
-  return layout === "spine"
-    ? computeSpine(visible, compact)
-    : computeRadial(visible, compact);
+  return computeRadial(visible, compact);
 }

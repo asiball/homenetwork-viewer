@@ -54,7 +54,7 @@ function renderDetail(id: string, devices: Device[]) {
           </Routes>
         </MemoryRouter>
       </CatalogContext.Provider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 

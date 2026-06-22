@@ -36,17 +36,13 @@ export function orderedByGroup(devices: Device[]): Device[] {
 
 // Find a cable whose end terminates at this device (to-end preferred).
 export function cableForDevice(cables: Cable[], devId: string): Cable | null {
-  return (
-    cables.find((c) => c.toDev === devId) ??
-    cables.find((c) => c.fromDev === devId) ??
-    null
-  );
+  return cables.find((c) => c.toDev === devId) ?? cables.find((c) => c.fromDev === devId) ?? null;
 }
 
 // Find a switch/hub carrying this device on a downstream (non-uplink) port.
 export function switchForDevice(
   switches: Switch[],
-  devId: string,
+  devId: string
 ): { sw: Switch; port: string } | null {
   for (const sw of switches) {
     for (const [port, slot] of Object.entries(sw.portMap || {})) {
@@ -88,10 +84,7 @@ export interface PortRow {
 export function switchPortRows(sw: Switch): { rows: PortRow[]; used: number; free: number } {
   const portMap = sw.portMap ?? {};
   const entries = Object.entries(portMap);
-  const maxNumeric = entries.reduce(
-    (m, [k]) => (/^\d+$/.test(k) ? Math.max(m, Number(k)) : m),
-    0,
-  );
+  const maxNumeric = entries.reduce((m, [k]) => (/^\d+$/.test(k) ? Math.max(m, Number(k)) : m), 0);
   const total = Math.max(sw.portCount ?? 0, maxNumeric);
   const numbered: PortRow[] = Array.from({ length: total }, (_, i) => {
     const port = String(i + 1);
@@ -133,8 +126,17 @@ export function matchesQuery(d: Device, query: string): boolean {
   if (!needle) return true;
   const own = d.detail?.own;
   const haystack: (string | null | undefined)[] = [
-    d.name, d.host, d.ip, d.mac, d.type, d.group, d.id, d.notes,
-    own?.manufacturer, own?.model, own?.location,
+    d.name,
+    d.host,
+    d.ip,
+    d.mac,
+    d.type,
+    d.group,
+    d.id,
+    d.notes,
+    own?.manufacturer,
+    own?.model,
+    own?.location,
     ...(own?.tags ?? []),
   ];
   return haystack.some((v) => v != null && v.toLowerCase().includes(needle));
@@ -229,8 +231,8 @@ export interface GatewayInfo {
 
 // Derive the network header info (subnet + interface) from the gateway device —
 // the router (type "router") or ring-0 node. Single source for the HomeView
-// breadcrumb and the spine-layout bus label, which previously each inlined this
-// lookup (#124). Falls back to home-lab defaults when there is no gateway.
+// breadcrumb and the topology map's network label, which previously each inlined
+// this lookup (#124). Falls back to home-lab defaults when there is no gateway.
 export function gatewayInfo(devices: Device[]): GatewayInfo {
   const gw = devices.find((d) => d.type === "router" || d.ring === 0);
   const ipv4 = gw?.detail?.net?.ipv4 ?? gw?.ip;
@@ -296,7 +298,7 @@ export type WarrantyState = "expired" | "soon" | "ok";
 // ok. Returns null when there's no/invalid date. `now` is injectable for tests.
 export function warrantyState(
   until: string | null | undefined,
-  now: number = Date.now(),
+  now: number = Date.now()
 ): WarrantyState | null {
   if (!until) return null;
   const t = Date.parse(until);

@@ -32,12 +32,14 @@ export function Shell({
 }: Props) {
   // Wide screens start with the list open; iPad-portrait starts collapsed.
   const [leftOpen, setLeftOpen] = useState(
-    () => typeof window === "undefined" || window.innerWidth > 820,
+    () => typeof window === "undefined" || window.innerWidth > 820
   );
 
   return (
     <div className={`noc ${leftOpen ? "left-open" : "left-collapsed"}`}>
-      <a href="#main-content" className="skip-link">skip to main content</a>
+      <a href="#main-content" className="skip-link">
+        skip to main content
+      </a>
       <header className="n-head">
         <button
           type="button"
@@ -51,8 +53,12 @@ export function Shell({
         <Link className="brand" to="/" title="home">
           <span className="dot" /> <b>HOMENET / NOC</b>
         </Link>
-        <Link className="nav-link" to="/inventory" title="switch & cable inventory">inventory</Link>
-        <Link className="nav-link" to="/analysis" title="link-speed bottleneck analysis">analysis</Link>
+        <Link className="nav-link" to="/inventory" title="switch & cable inventory">
+          inventory
+        </Link>
+        <Link className="nav-link" to="/analysis" title="link-speed bottleneck analysis">
+          analysis
+        </Link>
         <div className="crumbs">{crumbs}</div>
         <div className="right">
           {right}

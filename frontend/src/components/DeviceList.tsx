@@ -17,7 +17,13 @@ interface Props {
   onSearchChange?: (q: string) => void;
 }
 
-export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", onSearchChange }: Props) {
+export function DeviceList({
+  devices,
+  selectedId,
+  onSelect,
+  searchQuery = "",
+  onSearchChange,
+}: Props) {
   const { selfId } = useCatalog();
   const [sort, setSort] = useState<SortMode>(() => prefs.sort.get());
 
@@ -29,7 +35,7 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
       if (e.key !== "/" || isTypingTarget(e)) return;
       e.preventDefault();
       searchRef.current?.focus();
-    }, []),
+    }, [])
   );
 
   const needle = searchQuery.trim().toLowerCase();
@@ -67,7 +73,13 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as SortMode)}
-            style={{ width: "80px", background: "var(--bg-2)", color: "var(--fg)", border: "1px solid var(--rule-2)", fontSize: "10px" }}
+            style={{
+              width: "80px",
+              background: "var(--bg-2)",
+              color: "var(--fg)",
+              border: "1px solid var(--rule-2)",
+              fontSize: "10px",
+            }}
             aria-label="sort devices"
           >
             <option value="group">group</option>
@@ -106,7 +118,10 @@ export function DeviceList({ devices, selectedId, onSelect, searchQuery = "", on
               aria-current={selectedId === d.id ? "true" : undefined}
               title={`${d.name} · ${d.ip}`}
             >
-              <span className={`lstat ${d.online ? "on" : "off"}`} aria-label={d.online ? "online" : "offline"} />
+              <span
+                className={`lstat ${d.online ? "on" : "off"}`}
+                aria-label={d.online ? "online" : "offline"}
+              />
               <DeviceIcon type={d.type} className="licon" style={{ color: groupColor(d.group) }} />
               <span className="lname">{d.name}</span>
               {d.id === selfId && <span className="lyou">YOU</span>}

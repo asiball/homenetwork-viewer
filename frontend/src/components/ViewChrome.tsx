@@ -15,7 +15,9 @@ export function ViewFooter({ view, tail }: { view: string; tail: string }) {
       <span>
         view <b>{view}</b>
       </span>
-      <span className="right">homenet {APP_VERSION} · {tail}</span>
+      <span className="right">
+        homenet {APP_VERSION} · {tail}
+      </span>
     </>
   );
 }

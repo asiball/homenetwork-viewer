@@ -33,12 +33,7 @@ const catalog = (devices: Device[], switches: Switch[], cables: Cable[]): Catalo
   notify: vi.fn(),
 });
 
-function renderTree(
-  devices: Device[],
-  switches: Switch[],
-  cables: Cable[],
-  withOverlay: boolean,
-) {
+function renderTree(devices: Device[], switches: Switch[], cables: Cable[], withOverlay: boolean) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const linkIndex = withOverlay
     ? linkIndexByPair(analyzeBottlenecks(devices, switches, cables).links)
@@ -56,7 +51,7 @@ function renderTree(
           />
         </MemoryRouter>
       </CatalogContext.Provider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -76,6 +71,14 @@ describe("TopologyMap link-speed overlay", () => {
     expect(label?.textContent).toBe("1G");
     // Legend is shown only with the overlay active.
     expect(container.querySelector(".map-legend")).not.toBeNull();
+  });
+
+  it("colours but does not label a healthy (fast / 1G) link", () => {
+    // gw —[Cat6]— pc, both 2.5G → a clean 2.5G link: coloured, but no label.
+    const fast: Cable[] = [{ id: "CBL-2", cat: "Cat6", fromDev: "gw", toDev: "pc" }];
+    const { container } = renderTree(devices, [], fast, true);
+    expect(container.querySelector(".link.bn-fast")).not.toBeNull();
+    expect(container.querySelector(".link-speed")).toBeNull();
   });
 
   it("draws no overlay (no legend / speed classes) when off", () => {

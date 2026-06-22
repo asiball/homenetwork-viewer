@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { lastOctet, shortHost, kebabId, countOnline, groupByOrder, formatLast, clampPct, groupColor, suggestFreeIp, partsTotalJpy, formatJpy, warrantyState, gatewayInfo, comparePortKeys, switchPortRows, compareIp } from "./helpers";
+import {
+  lastOctet,
+  shortHost,
+  kebabId,
+  countOnline,
+  groupByOrder,
+  formatLast,
+  clampPct,
+  groupColor,
+  suggestFreeIp,
+  partsTotalJpy,
+  formatJpy,
+  warrantyState,
+  gatewayInfo,
+  comparePortKeys,
+  switchPortRows,
+  compareIp,
+} from "./helpers";
 import type { Device, Part, Switch } from "../types";
 
 const makeDevice = (overrides: Partial<Device> = {}): Device => ({
@@ -155,7 +172,7 @@ describe("suggestFreeIp", () => {
 
   it("returns null when the /24 is full", () => {
     const devs = Array.from({ length: 253 }, (_, i) =>
-      makeDevice({ id: `d${i}`, ip: `192.168.1.${i + 2}` }),
+      makeDevice({ id: `d${i}`, ip: `192.168.1.${i + 2}` })
     );
     expect(suggestFreeIp(devs)).toBeNull();
   });
@@ -171,7 +188,11 @@ describe("parts helpers (#97)", () => {
   });
 
   it("sums known part prices and skips priceless ones", () => {
-    const parts = [part({ price_jpy: 58000 }), part({ price_jpy: 90000 }), part({ price_jpy: null })];
+    const parts = [
+      part({ price_jpy: 58000 }),
+      part({ price_jpy: 90000 }),
+      part({ price_jpy: null }),
+    ];
     expect(partsTotalJpy(parts)).toBe(148000);
     expect(partsTotalJpy([])).toBe(0);
     expect(partsTotalJpy(null)).toBe(0);
@@ -217,12 +238,7 @@ describe("comparePortKeys", () => {
   });
 
   it("sorts labelled ports after numbered ones, lexically", () => {
-    expect(["sfp2", "1", "sfp1", "10"].sort(comparePortKeys)).toEqual([
-      "1",
-      "10",
-      "sfp1",
-      "sfp2",
-    ]);
+    expect(["sfp2", "1", "sfp1", "10"].sort(comparePortKeys)).toEqual(["1", "10", "sfp1", "sfp2"]);
   });
 });
 
@@ -238,7 +254,7 @@ describe("switchPortRows (#151)", () => {
 
   it("renders empty numbered ports up to portCount with correct free count", () => {
     const { rows, used, free } = switchPortRows(
-      makeSwitch({ portCount: 4, portMap: { "1": { device: "nas" } } }),
+      makeSwitch({ portCount: 4, portMap: { "1": { device: "nas" } } })
     );
     expect(rows.map((r) => r.port)).toEqual(["1", "2", "3", "4"]);
     expect(used).toBe(1);
@@ -253,7 +269,7 @@ describe("switchPortRows (#151)", () => {
           "1": { device: "nas" },
           sfp1: { device: "router", role: "uplink" },
         },
-      }),
+      })
     );
     const sfp = rows.find((r) => r.port === "sfp1");
     expect(sfp).toBeDefined();
@@ -266,7 +282,7 @@ describe("switchPortRows (#151)", () => {
 
   it("grows the numbered range when a mapped port exceeds portCount", () => {
     const { rows } = switchPortRows(
-      makeSwitch({ portCount: 2, portMap: { "5": { device: "pc" } } }),
+      makeSwitch({ portCount: 2, portMap: { "5": { device: "pc" } } })
     );
     expect(rows.map((r) => r.port)).toEqual(["1", "2", "3", "4", "5"]);
   });
@@ -280,7 +296,7 @@ describe("groupByOrder", () => {
       makeDevice({ id: "c", group: "Computer" }),
     ];
     const groups = groupByOrder(devs);
-    expect(groups.map(g => g.group)).toEqual(["Mobile", "Computer"]);
-    expect(groups.find(g => g.group === "Computer")?.items).toHaveLength(2);
+    expect(groups.map((g) => g.group)).toEqual(["Mobile", "Computer"]);
+    expect(groups.find((g) => g.group === "Computer")?.items).toHaveLength(2);
   });
 });

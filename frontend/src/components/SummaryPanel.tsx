@@ -28,7 +28,9 @@ export function SummaryPanel({ device }: Props) {
           {device.id === selfId && <span className="pill you">this device</span>}
         </div>
         <div className="dname">{device.name}</div>
-        <div className="dhost"><Copyable text={device.host} /></div>
+        <div className="dhost">
+          <Copyable text={device.host} />
+        </div>
       </div>
 
       <div className="panel" data-title="network">
@@ -52,7 +54,13 @@ export function SummaryPanel({ device }: Props) {
               <dt>web</dt>
               <dd className="weblink-row">
                 <Copyable text={device.url} />
-                <a className="weblink" href={device.url} target="_blank" rel="noreferrer" title="open in new tab">
+                <a
+                  className="weblink"
+                  href={device.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="open in new tab"
+                >
                   ↗
                 </a>
               </dd>
@@ -90,18 +98,25 @@ export function SummaryPanel({ device }: Props) {
                   <span>{m.mem_pct}%</span>
                 </div>
                 <div className="bar">
-                  <div className="fill" style={{ width: `${clampPct(m.mem_pct)}%`, background: "var(--ok)" }} />
+                  <div
+                    className="fill"
+                    style={{ width: `${clampPct(m.mem_pct)}%`, background: "var(--ok)" }}
+                  />
                 </div>
               </>
             )}
           </div>
         )}
         <div className="stale">
-          {device.online
-            ? m
-              ? <span>catalog · metrics available</span>
-              : <span>online · no metrics</span>
-            : <span>offline · last seen {formatLast(device.last)}</span>}
+          {device.online ? (
+            m ? (
+              <span>catalog · metrics available</span>
+            ) : (
+              <span>online · no metrics</span>
+            )
+          ) : (
+            <span>offline · last seen {formatLast(device.last)}</span>
+          )}
           <span>{device.online ? formatLast(device.last) : ""}</span>
         </div>
       </div>

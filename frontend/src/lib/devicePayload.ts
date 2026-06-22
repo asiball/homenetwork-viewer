@@ -148,7 +148,7 @@ export function buildPayload(
   mode: "add" | "edit",
   id: string,
   parts?: Part[],
-  buildEvents?: BuildEvent[],
+  buildEvents?: BuildEvent[]
 ): DeviceWrite {
   // Ownership is fully form-owned. Emptied fields are sent as explicit null
   // (not omitted) because the backend deep-merges nested dicts — omitting a key
@@ -169,9 +169,7 @@ export function buildPayload(
   };
   const ownHasAny = Object.values(own).some((v) => v != null);
 
-  let detail: DeviceDetail | undefined = existing?.detail
-    ? { ...existing.detail }
-    : undefined;
+  let detail: DeviceDetail | undefined = existing?.detail ? { ...existing.detail } : undefined;
   // Include the block (with explicit nulls) whenever the form has data or the
   // stored device already had ownership to clear; otherwise leave it absent.
   if (ownHasAny || detail?.own) {

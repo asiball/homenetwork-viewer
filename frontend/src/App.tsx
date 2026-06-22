@@ -91,7 +91,7 @@ export default function App() {
   // RefreshControls' lastSync effect fire on every render (it pulses on change).
   const lastSync = useMemo(
     () => (catalog.dataUpdatedAt ? new Date(catalog.dataUpdatedAt) : null),
-    [catalog.dataUpdatedAt],
+    [catalog.dataUpdatedAt]
   );
 
   const refresh = useCallback(async () => {
@@ -101,7 +101,7 @@ export default function App() {
   const clientIp = whoami.data?.ip ?? null;
   const selfId = useMemo(
     () => (clientIp ? (devices.find((d) => d.ip === clientIp)?.id ?? null) : null),
-    [clientIp, devices],
+    [clientIp, devices]
   );
 
   // First load, nothing yet.
@@ -153,7 +153,9 @@ export default function App() {
           aria-live={toast.kind === "err" ? "assertive" : "polite"}
         >
           <span>{toast.msg}</span>
-          <button className="toast-close" onClick={() => setToast(null)} aria-label="閉じる">×</button>
+          <button className="toast-close" onClick={() => setToast(null)} aria-label="閉じる">
+            ×
+          </button>
         </div>
       )}
     </CatalogContext.Provider>

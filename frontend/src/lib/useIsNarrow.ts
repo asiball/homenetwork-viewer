@@ -8,7 +8,7 @@ const QUERY = "(max-width: 560px)";
 
 export function useIsNarrow(): boolean {
   const [narrow, setNarrow] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(QUERY).matches,
+    () => typeof window !== "undefined" && window.matchMedia(QUERY).matches
   );
 
   useEffect(() => {

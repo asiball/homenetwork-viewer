@@ -33,19 +33,21 @@ const catalog = (over: Partial<CatalogValue> = {}): CatalogValue => ({
   ...over,
 });
 
-function renderList(props: Partial<Parameters<typeof DeviceList>[0]> = {}, ctx?: Partial<CatalogValue>) {
+function renderList(
+  props: Partial<Parameters<typeof DeviceList>[0]> = {},
+  ctx?: Partial<CatalogValue>
+) {
   const devices = props.devices ?? [dev()];
   return render(
     <CatalogContext.Provider value={catalog({ devices, ...ctx })}>
       <MemoryRouter>
         <DeviceList devices={devices} {...props} />
       </MemoryRouter>
-    </CatalogContext.Provider>,
+    </CatalogContext.Provider>
   );
 }
 
-const names = () =>
-  Array.from(document.querySelectorAll(".lname")).map((el) => el.textContent);
+const names = () => Array.from(document.querySelectorAll(".lname")).map((el) => el.textContent);
 
 describe("DeviceList", () => {
   beforeEach(() => localStorage.clear());

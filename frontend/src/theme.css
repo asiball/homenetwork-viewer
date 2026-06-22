@@ -1793,16 +1793,26 @@ body {
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .flash {
   animation: flash 1s;
 }
 @keyframes flash {
-  0% { opacity: 1; color: var(--amber); }
-  30% { opacity: 0.3; }
-  100% { opacity: 1; color: inherit; }
+  0% {
+    opacity: 1;
+    color: var(--amber);
+  }
+  30% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+    color: inherit;
+  }
 }
 
 /* Make offline dot distinct shape (hollow circle) */

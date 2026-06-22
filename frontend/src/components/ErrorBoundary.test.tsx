@@ -15,7 +15,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary>
         <Boom crash={false} />
-      </ErrorBoundary>,
+      </ErrorBoundary>
     );
     expect(screen.getByText("healthy")).toBeInTheDocument();
   });
@@ -24,7 +24,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary>
         <Boom crash />
-      </ErrorBoundary>,
+      </ErrorBoundary>
     );
     expect(screen.getByText("アプリケーションエラーが発生しました")).toBeInTheDocument();
     expect(screen.getByText("kaboom")).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("ErrorBoundary", () => {
     const { rerender } = render(
       <ErrorBoundary resetKey="/broken">
         <Boom crash />
-      </ErrorBoundary>,
+      </ErrorBoundary>
     );
     expect(screen.getByText("アプリケーションエラーが発生しました")).toBeInTheDocument();
 
@@ -45,7 +45,7 @@ describe("ErrorBoundary", () => {
     rerender(
       <ErrorBoundary resetKey="/ok">
         <Boom crash={false} />
-      </ErrorBoundary>,
+      </ErrorBoundary>
     );
     expect(screen.getByText("healthy")).toBeInTheDocument();
     expect(screen.queryByText("アプリケーションエラーが発生しました")).not.toBeInTheDocument();

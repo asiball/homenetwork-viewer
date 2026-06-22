@@ -4,1197 +4,1236 @@
  */
 
 export interface paths {
-    "/api/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Health
-         * @description Liveness: the process is up and serving. Always 200 while running.
-         */
-        get: operations["health_api_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Ready
-         * @description Readiness: liveness *and* the database is readable (#89).
-         *
-         *     Unlike /api/health this returns 503 when the database is corrupt, so an
-         *     operator can tell "process up" apart from "actually able to serve data".
-         */
-        get: operations["ready_api_ready_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Health
+     * @description Liveness: the process is up and serving. Always 200 while running.
+     */
+    get: operations["health_api_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/whoami": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Whoami
-         * @description Best-effort client IP so the UI can highlight "this device".
-         *
-         *     In docker, nginx forwards the LAN client address in X-Real-IP /
-         *     X-Forwarded-For; direct access (vite dev / tests) falls back to the
-         *     socket peer. Returns null when nothing sensible is available.
-         */
-        get: operations["whoami_api_whoami_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Ready
+     * @description Readiness: liveness *and* the database is readable (#89).
+     *
+     *     Unlike /api/health this returns 503 when the database is corrupt, so an
+     *     operator can tell "process up" apart from "actually able to serve data".
+     */
+    get: operations["ready_api_ready_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/whoami": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/oui/{mac}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Oui Lookup
-         * @description Manufacturer for a MAC address (or prefix), via the bundled IEEE table.
-         *
-         *     Used by the edit form to suggest `ownership.manufacturer` while typing the
-         *     MAC (issue #107). Always 200: a randomized / unregistered prefix returns
-         *     ``{"manufacturer": null}`` rather than a 404 so the UI treats "no vendor"
-         *     as a quiet non-suggestion, not an error.
-         */
-        get: operations["oui_lookup_api_oui__mac__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Whoami
+     * @description Best-effort client IP so the UI can highlight "this device".
+     *
+     *     In docker, nginx forwards the LAN client address in X-Real-IP /
+     *     X-Forwarded-For; direct access (vite dev / tests) falls back to the
+     *     socket peer. Returns null when nothing sensible is available.
+     */
+    get: operations["whoami_api_whoami_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oui/{mac}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/meta": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Meta */
-        get: operations["meta_api_meta_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Oui Lookup
+     * @description Manufacturer for a MAC address (or prefix), via the bundled IEEE table.
+     *
+     *     Used by the edit form to suggest `ownership.manufacturer` while typing the
+     *     MAC (issue #107). Always 200: a randomized / unregistered prefix returns
+     *     ``{"manufacturer": null}`` rather than a 404 so the UI treats "no vendor"
+     *     as a quiet non-suggestion, not an error.
+     */
+    get: operations["oui_lookup_api_oui__mac__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/meta": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/devices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Devices */
-        get: operations["get_devices_api_devices_get"];
-        put?: never;
-        /** Create Device */
-        post: operations["create_device_api_devices_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Meta */
+    get: operations["meta_api_meta_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/devices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/devices/{device_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Device */
-        get: operations["get_device_api_devices__device_id__get"];
-        /** Update Device */
-        put: operations["update_device_api_devices__device_id__put"];
-        post?: never;
-        /** Delete Device */
-        delete: operations["delete_device_api_devices__device_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Devices */
+    get: operations["get_devices_api_devices_get"];
+    put?: never;
+    /** Create Device */
+    post: operations["create_device_api_devices_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/devices/{device_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/devices/{device_id}/reachability": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Device Reachability
-         * @description Per-day uptime history + recent up/down events for a device (#93).
-         *
-         *     Computed from the append-only reachability samples the collector writes, so
-         *     the detail view's 7-day chart and uptime reflect real probes rather than the
-         *     legacy hand-entered ``detail.hist7`` field. Days with no samples report
-         *     ``uptime: null`` (history is never invented — spec §6.4).
-         */
-        get: operations["device_reachability_api_devices__device_id__reachability_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Device */
+    get: operations["get_device_api_devices__device_id__get"];
+    /** Update Device */
+    put: operations["update_device_api_devices__device_id__put"];
+    post?: never;
+    /** Delete Device */
+    delete: operations["delete_device_api_devices__device_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/devices/{device_id}/reachability": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/devices/{device_id}/wake": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Wake Device
-         * @description Send a Wake-on-LAN magic packet to the device's MAC address.
-         */
-        post: operations["wake_device_api_devices__device_id__wake_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Device Reachability
+     * @description Per-day uptime history + recent up/down events for a device (#93).
+     *
+     *     Computed from the append-only reachability samples the collector writes, so
+     *     the detail view's 7-day chart and uptime reflect real probes rather than the
+     *     legacy hand-entered ``detail.hist7`` field. Days with no samples report
+     *     ``uptime: null`` (history is never invented — spec §6.4).
+     */
+    get: operations["device_reachability_api_devices__device_id__reachability_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/devices/{device_id}/wake": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/switches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Switches
-         * @description List switches/hubs. Read-only by design (#123): the switch/cable ledger
-         *     is edited as a whole via export → hand-edit → import, not per-row CRUD. If
-         *     per-row editing is ever added, route it through storage._write so it stays
-         *     symmetric with the device endpoints.
-         */
-        get: operations["get_switches_api_switches_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Wake Device
+     * @description Send a Wake-on-LAN magic packet to the device's MAC address.
+     */
+    post: operations["wake_device_api_devices__device_id__wake_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/switches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/cables": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Cables
-         * @description List cables. Read-only by design — see get_switches (#123).
-         */
-        get: operations["get_cables_api_cables_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Switches
+     * @description List switches/hubs. Read-only by design (#123): the switch/cable ledger
+     *     is edited as a whole via export → hand-edit → import, not per-row CRUD. If
+     *     per-row editing is ever added, route it through storage._write so it stays
+     *     symmetric with the device endpoints.
+     */
+    get: operations["get_switches_api_switches_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cables": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Export Catalog
-         * @description Download the full catalog as a JSON file.
-         */
-        get: operations["export_catalog_api_export_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Cables
+     * @description List cables. Read-only by design — see get_switches (#123).
+     */
+    get: operations["get_cables_api_cables_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Import Catalog
-         * @description Replace catalog with uploaded JSON after validation.
-         */
-        post: operations["import_catalog_api_import_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Export Catalog
+     * @description Download the full catalog as a JSON file.
+     */
+    get: operations["export_catalog_api_export_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    /**
+     * Import Catalog
+     * @description Replace catalog with uploaded JSON after validation.
+     */
+    post: operations["import_catalog_api_import_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** Body_import_catalog_api_import_post */
-        Body_import_catalog_api_import_post: {
-            /** File */
-            file: string;
-        };
-        /**
-         * BuildEvent
-         * @description A configuration change to a device's build (add / remove / replace a
-         *     part). Low-volume, hand-entered history — fits the JSON catalog (#97).
-         */
-        BuildEvent: {
-            /** Date */
-            date: string;
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "add" | "remove" | "replace";
-            /** Part Id */
-            part_id: string;
-            /** Note */
-            note?: string | null;
-        };
-        /** Cable */
-        Cable: {
-            /** Id */
-            id: string;
-            /** Cat */
-            cat?: string | null;
-            /** Len */
-            len?: string | null;
-            /** Color */
-            color?: string | null;
-            /** Jacket */
-            jacket?: string | null;
-            /** Fromdev */
-            fromDev: string;
-            /** Fromport */
-            fromPort?: string | number | null;
-            /** Todev */
-            toDev: string;
-            /** Toport */
-            toPort?: string | number | null;
-            /** Notes */
-            notes?: string | null;
-        };
-        /**
-         * Device
-         * @description A stored device: create payload + its (immutable) id.
-         */
-        Device: {
-            /** Name */
-            name: string;
-            /** Host */
-            host: string;
-            /** Ip */
-            ip: string;
-            /** Mac */
-            mac: string;
-            /**
-             * Group
-             * @enum {string}
-             */
-            group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
-            /** Type */
-            type: string;
-            /**
-             * Online
-             * @default false
-             */
-            online: boolean;
-            /** Cpu */
-            cpu?: string | null;
-            /** Mem */
-            mem?: string | null;
-            /** Storage */
-            storage?: string | null;
-            /** Conn */
-            conn?: ("Wired 1G" | "Wired 2.5G" | "Wired 100M" | "Wi-Fi 2.4 GHz" | "Wi-Fi 5 GHz" | "Wi-Fi 6 GHz" | "—") | null;
-            /** Ring */
-            ring?: (0 | 1 | 2) | null;
-            /** Idx */
-            idx?: number | null;
-            /** Last */
-            last?: string | null;
-            /** Uptime */
-            uptime?: string | null;
-            /** Notes */
-            notes?: string | null;
-            /** Url */
-            url?: string | null;
-            detail?: components["schemas"]["DeviceDetail"] | null;
-            /** Id */
-            id: string;
-        };
-        /**
-         * DeviceCreate
-         * @description Body for POST /api/devices — id is supplied by the client (kebab-case).
-         */
-        DeviceCreate: {
-            /** Name */
-            name: string;
-            /** Host */
-            host: string;
-            /** Ip */
-            ip: string;
-            /** Mac */
-            mac: string;
-            /**
-             * Group
-             * @enum {string}
-             */
-            group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
-            /** Type */
-            type: string;
-            /**
-             * Online
-             * @default false
-             */
-            online: boolean;
-            /** Cpu */
-            cpu?: string | null;
-            /** Mem */
-            mem?: string | null;
-            /** Storage */
-            storage?: string | null;
-            /** Conn */
-            conn?: ("Wired 1G" | "Wired 2.5G" | "Wired 100M" | "Wi-Fi 2.4 GHz" | "Wi-Fi 5 GHz" | "Wi-Fi 6 GHz" | "—") | null;
-            /** Ring */
-            ring?: (0 | 1 | 2) | null;
-            /** Idx */
-            idx?: number | null;
-            /** Last */
-            last?: string | null;
-            /** Uptime */
-            uptime?: string | null;
-            /** Notes */
-            notes?: string | null;
-            /** Url */
-            url?: string | null;
-            detail?: components["schemas"]["DeviceDetail"] | null;
-            /** Id */
-            id: string;
-        };
-        /**
-         * DeviceDetail
-         * @description Detail-view-only payload (spec §3.3). All fields optional / nullable.
-         */
-        DeviceDetail: {
-            net?: components["schemas"]["NetInfo"] | null;
-            hw?: components["schemas"]["HwInfo"] | null;
-            metrics?: components["schemas"]["Metrics"] | null;
-            /** Services */
-            services?: components["schemas"]["Service"][] | null;
-            storage?: components["schemas"]["StorageInfo"] | null;
-            /** Hist7 */
-            hist7?: number[] | null;
-            own?: components["schemas"]["Ownership"] | null;
-            /** Parts */
-            parts?: components["schemas"]["Part"][] | null;
-            /** Build Events */
-            build_events?: components["schemas"]["BuildEvent"][] | null;
-        };
-        /**
-         * DeviceUpdate
-         * @description Body for PUT /api/devices/{id} — id is immutable, taken from the path.
-         *
-         *     `online` is overridden to Optional[bool] = None so that omitting it from
-         *     the PUT body leaves None as the unset sentinel.  Combined with
-         *     ``model_dump(exclude_unset=True)`` in the route handler, omitting `online`
-         *     means "keep the stored value" rather than silently writing False.
-         *     (Fixes issue #12.)
-         */
-        DeviceUpdate: {
-            /** Name */
-            name: string;
-            /** Host */
-            host: string;
-            /** Ip */
-            ip: string;
-            /** Mac */
-            mac: string;
-            /**
-             * Group
-             * @enum {string}
-             */
-            group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
-            /** Type */
-            type: string;
-            /** Online */
-            online?: boolean | null;
-            /** Cpu */
-            cpu?: string | null;
-            /** Mem */
-            mem?: string | null;
-            /** Storage */
-            storage?: string | null;
-            /** Conn */
-            conn?: ("Wired 1G" | "Wired 2.5G" | "Wired 100M" | "Wi-Fi 2.4 GHz" | "Wi-Fi 5 GHz" | "Wi-Fi 6 GHz" | "—") | null;
-            /** Ring */
-            ring?: (0 | 1 | 2) | null;
-            /** Idx */
-            idx?: number | null;
-            /** Last */
-            last?: string | null;
-            /** Uptime */
-            uptime?: string | null;
-            /** Notes */
-            notes?: string | null;
-            /** Url */
-            url?: string | null;
-            detail?: components["schemas"]["DeviceDetail"] | null;
-            /** Id */
-            id?: string | null;
-        };
-        /** Drive */
-        Drive: {
-            /** Nm */
-            nm: string;
-            /** Md */
-            md?: string | null;
-            /** Size */
-            size?: string | null;
-            /**
-             * Pct
-             * @default 0
-             */
-            pct: number;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HwInfo */
-        HwInfo: {
-            /** Cpu Full */
-            cpu_full?: string | null;
-            /** Arch */
-            arch?: string | null;
-            /** Mem Full */
-            mem_full?: string | null;
-            /** Chassis */
-            chassis?: string | null;
-            /** Bios */
-            bios?: string | null;
-            /** Motherboard */
-            motherboard?: string | null;
-            /** Gpu */
-            gpu?: string[] | null;
-            /** Storage Drives */
-            storage_drives?: string[] | null;
-        };
-        /** Meta */
-        Meta: {
-            /** Total */
-            total: number;
-            /** Online */
-            online: number;
-            /** Offline */
-            offline: number;
-            /** Updated At */
-            updated_at?: string | null;
-        };
-        /** Metrics */
-        Metrics: {
-            /** Cpu Pct */
-            cpu_pct?: number | null;
-            /** Cpu Series */
-            cpu_series?: number[] | null;
-            /** Mem Pct */
-            mem_pct?: number | null;
-            /** Mem Series */
-            mem_series?: number[] | null;
-            /** Net In */
-            net_in?: number | null;
-            /** Net Out */
-            net_out?: number | null;
-            /** Net In Series */
-            net_in_series?: number[] | null;
-            /** Temp */
-            temp?: number | null;
-        };
-        /** NetInfo */
-        NetInfo: {
-            /** Ipv4 */
-            ipv4?: string | null;
-            /** Ipv6 */
-            ipv6?: string | null;
-            /** Gateway */
-            gateway?: string | null;
-            /** Dns */
-            dns?: string | null;
-            /** Dhcp */
-            dhcp?: string | null;
-            /** Vlan */
-            vlan?: string | null;
-            /** Rssi */
-            rssi?: string | null;
-        };
-        /** Ownership */
-        Ownership: {
-            /** Manufacturer */
-            manufacturer?: string | null;
-            /** Model */
-            model?: string | null;
-            /** Purchased */
-            purchased?: string | null;
-            /** Price */
-            price?: string | null;
-            /** Warranty */
-            warranty?: string | null;
-            /** Location */
-            location?: string | null;
-            /** Tags */
-            tags?: string[] | null;
-        };
-        /** Part */
-        Part: {
-            /** Id */
-            id: string;
-            /**
-             * Category
-             * @enum {string}
-             */
-            category: "cpu" | "gpu" | "ram" | "storage" | "mainboard" | "psu" | "cooler" | "case" | "other";
-            /** Model */
-            model: string;
-            /** Serial */
-            serial?: string | null;
-            /** Purchased */
-            purchased?: string | null;
-            /** Price Jpy */
-            price_jpy?: number | null;
-            /** Warranty Until */
-            warranty_until?: string | null;
-            /**
-             * Status
-             * @default active
-             * @enum {string}
-             */
-            status: "active" | "spare" | "retired" | "failing";
-        };
-        /** PortSlot */
-        PortSlot: {
-            /** Device */
-            device: string;
-            /** Cable */
-            cable?: string | null;
-            /** Role */
-            role?: ("uplink" | "downlink") | null;
-        };
-        /**
-         * ReachabilityDay
-         * @description One calendar day's uptime ratio (0..1), or null when no samples exist
-         *     that day — history is derived from real probes, never invented (spec §6.4).
-         */
-        ReachabilityDay: {
-            /** Date */
-            date: string;
-            /** Uptime */
-            uptime?: number | null;
-            /**
-             * Samples
-             * @default 0
-             */
-            samples: number;
-        };
-        /**
-         * ReachabilityEvent
-         * @description An up/down state transition detected by the collector.
-         */
-        ReachabilityEvent: {
-            /** Ts */
-            ts: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "up" | "down";
-        };
-        /** ReachabilityHistory */
-        ReachabilityHistory: {
-            /** Device Id */
-            device_id: string;
-            /** Days */
-            days: number;
-            /** History */
-            history: components["schemas"]["ReachabilityDay"][];
-            /** Uptime Pct */
-            uptime_pct?: number | null;
-            /**
-             * Events
-             * @default []
-             */
-            events: components["schemas"]["ReachabilityEvent"][];
-        };
-        /** Service */
-        Service: {
-            /** Port */
-            port: number;
-            /**
-             * Proto
-             * @default tcp
-             */
-            proto: string;
-            /**
-             * Svc
-             * @default
-             */
-            svc: string;
-            /**
-             * Banner
-             * @default
-             */
-            banner: string;
-        };
-        /** StorageInfo */
-        StorageInfo: {
-            /** Drives */
-            drives?: components["schemas"]["Drive"][] | null;
-            /** Pool */
-            pool?: string | null;
-            /** Health */
-            health?: string | null;
-        };
-        /** Switch */
-        Switch: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Model */
-            model?: string | null;
-            /**
-             * Type
-             * @default switch
-             * @enum {string}
-             */
-            type: "switch" | "hub";
-            /** Location */
-            location?: string | null;
-            /** Portcount */
-            portCount?: number | null;
-            /** Speed */
-            speed?: string | null;
-            /** Managed */
-            managed?: boolean | null;
-            /**
-             * Online
-             * @default true
-             */
-            online: boolean;
-            /** Notes */
-            notes?: string | null;
-            /** Radio */
-            radio?: string | null;
-            /**
-             * Portmap
-             * @default {}
-             */
-            portMap: {
-                [key: string]: components["schemas"]["PortSlot"] | null;
-            };
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
+  schemas: {
+    /** Body_import_catalog_api_import_post */
+    Body_import_catalog_api_import_post: {
+      /** File */
+      file: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * BuildEvent
+     * @description A configuration change to a device's build (add / remove / replace a
+     *     part). Low-volume, hand-entered history — fits the JSON catalog (#97).
+     */
+    BuildEvent: {
+      /** Date */
+      date: string;
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "add" | "remove" | "replace";
+      /** Part Id */
+      part_id: string;
+      /** Note */
+      note?: string | null;
+    };
+    /** Cable */
+    Cable: {
+      /** Id */
+      id: string;
+      /** Cat */
+      cat?: string | null;
+      /** Len */
+      len?: string | null;
+      /** Color */
+      color?: string | null;
+      /** Jacket */
+      jacket?: string | null;
+      /** Fromdev */
+      fromDev: string;
+      /** Fromport */
+      fromPort?: string | number | null;
+      /** Todev */
+      toDev: string;
+      /** Toport */
+      toPort?: string | number | null;
+      /** Notes */
+      notes?: string | null;
+    };
+    /**
+     * Device
+     * @description A stored device: create payload + its (immutable) id.
+     */
+    Device: {
+      /** Name */
+      name: string;
+      /** Host */
+      host: string;
+      /** Ip */
+      ip: string;
+      /** Mac */
+      mac: string;
+      /**
+       * Group
+       * @enum {string}
+       */
+      group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
+      /** Type */
+      type: string;
+      /**
+       * Online
+       * @default false
+       */
+      online: boolean;
+      /** Cpu */
+      cpu?: string | null;
+      /** Mem */
+      mem?: string | null;
+      /** Storage */
+      storage?: string | null;
+      /** Conn */
+      conn?:
+        | (
+            | "Wired 1G"
+            | "Wired 2.5G"
+            | "Wired 100M"
+            | "Wi-Fi 2.4 GHz"
+            | "Wi-Fi 5 GHz"
+            | "Wi-Fi 6 GHz"
+            | "—"
+          )
+        | null;
+      /** Ring */
+      ring?: (0 | 1 | 2) | null;
+      /** Idx */
+      idx?: number | null;
+      /** Last */
+      last?: string | null;
+      /** Uptime */
+      uptime?: string | null;
+      /** Notes */
+      notes?: string | null;
+      /** Url */
+      url?: string | null;
+      detail?: components["schemas"]["DeviceDetail"] | null;
+      /** Id */
+      id: string;
+    };
+    /**
+     * DeviceCreate
+     * @description Body for POST /api/devices — id is supplied by the client (kebab-case).
+     */
+    DeviceCreate: {
+      /** Name */
+      name: string;
+      /** Host */
+      host: string;
+      /** Ip */
+      ip: string;
+      /** Mac */
+      mac: string;
+      /**
+       * Group
+       * @enum {string}
+       */
+      group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
+      /** Type */
+      type: string;
+      /**
+       * Online
+       * @default false
+       */
+      online: boolean;
+      /** Cpu */
+      cpu?: string | null;
+      /** Mem */
+      mem?: string | null;
+      /** Storage */
+      storage?: string | null;
+      /** Conn */
+      conn?:
+        | (
+            | "Wired 1G"
+            | "Wired 2.5G"
+            | "Wired 100M"
+            | "Wi-Fi 2.4 GHz"
+            | "Wi-Fi 5 GHz"
+            | "Wi-Fi 6 GHz"
+            | "—"
+          )
+        | null;
+      /** Ring */
+      ring?: (0 | 1 | 2) | null;
+      /** Idx */
+      idx?: number | null;
+      /** Last */
+      last?: string | null;
+      /** Uptime */
+      uptime?: string | null;
+      /** Notes */
+      notes?: string | null;
+      /** Url */
+      url?: string | null;
+      detail?: components["schemas"]["DeviceDetail"] | null;
+      /** Id */
+      id: string;
+    };
+    /**
+     * DeviceDetail
+     * @description Detail-view-only payload (spec §3.3). All fields optional / nullable.
+     */
+    DeviceDetail: {
+      net?: components["schemas"]["NetInfo"] | null;
+      hw?: components["schemas"]["HwInfo"] | null;
+      metrics?: components["schemas"]["Metrics"] | null;
+      /** Services */
+      services?: components["schemas"]["Service"][] | null;
+      storage?: components["schemas"]["StorageInfo"] | null;
+      /** Hist7 */
+      hist7?: number[] | null;
+      own?: components["schemas"]["Ownership"] | null;
+      /** Parts */
+      parts?: components["schemas"]["Part"][] | null;
+      /** Build Events */
+      build_events?: components["schemas"]["BuildEvent"][] | null;
+    };
+    /**
+     * DeviceUpdate
+     * @description Body for PUT /api/devices/{id} — id is immutable, taken from the path.
+     *
+     *     `online` is overridden to Optional[bool] = None so that omitting it from
+     *     the PUT body leaves None as the unset sentinel.  Combined with
+     *     ``model_dump(exclude_unset=True)`` in the route handler, omitting `online`
+     *     means "keep the stored value" rather than silently writing False.
+     *     (Fixes issue #12.)
+     */
+    DeviceUpdate: {
+      /** Name */
+      name: string;
+      /** Host */
+      host: string;
+      /** Ip */
+      ip: string;
+      /** Mac */
+      mac: string;
+      /**
+       * Group
+       * @enum {string}
+       */
+      group: "Infra" | "IoT" | "Media" | "Mobile" | "Computer" | "Misc";
+      /** Type */
+      type: string;
+      /** Online */
+      online?: boolean | null;
+      /** Cpu */
+      cpu?: string | null;
+      /** Mem */
+      mem?: string | null;
+      /** Storage */
+      storage?: string | null;
+      /** Conn */
+      conn?:
+        | (
+            | "Wired 1G"
+            | "Wired 2.5G"
+            | "Wired 100M"
+            | "Wi-Fi 2.4 GHz"
+            | "Wi-Fi 5 GHz"
+            | "Wi-Fi 6 GHz"
+            | "—"
+          )
+        | null;
+      /** Ring */
+      ring?: (0 | 1 | 2) | null;
+      /** Idx */
+      idx?: number | null;
+      /** Last */
+      last?: string | null;
+      /** Uptime */
+      uptime?: string | null;
+      /** Notes */
+      notes?: string | null;
+      /** Url */
+      url?: string | null;
+      detail?: components["schemas"]["DeviceDetail"] | null;
+      /** Id */
+      id?: string | null;
+    };
+    /** Drive */
+    Drive: {
+      /** Nm */
+      nm: string;
+      /** Md */
+      md?: string | null;
+      /** Size */
+      size?: string | null;
+      /**
+       * Pct
+       * @default 0
+       */
+      pct: number;
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components["schemas"]["ValidationError"][];
+    };
+    /** HwInfo */
+    HwInfo: {
+      /** Cpu Full */
+      cpu_full?: string | null;
+      /** Arch */
+      arch?: string | null;
+      /** Mem Full */
+      mem_full?: string | null;
+      /** Chassis */
+      chassis?: string | null;
+      /** Bios */
+      bios?: string | null;
+      /** Motherboard */
+      motherboard?: string | null;
+      /** Gpu */
+      gpu?: string[] | null;
+      /** Storage Drives */
+      storage_drives?: string[] | null;
+    };
+    /** Meta */
+    Meta: {
+      /** Total */
+      total: number;
+      /** Online */
+      online: number;
+      /** Offline */
+      offline: number;
+      /** Updated At */
+      updated_at?: string | null;
+    };
+    /** Metrics */
+    Metrics: {
+      /** Cpu Pct */
+      cpu_pct?: number | null;
+      /** Cpu Series */
+      cpu_series?: number[] | null;
+      /** Mem Pct */
+      mem_pct?: number | null;
+      /** Mem Series */
+      mem_series?: number[] | null;
+      /** Net In */
+      net_in?: number | null;
+      /** Net Out */
+      net_out?: number | null;
+      /** Net In Series */
+      net_in_series?: number[] | null;
+      /** Temp */
+      temp?: number | null;
+    };
+    /** NetInfo */
+    NetInfo: {
+      /** Ipv4 */
+      ipv4?: string | null;
+      /** Ipv6 */
+      ipv6?: string | null;
+      /** Gateway */
+      gateway?: string | null;
+      /** Dns */
+      dns?: string | null;
+      /** Dhcp */
+      dhcp?: string | null;
+      /** Vlan */
+      vlan?: string | null;
+      /** Rssi */
+      rssi?: string | null;
+    };
+    /** Ownership */
+    Ownership: {
+      /** Manufacturer */
+      manufacturer?: string | null;
+      /** Model */
+      model?: string | null;
+      /** Purchased */
+      purchased?: string | null;
+      /** Price */
+      price?: string | null;
+      /** Warranty */
+      warranty?: string | null;
+      /** Location */
+      location?: string | null;
+      /** Tags */
+      tags?: string[] | null;
+    };
+    /** Part */
+    Part: {
+      /** Id */
+      id: string;
+      /**
+       * Category
+       * @enum {string}
+       */
+      category:
+        | "cpu"
+        | "gpu"
+        | "ram"
+        | "storage"
+        | "mainboard"
+        | "psu"
+        | "cooler"
+        | "case"
+        | "other";
+      /** Model */
+      model: string;
+      /** Serial */
+      serial?: string | null;
+      /** Purchased */
+      purchased?: string | null;
+      /** Price Jpy */
+      price_jpy?: number | null;
+      /** Warranty Until */
+      warranty_until?: string | null;
+      /**
+       * Status
+       * @default active
+       * @enum {string}
+       */
+      status: "active" | "spare" | "retired" | "failing";
+    };
+    /** PortSlot */
+    PortSlot: {
+      /** Device */
+      device: string;
+      /** Cable */
+      cable?: string | null;
+      /** Role */
+      role?: ("uplink" | "downlink") | null;
+    };
+    /**
+     * ReachabilityDay
+     * @description One calendar day's uptime ratio (0..1), or null when no samples exist
+     *     that day — history is derived from real probes, never invented (spec §6.4).
+     */
+    ReachabilityDay: {
+      /** Date */
+      date: string;
+      /** Uptime */
+      uptime?: number | null;
+      /**
+       * Samples
+       * @default 0
+       */
+      samples: number;
+    };
+    /**
+     * ReachabilityEvent
+     * @description An up/down state transition detected by the collector.
+     */
+    ReachabilityEvent: {
+      /** Ts */
+      ts: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "up" | "down";
+    };
+    /** ReachabilityHistory */
+    ReachabilityHistory: {
+      /** Device Id */
+      device_id: string;
+      /** Days */
+      days: number;
+      /** History */
+      history: components["schemas"]["ReachabilityDay"][];
+      /** Uptime Pct */
+      uptime_pct?: number | null;
+      /**
+       * Events
+       * @default []
+       */
+      events: components["schemas"]["ReachabilityEvent"][];
+    };
+    /** Service */
+    Service: {
+      /** Port */
+      port: number;
+      /**
+       * Proto
+       * @default tcp
+       */
+      proto: string;
+      /**
+       * Svc
+       * @default
+       */
+      svc: string;
+      /**
+       * Banner
+       * @default
+       */
+      banner: string;
+    };
+    /** StorageInfo */
+    StorageInfo: {
+      /** Drives */
+      drives?: components["schemas"]["Drive"][] | null;
+      /** Pool */
+      pool?: string | null;
+      /** Health */
+      health?: string | null;
+    };
+    /** Switch */
+    Switch: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Model */
+      model?: string | null;
+      /**
+       * Type
+       * @default switch
+       * @enum {string}
+       */
+      type: "switch" | "hub";
+      /** Location */
+      location?: string | null;
+      /** Portcount */
+      portCount?: number | null;
+      /** Speed */
+      speed?: string | null;
+      /** Managed */
+      managed?: boolean | null;
+      /**
+       * Online
+       * @default true
+       */
+      online: boolean;
+      /** Notes */
+      notes?: string | null;
+      /** Radio */
+      radio?: string | null;
+      /**
+       * Portmap
+       * @default {}
+       */
+      portMap: {
+        [key: string]: components["schemas"]["PortSlot"] | null;
+      };
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_api_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-        };
+  health_api_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    ready_api_ready_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
         };
+      };
     };
-    whoami_api_whoami_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string | null;
-                    };
-                };
-            };
-        };
+  };
+  ready_api_ready_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    oui_lookup_api_oui__mac__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                mac: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string | null;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
         };
+      };
     };
-    meta_api_meta_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meta"];
-                };
-            };
-        };
+  };
+  whoami_api_whoami_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_devices_api_devices_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Device"][];
-                };
-            };
+        content: {
+          "application/json": {
+            [key: string]: string | null;
+          };
         };
+      };
     };
-    create_device_api_devices_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DeviceCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Device"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  oui_lookup_api_oui__mac__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        mac: string;
+      };
+      cookie?: never;
     };
-    get_device_api_devices__device_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                device_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Device"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": {
+            [key: string]: string | null;
+          };
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    update_device_api_devices__device_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                device_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DeviceUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Device"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  meta_api_meta_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    delete_device_api_devices__device_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                device_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["Meta"];
         };
+      };
     };
-    device_reachability_api_devices__device_id__reachability_get: {
-        parameters: {
-            query?: {
-                days?: number;
-            };
-            header?: never;
-            path: {
-                device_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReachabilityHistory"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_devices_api_devices_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    wake_device_api_devices__device_id__wake_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                device_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["Device"][];
         };
+      };
     };
-    get_switches_api_switches_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Switch"][];
-                };
-            };
-        };
+  };
+  create_device_api_devices_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_cables_api_cables_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Cable"][];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeviceCreate"];
+      };
     };
-    export_catalog_api_export_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["Device"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    import_catalog_api_import_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_import_catalog_api_import_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_device_api_devices__device_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
     };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Device"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_device_api_devices__device_id__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeviceUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Device"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_device_api_devices__device_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  device_reachability_api_devices__device_id__reachability_get: {
+    parameters: {
+      query?: {
+        days?: number;
+      };
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReachabilityHistory"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  wake_device_api_devices__device_id__wake_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_switches_api_switches_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Switch"][];
+        };
+      };
+    };
+  };
+  get_cables_api_cables_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Cable"][];
+        };
+      };
+    };
+  };
+  export_catalog_api_export_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  import_catalog_api_import_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_import_catalog_api_import_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: number;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
 }

@@ -28,9 +28,7 @@ describe("serviceUrl (#183)", () => {
   });
 
   it("links http when the service name mentions HTTP, on any port", () => {
-    expect(serviceUrl(ip, svc({ port: 7777, svc: "http-alt" }))).toBe(
-      "http://192.168.1.20:7777",
-    );
+    expect(serviceUrl(ip, svc({ port: 7777, svc: "http-alt" }))).toBe("http://192.168.1.20:7777");
   });
 
   it("returns null for non-HTTP tcp ports and for non-tcp protocols", () => {

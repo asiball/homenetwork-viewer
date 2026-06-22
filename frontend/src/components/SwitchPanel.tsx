@@ -46,9 +46,7 @@ export function SwitchPanel({ sw }: Props) {
           <dt>speed</dt>
           <dd>{sw.speed ?? "—"}</dd>
           <dt>ports</dt>
-          <dd>
-            {sw.portCount != null ? `${used} / ${sw.portCount} used` : `${used} used`}
-          </dd>
+          <dd>{sw.portCount != null ? `${used} / ${sw.portCount} used` : `${used} used`}</dd>
           {sw.radio && (
             <>
               <dt>radio</dt>

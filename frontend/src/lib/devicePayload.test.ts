@@ -99,7 +99,13 @@ describe("buildPayload", () => {
       type: "desktop",
     };
     const parts = [
-      { id: "cpu-1", category: "cpu" as const, model: "N100", price_jpy: 20000, status: "active" as const },
+      {
+        id: "cpu-1",
+        category: "cpu" as const,
+        model: "N100",
+        price_jpy: 20000,
+        status: "active" as const,
+      },
       { id: "", category: "gpu" as const, model: "", status: "active" as const }, // blank → dropped
     ];
     const events = [
@@ -115,7 +121,10 @@ describe("buildPayload", () => {
   it("clears a previously-stored parts list when emptied (#97)", () => {
     const dev: Device = {
       ...existing,
-      detail: { ...existing.detail, parts: [{ id: "p1", category: "cpu", model: "old", status: "active" }] },
+      detail: {
+        ...existing.detail,
+        parts: [{ id: "p1", category: "cpu", model: "old", status: "active" }],
+      },
     };
     const p = buildPayload(formFromDevice(dev), dev, "edit", "nas", [], []);
     expect(p.detail?.parts).toBeNull();
@@ -169,7 +178,15 @@ describe("buildPayload", () => {
   it("uses the path id in edit mode, the form id in add mode", () => {
     const editP = buildPayload(formFromDevice(existing), existing, "edit", "nas");
     expect(editP.id).toBe("nas");
-    const addForm = { ...emptyForm(), id: "new-dev", name: "X", host: "x", ip: "192.168.1.9", mac: "DE:AD:BE:EF:00:09", type: "desktop" };
+    const addForm = {
+      ...emptyForm(),
+      id: "new-dev",
+      name: "X",
+      host: "x",
+      ip: "192.168.1.9",
+      mac: "DE:AD:BE:EF:00:09",
+      type: "desktop",
+    };
     const addP = buildPayload(addForm, undefined, "add", "");
     expect(addP.id).toBe("new-dev");
   });

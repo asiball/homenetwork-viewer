@@ -53,13 +53,13 @@ function Probe() {
 function renderApp() {
   const router = createMemoryRouter(
     [{ element: <App />, children: [{ index: true, element: <Probe /> }] }],
-    { initialEntries: ["/"] },
+    { initialEntries: ["/"] }
   );
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 

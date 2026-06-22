@@ -67,19 +67,19 @@ export function HomeView() {
 
   const visible = useMemo(
     () => devices.filter((d) => showOffline || d.online),
-    [devices, showOffline],
+    [devices, showOffline]
   );
 
   const mapVisible = useMemo(
     () => visible.filter((d) => matchesQuery(d, searchQuery)),
-    [visible, searchQuery],
+    [visible, searchQuery]
   );
 
   // Compute the layout once and share it with TopologyMap, instead of both this
   // view (for keyboard-nav ordering) and the map computing it for the tree (#166).
   const layoutResult = useMemo(
     () => computeLayout(layout, mapVisible, false, switches),
-    [layout, mapVisible, switches],
+    [layout, mapVisible, switches]
   );
 
   // Link-speed overlay for the wiring tree: derive each cable's speed and index
@@ -98,9 +98,7 @@ export function HomeView() {
   const ordered = useMemo(() => {
     if (layout === "tree") {
       const { positions } = layoutResult;
-      return [...mapVisible].sort(
-        (a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0),
-      );
+      return [...mapVisible].sort((a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0));
     }
     return orderedByGroup(mapVisible);
   }, [layout, mapVisible, layoutResult]);
@@ -174,8 +172,8 @@ export function HomeView() {
           navigate(`/d/${selected.id}`);
         }
       },
-      [ordered, selected, navigate],
-    ),
+      [ordered, selected, navigate]
+    )
   );
 
   const layoutLabel = layout === "tree" ? "wiring tree" : "radial";
@@ -214,7 +212,9 @@ export function HomeView() {
     try {
       const result = await api.importCatalog(file);
       await refresh();
-      notify(`imported: ${result.devices} devices, ${result.switches} switches, ${result.cables} cables`);
+      notify(
+        `imported: ${result.devices} devices, ${result.switches} switches, ${result.cables} cables`
+      );
     } catch (err) {
       notify(err instanceof Error ? err.message : "import failed", "err");
     }
@@ -243,7 +243,10 @@ export function HomeView() {
       right={
         <>
           <div className="layout-tog" title="switch layout (radial / tree)">
-            <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
+            <button
+              className={layout === "radial" ? "sel" : ""}
+              onClick={() => changeLayout("radial")}
+            >
               ◎ radial
             </button>
             <button className={layout === "tree" ? "sel" : ""} onClick={() => changeLayout("tree")}>
@@ -274,17 +277,28 @@ export function HomeView() {
           <span>
             <b style={{ color: "var(--err)" }}>{devices.length - countOnline(devices)}</b> down
           </span>
-          <span>subnet <b>/24</b></span>
+          <span>
+            subnet <b>/24</b>
+          </span>
           <button className={`tg ${showOffline ? "on" : ""}`} onClick={toggleOffline}>
             show offline · <b>{showOffline ? "on" : "off"}</b>
           </button>
           <span className="right" style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button className="tg" onClick={handleExport} title="download catalog backup">&#x21E9; export</button>
+            <button className="tg" onClick={handleExport} title="download catalog backup">
+              &#x21E9; export
+            </button>
             <label className="tg" style={{ cursor: "pointer" }} title="restore catalog from backup">
               &#x21E7; import
-              <input type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+              <input
+                type="file"
+                accept=".json"
+                style={{ display: "none" }}
+                onChange={handleImport}
+              />
             </label>
-            <span>homenet {APP_VERSION} · {layoutLabel}</span>
+            <span>
+              homenet {APP_VERSION} · {layoutLabel}
+            </span>
           </span>
         </>
       }

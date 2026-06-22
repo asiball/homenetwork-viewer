@@ -23,7 +23,7 @@ const narrowWeekday = (d: Date): string => d.toLocaleDateString("en-US", { weekd
 
 export function resolveHistory(
   reach: ReachabilityHistory | null,
-  hist7: number[] | null,
+  hist7: number[] | null
 ): ResolvedHistory {
   const liveDays = reach?.history ?? null;
   // Live wins only when at least one day actually has samples — an empty series

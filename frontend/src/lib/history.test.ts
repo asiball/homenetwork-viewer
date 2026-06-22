@@ -49,7 +49,7 @@ describe("resolveHistory (#171)", () => {
   it("labels each manual bar (one per hist7 entry)", () => {
     const res = resolveHistory(null, [0.1, 0.2, 0.3, 0.4]);
     expect(res.bars?.map((b) => b.label).every((l) => typeof l === "string" && l.length > 0)).toBe(
-      true,
+      true
     );
   });
 });

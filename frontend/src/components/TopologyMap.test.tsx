@@ -33,12 +33,7 @@ const catalog = (devices: Device[], switches: Switch[], cables: Cable[]): Catalo
   notify: vi.fn(),
 });
 
-function renderTree(
-  devices: Device[],
-  switches: Switch[],
-  cables: Cable[],
-  withOverlay: boolean,
-) {
+function renderTree(devices: Device[], switches: Switch[], cables: Cable[], withOverlay: boolean) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const linkIndex = withOverlay
     ? linkIndexByPair(analyzeBottlenecks(devices, switches, cables).links)
@@ -56,7 +51,7 @@ function renderTree(
           />
         </MemoryRouter>
       </CatalogContext.Provider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 

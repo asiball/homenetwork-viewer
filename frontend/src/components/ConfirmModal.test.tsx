@@ -16,7 +16,7 @@ function setup(open: boolean) {
       danger
       onConfirm={onConfirm}
       onCancel={onCancel}
-    />,
+    />
   );
   return { onConfirm, onCancel, ...utils };
 }

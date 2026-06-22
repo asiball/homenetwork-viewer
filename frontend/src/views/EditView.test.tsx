@@ -33,17 +33,16 @@ const catalog = (devices: Device[]): CatalogValue => ({
 });
 
 function renderAdd(devices: Device[] = []) {
-  const router = createMemoryRouter(
-    [{ path: "/add", element: <EditView mode="add" /> }],
-    { initialEntries: ["/add"] },
-  );
+  const router = createMemoryRouter([{ path: "/add", element: <EditView mode="add" /> }], {
+    initialEntries: ["/add"],
+  });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <CatalogContext.Provider value={catalog(devices)}>
         <RouterProvider router={router} />
       </CatalogContext.Provider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 

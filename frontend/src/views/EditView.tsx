@@ -3,7 +3,14 @@
 // blocks (net/hw/metrics/services/storage/hist7) untouched on update.
 
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useParams, useBlocker, useLocation, type Location } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useBlocker,
+  useLocation,
+  type Location,
+} from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Spinner } from "../components/Spinner";
@@ -49,7 +56,11 @@ function Field(props: {
       </label>
       {props.children}
       {props.hint && !props.error && <span className="hint">{props.hint}</span>}
-      {props.error && <span className="err" id={`${props.id}-err`}>{props.error}</span>}
+      {props.error && (
+        <span className="err" id={`${props.id}-err`}>
+          {props.error}
+        </span>
+      )}
     </div>
   );
 }
@@ -102,7 +113,11 @@ export function EditView({ mode }: Props) {
   // Snapshot of the full editable state (form + parts + events) at load, so the
   // unsaved-changes guard also fires when only parts/build history changed (#97).
   const initialSnapshot = useRef<string>(
-    JSON.stringify({ form: makeInitialForm(), parts: makeInitialParts(), buildEvents: makeInitialEvents() }),
+    JSON.stringify({
+      form: makeInitialForm(),
+      parts: makeInitialParts(),
+      buildEvents: makeInitialEvents(),
+    })
   );
 
   if (id !== loadedId) {
@@ -114,7 +129,11 @@ export function EditView({ mode }: Props) {
     setParts(newParts);
     setBuildEvents(newEvents);
     // eslint-disable-next-line react-hooks/refs
-    initialSnapshot.current = JSON.stringify({ form: newForm, parts: newParts, buildEvents: newEvents });
+    initialSnapshot.current = JSON.stringify({
+      form: newForm,
+      parts: newParts,
+      buildEvents: newEvents,
+    });
     setIdTouched(false);
     setErrors({});
     setSubmitErr(null);
@@ -124,7 +143,7 @@ export function EditView({ mode }: Props) {
   // unrelated re-render (OUI query updates, busy toggles, modal open…) (#166).
   const liveSnapshot = useMemo(
     () => JSON.stringify({ form, parts, buildEvents }),
-    [form, parts, buildEvents],
+    [form, parts, buildEvents]
   );
   // eslint-disable-next-line react-hooks/refs
   const isDirty = liveSnapshot !== initialSnapshot.current;
@@ -245,14 +264,15 @@ export function EditView({ mode }: Props) {
     return Object.keys(e).length === 0;
   }
 
-
   async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     setSubmitErr(null);
     if (!validate()) {
       requestAnimationFrame(() => {
-        const firstBad = document.querySelector<HTMLElement>('.f-field.bad input, .f-field.bad select');
-        firstBad?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstBad = document.querySelector<HTMLElement>(
+          ".f-field.bad input, .f-field.bad select"
+        );
+        firstBad?.scrollIntoView({ behavior: "smooth", block: "center" });
         firstBad?.focus();
       });
       return;
@@ -307,7 +327,9 @@ export function EditView({ mode }: Props) {
     return <DeviceNotFound devices={devices} id={id} />;
   }
 
-  const footer = <ViewFooter view={mode === "add" ? "add" : "edit"} tail={mode === "add" ? "new device" : id} />;
+  const footer = (
+    <ViewFooter view={mode === "add" ? "add" : "edit"} tail={mode === "add" ? "new device" : id} />
+  );
   const backTo = mode === "edit" ? `/d/${id}` : "/";
 
   return (
@@ -317,7 +339,9 @@ export function EditView({ mode }: Props) {
       onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to={backTo}>← {mode === "edit" ? "detail" : "map"}</Link>
+          <Link className="d-back" to={backTo}>
+            ← {mode === "edit" ? "detail" : "map"}
+          </Link>
           &nbsp;<span>{mode === "add" ? "add device" : existing?.host}</span>
         </>
       }
@@ -356,7 +380,13 @@ export function EditView({ mode }: Props) {
 
           <div className="f-section" data-title="identity" aria-label="identity">
             <div className="f-grid">
-              <Field id="f-id" label="id" required={mode === "add"} error={errors.id} hint="kebab-case · 不変">
+              <Field
+                id="f-id"
+                label="id"
+                required={mode === "add"}
+                error={errors.id}
+                hint="kebab-case · 不変"
+              >
                 <input
                   id="f-id"
                   value={form.id}
@@ -408,7 +438,11 @@ export function EditView({ mode }: Props) {
                 {showFreeIp && (
                   <span className="oui-suggest">
                     free: {freeIp}
-                    <button type="button" className="oui-apply" onClick={() => freeIp && set("ip", freeIp)}>
+                    <button
+                      type="button"
+                      className="oui-apply"
+                      onClick={() => freeIp && set("ip", freeIp)}
+                    >
                       use
                     </button>
                   </span>
@@ -432,13 +466,23 @@ export function EditView({ mode }: Props) {
                 {showOuiSuggestion && (
                   <span className="oui-suggest">
                     OUI: {ouiVendor}
-                    <button type="button" className="oui-apply" onClick={() => ouiVendor && set("manufacturer", ouiVendor)}>
+                    <button
+                      type="button"
+                      className="oui-apply"
+                      onClick={() => ouiVendor && set("manufacturer", ouiVendor)}
+                    >
                       use as manufacturer
                     </button>
                   </span>
                 )}
               </Field>
-              <Field id="f-type" label="type" required error={errors.type} hint="アイコン・分類に使用">
+              <Field
+                id="f-type"
+                label="type"
+                required
+                error={errors.type}
+                hint="アイコン・分類に使用"
+              >
                 <input
                   id="f-type"
                   value={form.type}
@@ -455,7 +499,11 @@ export function EditView({ mode }: Props) {
                 </datalist>
               </Field>
               <Field id="f-group" label="group" required>
-                <select id="f-group" value={form.group} onChange={(e) => set("group", e.target.value as Group)}>
+                <select
+                  id="f-group"
+                  value={form.group}
+                  onChange={(e) => set("group", e.target.value as Group)}
+                >
                   {GROUP_ORDER.map((g) => (
                     <option key={g} value={g}>
                       {g}
@@ -480,7 +528,11 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="placement & link" aria-label="placement & link">
             <div className="f-grid">
               <Field id="f-conn" label="connection">
-                <select id="f-conn" value={form.conn} onChange={(e) => set("conn", e.target.value as Conn | "")}>
+                <select
+                  id="f-conn"
+                  value={form.conn}
+                  onChange={(e) => set("conn", e.target.value as Conn | "")}
+                >
                   <option value="">— (未設定)</option>
                   {CONN_OPTIONS.map((c) => (
                     <option key={c} value={c}>
@@ -490,7 +542,11 @@ export function EditView({ mode }: Props) {
                 </select>
               </Field>
               <Field id="f-ring" label="topology ring" hint="マップ上の配置層">
-                <select id="f-ring" value={form.ring} onChange={(e) => set("ring", e.target.value as FormState["ring"])}>
+                <select
+                  id="f-ring"
+                  value={form.ring}
+                  onChange={(e) => set("ring", e.target.value as FormState["ring"])}
+                >
                   <option value="2">2 · leaf (末端 / 既定)</option>
                   <option value="1">1 · infrastructure</option>
                   <option value="0">0 · gateway</option>
@@ -516,31 +572,75 @@ export function EditView({ mode }: Props) {
             </div>
           </div>
 
-          <div className="f-section" data-title="hardware (summary)" aria-label="hardware (summary)">
+          <div
+            className="f-section"
+            data-title="hardware (summary)"
+            aria-label="hardware (summary)"
+          >
             <div className="f-grid">
               <Field id="f-cpu" label="cpu">
-                <input id="f-cpu" value={form.cpu} onChange={(e) => set("cpu", e.target.value)} placeholder="Intel N100 4C / 4T" />
+                <input
+                  id="f-cpu"
+                  value={form.cpu}
+                  onChange={(e) => set("cpu", e.target.value)}
+                  placeholder="Intel N100 4C / 4T"
+                />
               </Field>
               <Field id="f-mem" label="memory">
-                <input id="f-mem" value={form.mem} onChange={(e) => set("mem", e.target.value)} placeholder="16 GB DDR4" />
+                <input
+                  id="f-mem"
+                  value={form.mem}
+                  onChange={(e) => set("mem", e.target.value)}
+                  placeholder="16 GB DDR4"
+                />
               </Field>
               <Field id="f-arch" label="arch">
-                <input id="f-arch" value={form.arch} onChange={(e) => set("arch", e.target.value)} placeholder="x86_64 / arm64" />
+                <input
+                  id="f-arch"
+                  value={form.arch}
+                  onChange={(e) => set("arch", e.target.value)}
+                  placeholder="x86_64 / arm64"
+                />
               </Field>
               <Field id="f-chassis" label="chassis">
-                <input id="f-chassis" value={form.chassis} onChange={(e) => set("chassis", e.target.value)} placeholder="Mini-ITX / Tower" />
+                <input
+                  id="f-chassis"
+                  value={form.chassis}
+                  onChange={(e) => set("chassis", e.target.value)}
+                  placeholder="Mini-ITX / Tower"
+                />
               </Field>
               <Field id="f-bios" label="firmware / bios">
-                <input id="f-bios" value={form.bios} onChange={(e) => set("bios", e.target.value)} placeholder="AMI 2.21" />
+                <input
+                  id="f-bios"
+                  value={form.bios}
+                  onChange={(e) => set("bios", e.target.value)}
+                  placeholder="AMI 2.21"
+                />
               </Field>
               <Field id="f-motherboard" label="motherboard">
-                <input id="f-motherboard" value={form.motherboard} onChange={(e) => set("motherboard", e.target.value)} placeholder="ASUS B550M" />
+                <input
+                  id="f-motherboard"
+                  value={form.motherboard}
+                  onChange={(e) => set("motherboard", e.target.value)}
+                  placeholder="ASUS B550M"
+                />
               </Field>
               <Field id="f-gpu1" label="gpu 1">
-                <input id="f-gpu1" value={form.gpu1} onChange={(e) => set("gpu1", e.target.value)} placeholder="NVIDIA RTX 4070" />
+                <input
+                  id="f-gpu1"
+                  value={form.gpu1}
+                  onChange={(e) => set("gpu1", e.target.value)}
+                  placeholder="NVIDIA RTX 4070"
+                />
               </Field>
               <Field id="f-gpu2" label="gpu 2">
-                <input id="f-gpu2" value={form.gpu2} onChange={(e) => set("gpu2", e.target.value)} placeholder="(optional)" />
+                <input
+                  id="f-gpu2"
+                  value={form.gpu2}
+                  onChange={(e) => set("gpu2", e.target.value)}
+                  placeholder="(optional)"
+                />
               </Field>
               <Field id="f-storage" label="storage" full>
                 <input
@@ -551,10 +651,20 @@ export function EditView({ mode }: Props) {
                 />
               </Field>
               <Field id="f-drive1" label="drive 1">
-                <input id="f-drive1" value={form.storeDrive1} onChange={(e) => set("storeDrive1", e.target.value)} placeholder="Samsung 990 Pro 2TB NVMe" />
+                <input
+                  id="f-drive1"
+                  value={form.storeDrive1}
+                  onChange={(e) => set("storeDrive1", e.target.value)}
+                  placeholder="Samsung 990 Pro 2TB NVMe"
+                />
               </Field>
               <Field id="f-drive2" label="drive 2">
-                <input id="f-drive2" value={form.storeDrive2} onChange={(e) => set("storeDrive2", e.target.value)} placeholder="WD Red 4TB HDD" />
+                <input
+                  id="f-drive2"
+                  value={form.storeDrive2}
+                  onChange={(e) => set("storeDrive2", e.target.value)}
+                  placeholder="WD Red 4TB HDD"
+                />
               </Field>
             </div>
           </div>
@@ -562,43 +672,111 @@ export function EditView({ mode }: Props) {
           <div className="f-section" data-title="ownership" aria-label="ownership">
             <div className="f-grid">
               <Field id="f-manufacturer" label="manufacturer">
-                <input id="f-manufacturer" value={form.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
+                <input
+                  id="f-manufacturer"
+                  value={form.manufacturer}
+                  onChange={(e) => set("manufacturer", e.target.value)}
+                />
               </Field>
               <Field id="f-model" label="model">
-                <input id="f-model" value={form.model} onChange={(e) => set("model", e.target.value)} />
+                <input
+                  id="f-model"
+                  value={form.model}
+                  onChange={(e) => set("model", e.target.value)}
+                />
               </Field>
               <Field id="f-location" label="location">
-                <input id="f-location" value={form.location} onChange={(e) => set("location", e.target.value)} />
+                <input
+                  id="f-location"
+                  value={form.location}
+                  onChange={(e) => set("location", e.target.value)}
+                />
               </Field>
               <Field id="f-purchased" label="purchased">
-                <input id="f-purchased" value={form.purchased} onChange={(e) => set("purchased", e.target.value)} placeholder="2023-08-15" />
+                <input
+                  id="f-purchased"
+                  value={form.purchased}
+                  onChange={(e) => set("purchased", e.target.value)}
+                  placeholder="2023-08-15"
+                />
               </Field>
               <Field id="f-price" label="price">
-                <input id="f-price" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="¥98,000" />
+                <input
+                  id="f-price"
+                  value={form.price}
+                  onChange={(e) => set("price", e.target.value)}
+                  placeholder="¥98,000"
+                />
               </Field>
               <Field id="f-warranty" label="warranty">
-                <input id="f-warranty" value={form.warranty} onChange={(e) => set("warranty", e.target.value)} />
+                <input
+                  id="f-warranty"
+                  value={form.warranty}
+                  onChange={(e) => set("warranty", e.target.value)}
+                />
               </Field>
-              <Field id="f-tags" label="tags" full hint="カンマ区切り（例 always-on, backup, critical）">
-                <input id="f-tags" value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="always-on, critical" />
+              <Field
+                id="f-tags"
+                label="tags"
+                full
+                hint="カンマ区切り（例 always-on, backup, critical）"
+              >
+                <input
+                  id="f-tags"
+                  value={form.tags}
+                  onChange={(e) => set("tags", e.target.value)}
+                  placeholder="always-on, critical"
+                />
               </Field>
             </div>
           </div>
 
           <div className="f-section" data-title="build / parts" aria-label="build / parts">
             <div className="parts-edit">
-              {parts.length === 0 && <div className="hint">部品単位で購入日・価格・保証・状態を管理（自作PC向け · 任意）</div>}
+              {parts.length === 0 && (
+                <div className="hint">
+                  部品単位で購入日・価格・保証・状態を管理（自作PC向け · 任意）
+                </div>
+              )}
               {parts.map((p, i) => (
                 <div className="part-row" key={i}>
-                  <select aria-label="category" value={p.category} onChange={(e) => updatePart(i, { category: e.target.value as Part["category"] })}>
+                  <select
+                    aria-label="category"
+                    value={p.category}
+                    onChange={(e) =>
+                      updatePart(i, { category: e.target.value as Part["category"] })
+                    }
+                  >
                     {PART_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
-                  <input aria-label="part id" value={p.id} onChange={(e) => updatePart(i, { id: e.target.value })} placeholder="id (例 gpu-1)" />
-                  <input aria-label="model" value={p.model} onChange={(e) => updatePart(i, { model: e.target.value })} placeholder="model" />
-                  <input aria-label="serial" value={p.serial ?? ""} onChange={(e) => updatePart(i, { serial: e.target.value || null })} placeholder="serial" />
-                  <input aria-label="purchased" value={p.purchased ?? ""} onChange={(e) => updatePart(i, { purchased: e.target.value || null })} placeholder="purchased YYYY-MM-DD" />
+                  <input
+                    aria-label="part id"
+                    value={p.id}
+                    onChange={(e) => updatePart(i, { id: e.target.value })}
+                    placeholder="id (例 gpu-1)"
+                  />
+                  <input
+                    aria-label="model"
+                    value={p.model}
+                    onChange={(e) => updatePart(i, { model: e.target.value })}
+                    placeholder="model"
+                  />
+                  <input
+                    aria-label="serial"
+                    value={p.serial ?? ""}
+                    onChange={(e) => updatePart(i, { serial: e.target.value || null })}
+                    placeholder="serial"
+                  />
+                  <input
+                    aria-label="purchased"
+                    value={p.purchased ?? ""}
+                    onChange={(e) => updatePart(i, { purchased: e.target.value || null })}
+                    placeholder="purchased YYYY-MM-DD"
+                  />
                   <input
                     aria-label="price (jpy)"
                     inputMode="numeric"
@@ -610,44 +788,109 @@ export function EditView({ mode }: Props) {
                     }}
                     placeholder="price ¥"
                   />
-                  <input aria-label="warranty until" value={p.warranty_until ?? ""} onChange={(e) => updatePart(i, { warranty_until: e.target.value || null })} placeholder="warranty YYYY-MM-DD" />
-                  <select aria-label="status" value={p.status} onChange={(e) => updatePart(i, { status: e.target.value as Part["status"] })}>
+                  <input
+                    aria-label="warranty until"
+                    value={p.warranty_until ?? ""}
+                    onChange={(e) => updatePart(i, { warranty_until: e.target.value || null })}
+                    placeholder="warranty YYYY-MM-DD"
+                  />
+                  <select
+                    aria-label="status"
+                    value={p.status}
+                    onChange={(e) => updatePart(i, { status: e.target.value as Part["status"] })}
+                  >
                     {PART_STATUSES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
                     ))}
                   </select>
-                  <button type="button" className="row-del" aria-label="remove part" onClick={() => removePart(i)}>✕</button>
+                  <button
+                    type="button"
+                    className="row-del"
+                    aria-label="remove part"
+                    onClick={() => removePart(i)}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              <button type="button" className="f-btn ghost row-add" onClick={addPart}>+ add part</button>
+              <button type="button" className="f-btn ghost row-add" onClick={addPart}>
+                + add part
+              </button>
 
               {buildEvents.length > 0 && <div className="hint build-hint">構成変更履歴</div>}
               {buildEvents.map((ev, i) => (
                 <div className="event-row" key={i}>
-                  <input aria-label="event date" value={ev.date} onChange={(e) => updateEvent(i, { date: e.target.value })} placeholder="date YYYY-MM-DD" />
-                  <select aria-label="action" value={ev.action} onChange={(e) => updateEvent(i, { action: e.target.value as BuildEvent["action"] })}>
+                  <input
+                    aria-label="event date"
+                    value={ev.date}
+                    onChange={(e) => updateEvent(i, { date: e.target.value })}
+                    placeholder="date YYYY-MM-DD"
+                  />
+                  <select
+                    aria-label="action"
+                    value={ev.action}
+                    onChange={(e) =>
+                      updateEvent(i, { action: e.target.value as BuildEvent["action"] })
+                    }
+                  >
                     {BUILD_ACTIONS.map((a) => (
-                      <option key={a} value={a}>{a}</option>
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
                     ))}
                   </select>
-                  <select aria-label="part" value={ev.part_id} onChange={(e) => updateEvent(i, { part_id: e.target.value })}>
+                  <select
+                    aria-label="part"
+                    value={ev.part_id}
+                    onChange={(e) => updateEvent(i, { part_id: e.target.value })}
+                  >
                     <option value="">— part —</option>
-                    {parts.filter((p) => p.id.trim()).map((p) => (
-                      <option key={p.id} value={p.id}>{p.id}</option>
-                    ))}
+                    {parts
+                      .filter((p) => p.id.trim())
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.id}
+                        </option>
+                      ))}
                   </select>
-                  <input aria-label="note" value={ev.note ?? ""} onChange={(e) => updateEvent(i, { note: e.target.value || null })} placeholder="note" />
-                  <button type="button" className="row-del" aria-label="remove event" onClick={() => removeEvent(i)}>✕</button>
+                  <input
+                    aria-label="note"
+                    value={ev.note ?? ""}
+                    onChange={(e) => updateEvent(i, { note: e.target.value || null })}
+                    placeholder="note"
+                  />
+                  <button
+                    type="button"
+                    className="row-del"
+                    aria-label="remove event"
+                    onClick={() => removeEvent(i)}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              <button type="button" className="f-btn ghost row-add" onClick={addEvent} disabled={parts.filter((p) => p.id.trim()).length === 0}>+ add build event</button>
+              <button
+                type="button"
+                className="f-btn ghost row-add"
+                onClick={addEvent}
+                disabled={parts.filter((p) => p.id.trim()).length === 0}
+              >
+                + add build event
+              </button>
             </div>
           </div>
 
           <div className="f-section" data-title="notes" aria-label="notes">
             <div className="f-grid">
               <Field id="f-notes" label="notes" full>
-                <textarea id="f-notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={5} />
+                <textarea
+                  id="f-notes"
+                  value={form.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                  rows={5}
+                />
               </Field>
             </div>
           </div>
@@ -660,7 +903,12 @@ export function EditView({ mode }: Props) {
               cancel
             </Link>
             {mode === "edit" && (
-              <button type="button" className="f-btn danger f-spacer" onClick={onDelete} disabled={busy}>
+              <button
+                type="button"
+                className="f-btn danger f-spacer"
+                onClick={onDelete}
+                disabled={busy}
+              >
                 delete
               </button>
             )}

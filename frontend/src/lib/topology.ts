@@ -76,8 +76,7 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
       // 2 infra keep the classic top-right / top-left look; 3+ spread evenly,
       // and we key off list position (not d.idx) so unset idx never collides.
       const i = infra.findIndex((x) => x.id === d.id);
-      const a =
-        infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
+      const a = infra.length <= 2 ? (i === 0 ? 45 : 315) : (45 + i * (360 / infra.length)) % 360;
       const p = polar(a, r1, cx, cy);
       const out = polar(a, r1 + 16, cx, cy);
       let anchor: "start" | "middle" | "end" = "middle";
@@ -100,9 +99,7 @@ function computeRadial(visible: Device[], compact: boolean): Layout {
   // gw is const, so narrowing it to a Device here carries into the map callback
   // and we avoid a non-null assertion on every edge.
   const edges: Edge[] = gw
-    ? visible
-        .filter((d) => d.ring !== 0)
-        .map((d) => ({ from: gw.id, to: d.id, off: !d.online }))
+    ? visible.filter((d) => d.ring !== 0).map((d) => ({ from: gw.id, to: d.id, off: !d.online }))
     : [];
 
   return { positions, edges, deco: { kind: "radial", cx, cy, r1, r2 } };
@@ -235,7 +232,7 @@ export function computeLayout(
   layout: LayoutKind,
   visible: Device[],
   compact: boolean,
-  switches: Switch[] = [],
+  switches: Switch[] = []
 ): Layout {
   if (layout === "tree") return computeTree(visible, switches, compact);
   return computeRadial(visible, compact);

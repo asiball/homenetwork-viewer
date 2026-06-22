@@ -7,6 +7,7 @@ import { HomeView } from "./views/HomeView";
 import { DetailView } from "./views/DetailView";
 import { EditView } from "./views/EditView";
 import { InventoryView } from "./views/InventoryView";
+import { BottleneckView } from "./views/BottleneckView";
 import { prefs } from "./lib/prefs";
 import "./theme.css";
 
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: "/d/:id/edit", element: <EditView mode="edit" /> },
       { path: "/add", element: <EditView mode="add" /> },
       { path: "/inventory", element: <InventoryView /> },
+      { path: "/analysis", element: <BottleneckView /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

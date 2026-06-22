@@ -30,6 +30,9 @@ interface Props {
   /** Wiring-tree only: when provided, edges are colour-coded by derived link
    *  speed and cable bottlenecks are flagged. Keyed by pairKey(from, to). */
   linkIndex?: Map<string, LinkAnalysis>;
+  /** DOM id for the map container (the skip-link target). Pass "" when several
+   *  maps share a screen (compare) so the id stays unique on its wrapper. */
+  containerId?: string;
 }
 
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
@@ -47,6 +50,7 @@ export function TopologyMap({
   compact = false,
   layoutResult,
   linkIndex,
+  containerId = "main-content",
 }: Props) {
   const { switches, selfId } = useCatalog();
   // Reuse the parent's layout when given (HomeView already computes it for its
@@ -297,7 +301,7 @@ export function TopologyMap({
   );
 
   return (
-    <div className="n-map" id="main-content" tabIndex={-1}>
+    <div className="n-map" id={containerId || undefined} tabIndex={containerId ? -1 : undefined}>
       {isTree ? (
         <div
           className="map-scroll"

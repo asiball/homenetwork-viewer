@@ -359,6 +359,23 @@ body {
   position: relative;
   overflow: hidden;
 }
+/* Compare view: radial + tree stacked in the map cell, each taking half and
+   keeping its own internal scroll (the tree) / fit-to-box (radial). */
+.map-compare {
+  grid-area: map;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.map-compare > .n-map {
+  flex: 1 1 0;
+  min-height: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.map-compare > .n-map:last-child {
+  border-bottom: 0;
+}
 .n-map svg {
   display: block;
   width: 100%;

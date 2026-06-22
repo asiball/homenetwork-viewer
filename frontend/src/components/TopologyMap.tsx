@@ -4,7 +4,7 @@
 import { useRef, useMemo } from "react";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { lastOctet } from "../lib/helpers";
+import { groupColor, lastOctet } from "../lib/helpers";
 import {
   computeLayout,
   type Layout,
@@ -211,11 +211,22 @@ export function TopologyMap({
         const cls = `node-box ${isCenter ? "center" : d.online ? "on" : "off"} ${
           isSel ? "sel" : ""
         }`;
+        // Fill the node with its group colour so the map differentiates devices
+        // by category at a glance (#120); status stays in the stroke (on/off/
+        // selected). The gateway and the selected node keep their amber accent.
+        const tint = !isCenter && !isSel ? { fill: groupColor(d.group) } : undefined;
         const lo = p.labelOffset;
         const showLabel = !isCenter && !!lo;
         return (
           <g key={d.id}>
-            <rect className={cls} x={p.x - w / 2} y={p.y - h / 2} width={w} height={h} />
+            <rect
+              className={cls}
+              style={tint}
+              x={p.x - w / 2}
+              y={p.y - h / 2}
+              width={w}
+              height={h}
+            />
             {isCenter && (
               <text
                 className="node-label"

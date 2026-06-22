@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { TopologyMap } from "./TopologyMap";
 import { CatalogContext, type CatalogValue } from "../CatalogContext";
 import { analyzeBottlenecks, linkIndexByPair } from "../lib/bottleneck";
+import { groupColor } from "../lib/helpers";
 import type { Cable, Device, Switch } from "../types";
 
 const dev = (over: Partial<Device> = {}): Device => ({
@@ -55,6 +56,16 @@ function renderTree(devices: Device[], switches: Switch[], cables: Cable[], with
   );
 }
 
+function renderMap(devices: Device[]) {
+  return render(
+    <CatalogContext.Provider value={catalog(devices, [], [])}>
+      <MemoryRouter>
+        <TopologyMap devices={devices} layout="radial" selectedId="gw" onSelect={vi.fn()} />
+      </MemoryRouter>
+    </CatalogContext.Provider>
+  );
+}
+
 describe("TopologyMap link-speed overlay", () => {
   // gw —[Cat5e, 1G]— pc, both 2.5G NICs → the cable is the actionable bottleneck.
   const devices = [
@@ -86,5 +97,28 @@ describe("TopologyMap link-speed overlay", () => {
     expect(container.querySelector(".link.bn-act")).toBeNull();
     expect(container.querySelector(".link-speed")).toBeNull();
     expect(container.querySelector(".map-legend")).toBeNull();
+  });
+});
+
+describe("TopologyMap node group colour (#120)", () => {
+  it("fills a non-selected device node with its group colour", () => {
+    const devices = [
+      dev({ id: "gw", group: "Infra", ring: 0, type: "router" }),
+      dev({ id: "pc", group: "Computer" }),
+    ];
+    const { container } = renderMap(devices);
+    const fills = Array.from(container.querySelectorAll<SVGRectElement>(".node-box")).map(
+      (el) => el.style.fill
+    );
+    // The Computer leaf is tinted with its group colour; the selected gateway
+    // keeps its amber accent (no inline group fill).
+    expect(fills).toContain(groupColor("Computer"));
+  });
+
+  it("does not group-tint the selected node", () => {
+    const devices = [dev({ id: "gw", group: "Infra", ring: 0, type: "router" })];
+    const { container } = renderMap(devices);
+    const gwRect = container.querySelector<SVGRectElement>(".node-box.center");
+    expect(gwRect?.style.fill).toBe("");
   });
 });

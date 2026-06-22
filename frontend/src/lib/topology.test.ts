@@ -50,19 +50,6 @@ describe("computeLayout — radial", () => {
   });
 });
 
-describe("computeLayout — spine", () => {
-  it("places the gateway at the start of the bus and taps each present group", () => {
-    const gw = dev({ id: "gw", type: "router", ring: 0, group: "Infra" });
-    const pc = dev({ id: "pc", group: "Computer" });
-    const { positions, deco } = computeLayout("spine", [gw, pc], false);
-    expect(deco.kind).toBe("spine");
-    if (deco.kind === "spine") {
-      expect(positions.gw).toEqual({ x: deco.startX, y: deco.busY });
-      expect(deco.taps.map((t) => t.cat)).toContain("Computer");
-    }
-  });
-});
-
 describe("computeLayout — tree", () => {
   it("attaches everything to the root when the ledger is empty", () => {
     const gw = dev({ id: "gw", type: "router", ring: 0, group: "Infra" });

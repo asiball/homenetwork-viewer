@@ -401,17 +401,6 @@ body {
   stroke-width: 0.5;
   stroke-dasharray: 2 4;
 }
-.bus {
-  stroke: var(--fg-faint);
-  stroke-width: 1.6;
-}
-.group-title {
-  font-family: var(--mono);
-  font-size: 10px;
-  fill: var(--amber);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
 .link {
   stroke: #2c3441;
   stroke-width: 0.6;

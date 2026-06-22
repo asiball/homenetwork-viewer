@@ -1,11 +1,10 @@
-// Topology map SVG (radial / spine / wiring tree). Ported from
-// variant-noc.jsx render. The tree renders at fixed scale inside a
-// scroll/pan pane; radial & spine scale to fit as before.
+// Topology map SVG (radial / wiring tree). Ported from variant-noc.jsx render.
+// The tree renders at fixed scale inside a scroll/pan pane; radial scales to fit.
 
 import { useRef, useMemo } from "react";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { gatewayInfo, lastOctet } from "../lib/helpers";
+import { lastOctet } from "../lib/helpers";
 import {
   computeLayout,
   type Layout,
@@ -40,7 +39,6 @@ interface Props {
 
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
   radial: "radial",
-  spine: "spine / bus",
   tree: "wiring tree",
 };
 
@@ -55,9 +53,7 @@ export function TopologyMap({
   layoutResult,
   linkIndex,
 }: Props) {
-  const { devices: allDevices, switches, selfId } = useCatalog();
-  // Spine bus label reflects the real gateway, not a hardcoded address (#124).
-  const net = useMemo(() => gatewayInfo(allDevices), [allDevices]);
+  const { switches, selfId } = useCatalog();
   // Reuse the parent's layout when given (HomeView already computes it for its
   // keyboard-nav ordering), else compute it here (#166).
   const { positions, edges, deco, pseudo } = useMemo(
@@ -109,47 +105,7 @@ export function TopologyMap({
             <circle className="ring" cx={deco.cx} cy={deco.cy} r={(deco.r1 + deco.r2) / 2} />
           </>
         )}
-        {deco.kind === "spine" && (
-          <>
-            <line className="bus" x1={deco.startX - 12} y1={deco.busY} x2={deco.endX} y2={deco.busY} />
-            <line
-              x1={deco.startX - 12}
-              y1={deco.busY - 2}
-              x2={deco.endX}
-              y2={deco.busY - 2}
-              style={{ stroke: "var(--rule-2)", strokeWidth: 0.5 }}
-            />
-            <text
-              x={deco.startX - 12}
-              y={deco.busY - 18}
-              textAnchor="start"
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 9,
-                fill: "var(--fg-faint)",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-              }}
-            >
-              {net.iface} · {net.subnet}
-            </text>
-            {deco.taps.map((t) => (
-              <g key={t.cat}>
-                <circle cx={t.x} cy={t.y} r={2.5} fill="var(--fg-faint)" />
-                <text
-                  x={t.x}
-                  y={t.y + (t.labelBelow ? 14 : -8)}
-                  textAnchor="middle"
-                  className="group-title"
-                >
-                  {t.cat}
-                </text>
-              </g>
-            ))}
-          </>
-        )}
-
-        {/* edges — straight for radial/spine, right-angled for the tree */}
+        {/* edges — straight for radial, right-angled for the tree */}
         {(() => {
           const selDevice = devices.find(d => d.id === selectedId);
           const selIsGateway = selDevice?.ring === 0;

@@ -17,10 +17,10 @@
 
 ```
 ┌──────────── HOME · TOPOLOGY MAP ────────────┐        ┌─── DETAIL · 1 DEVICE ───┐
-│ ● HOMENET/NOC   ◎radial ─spine  up 15/22  ⟳ │        │ identity / 4 stats /     │
+│ ● HOMENET/NOC   ◎radial ⑂tree   up 15/22  ⟳ │        │ identity / 4 stats /     │
 │ DEVICE │      ◉ gateway        │  SUMMARY    │  ───►  │ network / hardware /     │
 │ LIST   │     /│\  · · ·        │  identity   │        │ services / storage /     │
-│        │    radial / spine     │  網羅情報   │  ◄───  │ connection / ownership / │
+│        │    radial / tree      │  網羅情報   │  ◄───  │ connection / ownership / │
 └────────┴──────────────────────┴─────────────┘  edit  └──────────── notes ───────┘
 ```
 
@@ -54,7 +54,7 @@ homenetwork-viewer/
 │   ├── src/
 │   │   ├── views/              # HomeView / DetailView / EditView / InventoryView / BottleneckView
 │   │   ├── components/         # Shell / DeviceList / TopologyMap / SummaryPanel / ...
-│   │   ├── lib/                # topology.ts（radial/spine）, bottleneck.ts（リンク速度解析）, helpers.ts
+│   │   ├── lib/                # topology.ts（radial/tree）, bottleneck.ts（リンク速度解析）, helpers.ts
 │   │   ├── api.ts  types.ts  theme.css
 │   └── Dockerfile  nginx.conf
 ├── spec/                       # 正本仕様書（homenet-spec.md / Specification.html）
@@ -109,10 +109,11 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 ## 使い方
 
-- **ホーム** `/` — トポロジーマップ。ヘッダーの **◎ radial / ─ spine / ⑂ tree** で配置を切替
+- **ホーム** `/` — トポロジーマップ。ヘッダーの **◎ radial / ⑂ tree** で配置を切替
   （URL `?layout=...` と同期）。**tree** は switches / cables 台帳の portMap から実配線の階層を
   表示します（固定スケール・ホイールスクロール / 背景ドラッグでパン、スイッチ行をクリックすると
-  右パネルにポートマップ）。左リスト上部のフィルタで名前 / IP / type を部分一致で絞り込み。
+  右パネルにポートマップ）。tree では **⚡ speeds** トグルで各リンクを推定速度で色分けし、ケーブルが
+  ボトルネックの箇所を強調表示します。左リスト上部のフィルタで名前 / IP / type を部分一致で絞り込み。
   左リストやノードをクリックで選択 → 右に概要。`↑ ↓` で選択移動、`Enter` で詳細へ。`+ add` で機器登録。
   フッターの **show offline** でオフライン機器の表示/非表示。
   閲覧中の端末の IP がカタログの機器と一致すると **YOU** バッジ・破線リングが付きます（`/api/whoami`）。
@@ -169,7 +170,7 @@ backend が 8000 以外の場合は `VITE_API_TARGET=http://host:port npm run de
 
 ## ロードマップ
 
-- **v1.0（実装済み）** ホーム（radial / spine / tree）+ 詳細の2画面、カタログ読み込み、オフライン表示。
+- **v1.0（実装済み）** ホーム（radial / tree）+ 詳細の2画面、カタログ読み込み、オフライン表示。
 - **v1.1 編集（前倒し実装済み）** ブラウザからの追加 / 編集 / 削除と永続化（本リポジトリ）。
 - **データ基盤（実装済み）** SQLite 永続化（番号付きマイグレーション基盤、正本=静的カタログ／状態=到達性をテーブル分離）。JSON は import / export 形式として継続。
 - **到達性コレクタ（実装済み）** バックグラウンドで全機器を **TCP プローブ + ICMP ping フォールバック**（120秒間隔）で実測し、

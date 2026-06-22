@@ -19,7 +19,7 @@ import { useIsNarrow } from "../lib/useIsNarrow";
 import { APP_VERSION } from "../version";
 
 function initialLayout(urlLayout: string | null): LayoutKind {
-  if (urlLayout === "spine" || urlLayout === "radial" || urlLayout === "tree") {
+  if (urlLayout === "radial" || urlLayout === "tree") {
     return urlLayout;
   }
   return prefs.layout.get();
@@ -178,8 +178,7 @@ export function HomeView() {
     ),
   );
 
-  const layoutLabel =
-    layout === "spine" ? "spine / bus" : layout === "tree" ? "wiring tree" : "radial";
+  const layoutLabel = layout === "tree" ? "wiring tree" : "radial";
 
   async function handleExport() {
     let url: string | null = null;
@@ -243,12 +242,9 @@ export function HomeView() {
       }
       right={
         <>
-          <div className="layout-tog" title="switch layout (radial / spine / tree)">
+          <div className="layout-tog" title="switch layout (radial / tree)">
             <button className={layout === "radial" ? "sel" : ""} onClick={() => changeLayout("radial")}>
               ◎ radial
-            </button>
-            <button className={layout === "spine" ? "sel" : ""} onClick={() => changeLayout("spine")}>
-              ─ spine
             </button>
             <button className={layout === "tree" ? "sel" : ""} onClick={() => changeLayout("tree")}>
               ⑂ tree

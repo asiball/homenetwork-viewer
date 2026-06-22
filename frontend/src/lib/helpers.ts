@@ -229,8 +229,8 @@ export interface GatewayInfo {
 
 // Derive the network header info (subnet + interface) from the gateway device —
 // the router (type "router") or ring-0 node. Single source for the HomeView
-// breadcrumb and the spine-layout bus label, which previously each inlined this
-// lookup (#124). Falls back to home-lab defaults when there is no gateway.
+// breadcrumb and the topology map's network label, which previously each inlined
+// this lookup (#124). Falls back to home-lab defaults when there is no gateway.
 export function gatewayInfo(devices: Device[]): GatewayInfo {
   const gw = devices.find((d) => d.type === "router" || d.ring === 0);
   const ipv4 = gw?.detail?.net?.ipv4 ?? gw?.ip;

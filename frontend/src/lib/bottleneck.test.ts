@@ -4,6 +4,9 @@ import {
   catToMbps,
   connToMbps,
   fmtMbps,
+  linkIndexByPair,
+  pairKey,
+  speedTier,
   switchSpeedToMbps,
 } from "./bottleneck";
 import type { Cable, Device, Switch } from "../types";
@@ -97,6 +100,30 @@ describe("link analysis", () => {
     expect(links[0].linkMbps).toBeNull();
     expect(links[0].limitedBy).toBe("unknown");
     expect(links[0].unknown.length).toBe(3);
+  });
+});
+
+describe("map overlay helpers", () => {
+  it("pairKey is order-independent", () => {
+    expect(pairKey("a", "b")).toBe(pairKey("b", "a"));
+    expect(pairKey("a", "b")).not.toBe(pairKey("a", "c"));
+  });
+
+  it("buckets speeds into tiers", () => {
+    expect(speedTier(10000)).toBe("fast");
+    expect(speedTier(2500)).toBe("fast");
+    expect(speedTier(1000)).toBe("med");
+    expect(speedTier(100)).toBe("slow");
+    expect(speedTier(null)).toBe("unknown");
+  });
+
+  it("indexes links by endpoint pair, both orderings resolving", () => {
+    const a = dev("a", { conn: "Wired 1G" });
+    const b = dev("b", { conn: "Wired 1G", ring: 0 });
+    const { links } = analyzeBottlenecks([a, b], [], [cable("c1", "a", "b", "Cat6")]);
+    const idx = linkIndexByPair(links);
+    expect(idx.get(pairKey("a", "b"))).toBeDefined();
+    expect(idx.get(pairKey("b", "a"))?.cableId).toBe("c1");
   });
 });
 

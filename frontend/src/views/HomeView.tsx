@@ -12,6 +12,7 @@ import { RefreshControls } from "../components/RefreshControls";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { countOnline, gatewayInfo, matchesQuery, orderedByGroup } from "../lib/helpers";
 import { computeLayout, type LayoutKind } from "../lib/topology";
+import { analyzeBottlenecks, linkIndexByPair } from "../lib/bottleneck";
 import { prefs } from "../lib/prefs";
 import { isTypingTarget, useGlobalKeydown } from "../lib/useGlobalKeydown";
 import { useIsNarrow } from "../lib/useIsNarrow";
@@ -25,7 +26,7 @@ function initialLayout(urlLayout: string | null): LayoutKind {
 }
 
 export function HomeView() {
-  const { devices, switches, refresh, notify } = useCatalog();
+  const { devices, switches, cables, refresh, notify } = useCatalog();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -34,6 +35,8 @@ export function HomeView() {
 
   const [layout, setLayout] = useState<LayoutKind>(() => initialLayout(params.get("layout")));
   const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
+  // Wiring-tree link-speed overlay (off by default; only meaningful on the tree).
+  const [showSpeeds, setShowSpeeds] = useState(() => prefs.showSpeeds.get());
   const [selId, setSelId] = useState<string>(() => {
     // Reopen the most recently viewed device that still exists, else the first.
     const recent = prefs.recent.get().find((id) => devices.some((d) => d.id === id));
@@ -78,6 +81,16 @@ export function HomeView() {
     () => computeLayout(layout, mapVisible, false, switches),
     [layout, mapVisible, switches],
   );
+
+  // Link-speed overlay for the wiring tree: derive each cable's speed and index
+  // it by endpoint pair so TopologyMap can colour edges + flag bottlenecks.
+  // Computed only when the tree is shown with the overlay on (cheap, but skip
+  // the work otherwise), and built from the full catalog so a link's far end is
+  // resolved even when one endpoint is filtered out of `mapVisible`.
+  const linkIndex = useMemo(() => {
+    if (layout !== "tree" || !showSpeeds) return undefined;
+    return linkIndexByPair(analyzeBottlenecks(devices, switches, cables).links);
+  }, [layout, showSpeeds, devices, switches, cables]);
 
   // Keyboard-nav order matches what's actually on the map (mapVisible, i.e.
   // search-filtered) — otherwise ↑/↓ would jump to devices hidden by the search
@@ -126,6 +139,13 @@ export function HomeView() {
   function toggleOffline() {
     setShowOffline((v) => {
       prefs.showOffline.set(!v);
+      return !v;
+    });
+  }
+
+  function toggleSpeeds() {
+    setShowSpeeds((v) => {
+      prefs.showSpeeds.set(!v);
       return !v;
     });
   }
@@ -234,6 +254,16 @@ export function HomeView() {
               ⑂ tree
             </button>
           </div>
+          {layout === "tree" && (
+            <button
+              className={`btn ${showSpeeds ? "" : "ghost"}`}
+              onClick={toggleSpeeds}
+              aria-pressed={showSpeeds}
+              title="colour wiring-tree links by speed & flag cable bottlenecks"
+            >
+              ⚡ speeds
+            </button>
+          )}
           <RefreshControls />
           <Link className="btn" to="/add">
             + add
@@ -273,6 +303,7 @@ export function HomeView() {
             onSelect={handleSelect}
             selectedSwitchId={selSwId}
             onSelectSwitch={setSelSwId}
+            linkIndex={linkIndex}
           />
           {selSw ? <SwitchPanel sw={selSw} /> : <SummaryPanel device={selected} />}
         </>

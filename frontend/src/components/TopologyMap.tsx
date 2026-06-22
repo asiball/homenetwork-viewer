@@ -14,6 +14,12 @@ import {
   MAP_W,
   type Pos,
 } from "../lib/topology";
+import {
+  fmtMbps,
+  type LinkAnalysis,
+  pairKey,
+  speedTier,
+} from "../lib/bottleneck";
 
 interface Props {
   devices: Device[]; // already filtered to "visible"
@@ -27,6 +33,9 @@ interface Props {
   /** Precomputed layout from the parent, to avoid computing it twice (#166).
    *  Falls back to computing here when omitted. */
   layoutResult?: Layout;
+  /** Wiring-tree only: when provided, edges are colour-coded by derived link
+   *  speed and cable bottlenecks are flagged. Keyed by pairKey(from, to). */
+  linkIndex?: Map<string, LinkAnalysis>;
 }
 
 const LAYOUT_LABEL: Record<LayoutKind, string> = {
@@ -44,6 +53,7 @@ export function TopologyMap({
   onSelectSwitch,
   compact = false,
   layoutResult,
+  linkIndex,
 }: Props) {
   const { devices: allDevices, switches, selfId } = useCatalog();
   // Spine bus label reflects the real gateway, not a hardcoded address (#124).
@@ -147,15 +157,39 @@ export function TopologyMap({
           const p1 = getPos(e.from);
           const p2 = getPos(e.to);
           const onSel = !selIsGateway && (e.to === selectedId || e.from === selectedId);
-          const cls = `link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}`;
-          return e.bendX != null ? (
-            <path
-              key={`e${i}`}
-              className={cls}
-              d={`M ${p1.x} ${p1.y} H ${e.bendX} V ${p2.y} H ${p2.x}`}
-            />
-          ) : (
-            <line key={`e${i}`} className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
+          // Link-speed overlay (wiring tree): colour the edge by its derived
+          // speed tier and flag a cable that's the actionable bottleneck. Only
+          // for online edges — an offline link keeps its dashed "off" styling.
+          const link = !e.off ? linkIndex?.get(pairKey(e.from, e.to)) : undefined;
+          const bn = link
+            ? ` bn bn-${speedTier(link.linkMbps)}${link.actionable ? " bn-act" : ""}`
+            : "";
+          const cls = `link ${e.off ? "off" : "on"} ${onSel ? "sel" : ""}${bn}`;
+          const edgeShape =
+            e.bendX != null ? (
+              <path
+                className={cls}
+                d={`M ${p1.x} ${p1.y} H ${e.bendX} V ${p2.y} H ${p2.x}`}
+              />
+            ) : (
+              <line className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
+            );
+          if (!link) return <g key={`e${i}`}>{edgeShape}</g>;
+          // Label the horizontal run into the child (tree) or the line midpoint.
+          const lx = e.bendX != null ? (e.bendX + p2.x) / 2 : (p1.x + p2.x) / 2;
+          const ly = (e.bendX != null ? p2.y : (p1.y + p2.y) / 2) - 3;
+          return (
+            <g key={`e${i}`}>
+              {edgeShape}
+              <text
+                className={`link-speed${link.actionable ? " act" : ""}`}
+                x={lx}
+                y={ly}
+                textAnchor="middle"
+              >
+                {fmtMbps(link.linkMbps)}
+              </text>
+            </g>
           );
         });})()}
 
@@ -332,6 +366,14 @@ export function TopologyMap({
       <div className="map-corner bl">
         {isTree ? "↳ click row to select · drag to pan" : "↳ click node for detail"}
       </div>
+      {isTree && linkIndex && linkIndex.size > 0 && (
+        <div className="map-corner br map-legend" aria-hidden="true">
+          <span className="lg fast">2.5G+</span>
+          <span className="lg med">1G</span>
+          <span className="lg slow">&lt;1G</span>
+          <span className="lg act">cable ↑</span>
+        </div>
+      )}
     </div>
   );
 }

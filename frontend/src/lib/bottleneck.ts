@@ -207,6 +207,33 @@ export interface BottleneckReport {
   worstLinkMbps: number | null;
 }
 
+// ─── Map overlay helpers ─────────────────────────────────────────────────────
+
+// Order-independent key for a link between two node ids, so a topology edge
+// (parent→child) can find its cable regardless of which end the cable lists
+// as `fromDev`.
+export function pairKey(a: string, b: string): string {
+  return a < b ? `${a} ${b}` : `${b} ${a}`;
+}
+
+// Index links by their endpoint pair, for the wiring-tree edge overlay.
+export function linkIndexByPair(links: LinkAnalysis[]): Map<string, LinkAnalysis> {
+  const map = new Map<string, LinkAnalysis>();
+  for (const l of links) map.set(pairKey(l.fromId, l.toId), l);
+  return map;
+}
+
+export type SpeedTier = "fast" | "med" | "slow" | "unknown";
+
+// Coarse speed bucket for colouring an edge: 2.5G+ = fast, 1G = med,
+// sub-1G = slow, underivable = unknown.
+export function speedTier(mbps: number | null): SpeedTier {
+  if (mbps == null) return "unknown";
+  if (mbps >= 2500) return "fast";
+  if (mbps >= 1000) return "med";
+  return "slow";
+}
+
 // Sort key that pushes "unknown" (null) speeds to the end of a slowest-first list.
 function bySpeedAsc(a: number | null, b: number | null): number {
   if (a == null && b == null) return 0;

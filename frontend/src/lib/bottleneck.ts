@@ -190,10 +190,12 @@ export interface DevicePath {
   hasUnknown: boolean;
 }
 
+// The gateway/root of the wired tree: the ring-0 node, else a router. Returns
+// undefined when neither exists — we don't guess an arbitrary devices[0] root,
+// which would produce misleading per-device paths; the link table still stands
+// on its own without a root.
 function pickRoot(devices: Device[]): Device | undefined {
-  return (
-    devices.find((d) => d.ring === 0) ?? devices.find((d) => d.type === "router") ?? devices[0]
-  );
+  return devices.find((d) => d.ring === 0) ?? devices.find((d) => d.type === "router");
 }
 
 // ─── Report ──────────────────────────────────────────────────────────────────

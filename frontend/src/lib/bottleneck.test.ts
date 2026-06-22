@@ -153,4 +153,14 @@ describe("path analysis", () => {
     const { paths } = analyzeBottlenecks([gw, phone], [], []);
     expect(paths.find((p) => p.deviceId === "phone")).toBeUndefined();
   });
+
+  it("returns no paths (but still links) when there is no gateway/root", () => {
+    // No ring-0 and no router → we don't invent a root, so per-device paths are
+    // empty, but the per-link analysis still stands on its own.
+    const a = dev("a", { conn: "Wired 1G" });
+    const b = dev("b", { conn: "Wired 1G" });
+    const { paths, links } = analyzeBottlenecks([a, b], [], [cable("c1", "a", "b", "Cat6")]);
+    expect(paths).toHaveLength(0);
+    expect(links).toHaveLength(1);
+  });
 });

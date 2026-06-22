@@ -113,10 +113,11 @@ export function TopologyMap({
           const p1 = getPos(e.from);
           const p2 = getPos(e.to);
           const onSel = !selIsGateway && (e.to === selectedId || e.from === selectedId);
-          // Link-speed overlay (wiring tree): colour the edge by its derived
-          // speed tier and flag a cable that's the actionable bottleneck. Only
-          // for online edges — an offline link keeps its dashed "off" styling.
-          const link = !e.off ? linkIndex?.get(pairKey(e.from, e.to)) : undefined;
+          // Link-speed overlay (wiring tree only): colour the edge by its derived
+          // speed tier and flag a cable that's the actionable bottleneck. Guarded
+          // by isTree so a future radial/other reuse can't mis-colour logical
+          // edges. Only online edges — an offline link keeps its dashed styling.
+          const link = isTree && !e.off ? linkIndex?.get(pairKey(e.from, e.to)) : undefined;
           const bn = link
             ? ` bn bn-${speedTier(link.linkMbps)}${link.actionable ? " bn-act" : ""}`
             : "";
@@ -130,7 +131,11 @@ export function TopologyMap({
             ) : (
               <line className={cls} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
             );
-          if (!link) return <g key={`e${i}`}>{edgeShape}</g>;
+          // Declutter: every edge is colour-coded, but only label the ones worth
+          // acting on — a sub-1G link or a cable bottleneck. The rest stay clean.
+          const showLabel =
+            !!link && (link.actionable || speedTier(link.linkMbps) === "slow");
+          if (!showLabel || !link) return <g key={`e${i}`}>{edgeShape}</g>;
           // Label the horizontal run into the child (tree) or the line midpoint.
           const lx = e.bendX != null ? (e.bendX + p2.x) / 2 : (p1.x + p2.x) / 2;
           const ly = (e.bendX != null ? p2.y : (p1.y + p2.y) / 2) - 3;

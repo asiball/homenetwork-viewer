@@ -78,6 +78,14 @@ describe("TopologyMap link-speed overlay", () => {
     expect(container.querySelector(".map-legend")).not.toBeNull();
   });
 
+  it("colours but does not label a healthy (fast / 1G) link", () => {
+    // gw —[Cat6]— pc, both 2.5G → a clean 2.5G link: coloured, but no label.
+    const fast: Cable[] = [{ id: "CBL-2", cat: "Cat6", fromDev: "gw", toDev: "pc" }];
+    const { container } = renderTree(devices, [], fast, true);
+    expect(container.querySelector(".link.bn-fast")).not.toBeNull();
+    expect(container.querySelector(".link-speed")).toBeNull();
+  });
+
   it("draws no overlay (no legend / speed classes) when off", () => {
     const { container } = renderTree(devices, [], cables, false);
     expect(container.querySelector(".link.bn-act")).toBeNull();

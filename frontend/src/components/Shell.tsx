@@ -6,13 +6,24 @@ import { Link } from "react-router-dom";
 import type { Device } from "../types";
 import { DeviceList } from "./DeviceList";
 import { ThemeToggle } from "./ThemeToggle";
+import { prefs, type SortMode } from "../lib/prefs";
 
 interface Props {
   devices: Device[];
   selectedId?: string;
   onSelect?: (id: string) => void;
+  /** Controlled search query. Omit to let Shell own its own (uncontrolled)
+   *  search state — every screen gets a working sidebar filter this way, not
+   *  just the ones that wire it up themselves (review item 1). HomeView passes
+   *  both so it can also drive the map + keyboard-nav order from the query. */
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  /** Same controlled/uncontrolled pattern as search, for the sidebar sort mode
+   *  (review item 14) — HomeView controls it so its keyboard-nav order can
+   *  match exactly what the sidebar displays; other screens fall back to
+   *  Shell's own state (persisted via prefs, same as before). */
+  sort?: SortMode;
+  onSortChange?: (s: SortMode) => void;
   crumbs: ReactNode;
   right: ReactNode;
   footer: ReactNode;
@@ -23,8 +34,10 @@ export function Shell({
   devices,
   selectedId,
   onSelect,
-  searchQuery,
-  onSearchChange,
+  searchQuery: searchQueryProp,
+  onSearchChange: onSearchChangeProp,
+  sort: sortProp,
+  onSortChange: onSortChangeProp,
   crumbs,
   right,
   footer,
@@ -34,6 +47,17 @@ export function Shell({
   const [leftOpen, setLeftOpen] = useState(
     () => typeof window === "undefined" || window.innerWidth > 820
   );
+
+  const [localQuery, setLocalQuery] = useState("");
+  const searchQuery = searchQueryProp ?? localQuery;
+  const onSearchChange = onSearchChangeProp ?? setLocalQuery;
+
+  const [localSort, setLocalSort] = useState<SortMode>(() => prefs.sort.get());
+  const sort = sortProp ?? localSort;
+  function onSortChange(s: SortMode) {
+    prefs.sort.set(s);
+    (onSortChangeProp ?? setLocalSort)(s);
+  }
 
   return (
     <div className={`noc ${leftOpen ? "left-open" : "left-collapsed"}`}>
@@ -72,6 +96,8 @@ export function Shell({
         onSelect={onSelect}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
+        sort={sort}
+        onSortChange={onSortChange}
       />
 
       {children}

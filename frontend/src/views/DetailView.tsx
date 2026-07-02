@@ -1,8 +1,8 @@
 // Detail screen: one device dossier (spec §6). Ported from view-detail.jsx.
 // Honours §6.4 missing-value rules — never invents data.
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useCatalog } from "../CatalogContext";
 import { api } from "../api";
@@ -35,10 +35,13 @@ function mean(xs: number[]): number {
 
 export function DetailView() {
   const { id = "" } = useParams();
-  const navigate = useNavigate();
-  const { devices, switches, cables, selfId, loading, notify } = useCatalog();
+  const { devices, switches, cables, selfId, loading, notify, refresh } = useCatalog();
   const device = devices.find((d) => d.id === id);
   const [waking, setWaking] = useState(false);
+  // Pending "refetch after the wake's follow-up scan has had time to run"
+  // timer, so it can be cancelled if the view unmounts first (#review item 12).
+  const wakeRefreshTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(wakeRefreshTimer.current), []);
 
   // Pull the real 7-day reachability history (#93). Keying on device.last means a
   // new sweep (which stamps last) refetches, so the chart tracks live samples
@@ -70,7 +73,15 @@ export function DetailView() {
     setWaking(true);
     try {
       await api.wake(device.id);
-      notify("magic packet sent · device may take 30s to boot", "ok");
+      notify("magic packet sent · scan scheduled · device may take 30s to boot", "ok");
+      // Nudge the collector to sweep sooner (best-effort — a failure here
+      // shouldn't read as "the wake failed", the packet already went out),
+      // then pull the catalog again once it's had time to run so the device
+      // coming online is actually visible without a manual refresh (#review
+      // item 12).
+      api.scan().catch(() => undefined);
+      window.clearTimeout(wakeRefreshTimer.current);
+      wakeRefreshTimer.current = window.setTimeout(() => void refresh(), 5000);
     } catch (e) {
       notify(e instanceof Error ? e.message : "failed to send magic packet", "err");
     } finally {
@@ -99,10 +110,9 @@ export function DetailView() {
     <Shell
       devices={devices}
       selectedId={device.id}
-      onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to="/">
+          <Link className="d-back crumb-back" to="/">
             ← map
           </Link>{" "}
           &nbsp;<span>{device.host}</span>

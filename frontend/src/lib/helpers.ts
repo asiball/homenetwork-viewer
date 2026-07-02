@@ -9,6 +9,7 @@ import {
   type PortSlot,
   type Switch,
 } from "../types";
+import type { SortMode } from "./prefs";
 
 export function countOnline(devs: Device[]): number {
   return devs.filter((d) => d.online).length;
@@ -206,6 +207,20 @@ export function compareIp(a: string, b: string): number {
     if (ao[i] !== bo[i]) return ao[i] - bo[i];
   }
   return 0;
+}
+
+// Flatten devices into the sidebar's exact display order for a given sort
+// mode. Single source of truth shared by DeviceList (the visible rows) and
+// HomeView (its ↑/↓ keyboard-nav order), so the two can never drift (#review
+// item 14 — previously each reimplemented its own ordering and disagreed
+// whenever the sidebar's sort mode wasn't "group").
+export function sortDevices(devices: Device[], sort: SortMode): Device[] {
+  if (sort === "group") return orderedByGroup(devices);
+  const sorted = [...devices];
+  if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+  else if (sort === "ip") sorted.sort((a, b) => compareIp(a.ip, b.ip));
+  else if (sort === "status") sorted.sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
+  return sorted;
 }
 
 // "nas.home.arpa" → "nas"

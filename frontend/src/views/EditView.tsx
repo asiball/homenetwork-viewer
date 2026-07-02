@@ -303,7 +303,13 @@ export function EditView({ mode }: Props) {
   async function performDelete() {
     if (!existing) return;
     setDeleteModalOpen(false);
-    initialSnapshot.current = JSON.stringify({ form, parts, buildEvents }); // 削除確定後の遷移で離脱ガードを出さない
+    // Optimistically clear the dirty guard before navigating away on success
+    // (削除確定後の遷移で離脱ガードを出さない) — but keep the prior snapshot so a
+    // failed delete can restore it. Overwriting it unconditionally (the old
+    // behaviour) silently disabled the unsaved-changes guard for the rest of
+    // the session whenever the delete itself failed (#review item 7).
+    const prevSnapshot = initialSnapshot.current;
+    initialSnapshot.current = JSON.stringify({ form, parts, buildEvents });
     setBusy(true);
     try {
       await api.remove(existing.id);
@@ -311,6 +317,7 @@ export function EditView({ mode }: Props) {
       notify(`deleted · ${existing.name}`, "ok");
       navigate("/");
     } catch (err) {
+      initialSnapshot.current = prevSnapshot;
       const msg = err instanceof ApiError ? err.message : "削除に失敗しました";
       setSubmitErr(msg);
       setBusy(false);
@@ -336,10 +343,9 @@ export function EditView({ mode }: Props) {
     <Shell
       devices={devices}
       selectedId={existing?.id}
-      onSelect={(did) => navigate(`/d/${did}`)}
       crumbs={
         <>
-          <Link className="d-back" to={backTo}>
+          <Link className="d-back crumb-back" to={backTo}>
             ← {mode === "edit" ? "detail" : "map"}
           </Link>
           &nbsp;<span>{mode === "add" ? "add device" : existing?.host}</span>

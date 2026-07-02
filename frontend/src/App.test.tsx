@@ -76,7 +76,15 @@ describe("App catalog provider (react-query)", () => {
     vi.mocked(api.devices).mockResolvedValue(seed);
     vi.mocked(api.switches).mockResolvedValue([]);
     vi.mocked(api.cables).mockResolvedValue([]);
-    vi.mocked(api.meta).mockResolvedValue({ total: 1, online: 1, offline: 0, updated_at: null });
+    vi.mocked(api.meta).mockResolvedValue({
+      total: 1,
+      online: 1,
+      offline: 0,
+      updated_at: null,
+      last_sweep: null,
+      next_sweep: null,
+      sweep_interval: 0,
+    });
     vi.mocked(api.whoami).mockResolvedValue({ ip: null });
 
     renderApp();
@@ -92,7 +100,15 @@ describe("App catalog provider (react-query)", () => {
     vi.mocked(api.devices).mockRejectedValue(new Error("API down"));
     vi.mocked(api.switches).mockResolvedValue([]);
     vi.mocked(api.cables).mockResolvedValue([]);
-    vi.mocked(api.meta).mockResolvedValue({ total: 0, online: 0, offline: 0, updated_at: null });
+    vi.mocked(api.meta).mockResolvedValue({
+      total: 0,
+      online: 0,
+      offline: 0,
+      updated_at: null,
+      last_sweep: null,
+      next_sweep: null,
+      sweep_interval: 0,
+    });
     vi.mocked(api.whoami).mockResolvedValue({ ip: null });
 
     renderApp();

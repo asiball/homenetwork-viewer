@@ -25,3 +25,18 @@ describe("api.wake", () => {
     expect(headers["X-Requested-With"]).toBe("XMLHttpRequest");
   });
 });
+
+describe("api.scan", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("POSTs /scan with X-Requested-With, same CSRF guard as /wake (#review item 11)", async () => {
+    const fetchMock = mockFetchOnce({ status: "scheduled" }, 202);
+    await api.scan();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/scan");
+    expect(init.method).toBe("POST");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["X-Requested-With"]).toBe("XMLHttpRequest");
+  });
+});

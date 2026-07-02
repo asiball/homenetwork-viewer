@@ -33,11 +33,29 @@ export function BottleneckView() {
   const { devices, switches, cables } = useCatalog();
   const [report, setReport] = useState<BottleneckReport | null>(null);
   const [ranAt, setRanAt] = useState<string | null>(null);
+  // The catalog identity (array references) the current report was computed
+  // from. useCatalog() hands out fresh arrays on every refetch/import/edit, so
+  // comparing references — rather than re-diffing the data — is enough to
+  // detect "the report you're looking at is no longer what's in the catalog"
+  // (#review item 13).
+  const [ranSnapshot, setRanSnapshot] = useState<{
+    devices: typeof devices;
+    switches: typeof switches;
+    cables: typeof cables;
+  } | null>(null);
 
   function run() {
     setReport(analyzeBottlenecks(devices, switches, cables));
     setRanAt(new Date().toLocaleTimeString());
+    setRanSnapshot({ devices, switches, cables });
   }
+
+  const stale =
+    report != null &&
+    ranSnapshot != null &&
+    (ranSnapshot.devices !== devices ||
+      ranSnapshot.switches !== switches ||
+      ranSnapshot.cables !== cables);
 
   return (
     <Shell
@@ -73,6 +91,15 @@ export function BottleneckView() {
             <button className="btn" style={{ marginLeft: 12 }} onClick={run}>
               {report ? "↻ 再計算" : "▶ 解析を実行"}
             </button>
+            {stale && (
+              <span
+                className="pill warn"
+                style={{ marginLeft: 8 }}
+                title="catalog changed since this report ran — results below may be out of date"
+              >
+                stale · 再計算
+              </span>
+            )}
           </div>
 
           <p className="d-sparse" style={{ maxWidth: 760 }}>

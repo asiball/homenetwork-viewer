@@ -1,10 +1,10 @@
 // Left sidebar device list, grouped by category (spec §5.4).
 
 import { useCallback, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCatalog } from "../CatalogContext";
 import type { Device } from "../types";
-import { compareIp, groupByOrder, groupColor, lastOctet, matchesQuery } from "../lib/helpers";
+import { groupByOrder, groupColor, lastOctet, matchesQuery, sortDevices } from "../lib/helpers";
 import { isTypingTarget, useGlobalKeydown } from "../lib/useGlobalKeydown";
 import { prefs, type SortMode } from "../lib/prefs";
 import { DeviceIcon } from "./DeviceIcon";
@@ -12,9 +12,17 @@ import { DeviceIcon } from "./DeviceIcon";
 interface Props {
   devices: Device[];
   selectedId?: string;
+  /** Row click handler. When omitted (e.g. /inventory, /analysis — screens
+   *  that don't otherwise drive a selection) rows fall back to navigating
+   *  straight to the device's detail page, so the sidebar is never a dead
+   *  click surface (review item 2). */
   onSelect?: (id: string) => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  /** Controlled sort mode + setter. Falls back to local state (persisted via
+   *  prefs, as before) when rendered standalone / without Shell wiring. */
+  sort?: SortMode;
+  onSortChange?: (s: SortMode) => void;
 }
 
 export function DeviceList({
@@ -23,9 +31,13 @@ export function DeviceList({
   onSelect,
   searchQuery = "",
   onSearchChange,
+  sort: sortProp,
+  onSortChange: onSortChangeProp,
 }: Props) {
   const { selfId } = useCatalog();
-  const [sort, setSort] = useState<SortMode>(() => prefs.sort.get());
+  const navigate = useNavigate();
+  const [localSort, setLocalSort] = useState<SortMode>(() => prefs.sort.get());
+  const sort = sortProp ?? localSort;
 
   // "/" focuses the search box from anywhere (unless already typing in a
   // field) — fast path to the core "what is this IP?" lookup (#108).
@@ -41,18 +53,20 @@ export function DeviceList({
   const needle = searchQuery.trim().toLowerCase();
   const filtered = needle ? devices.filter((d) => matchesQuery(d, needle)) : devices;
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "ip") return compareIp(a.ip, b.ip);
-    if (sort === "status") return (b.online ? 1 : 0) - (a.online ? 1 : 0);
-    return 0; // 'group' sorting is handled by groupByOrder
-  });
-
+  // Single source of truth for row order, shared with HomeView's keyboard nav
+  // (lib/helpers sortDevices) so ↑/↓ can never drift from what's on screen
+  // (review item 14).
+  const sorted = sortDevices(filtered, sort);
   const grouped = sort === "group" ? groupByOrder(sorted) : [{ group: "All", items: sorted }];
 
   function handleSortChange(s: SortMode) {
-    setSort(s);
     prefs.sort.set(s);
+    (onSortChangeProp ?? setLocalSort)(s);
+  }
+
+  function handleRowClick(id: string) {
+    if (onSelect) onSelect(id);
+    else navigate(`/d/${id}`);
   }
 
   return (
@@ -114,7 +128,7 @@ export function DeviceList({
               key={d.id}
               type="button"
               className={`lrow ${selectedId === d.id ? "sel" : ""}`}
-              onClick={() => onSelect?.(d.id)}
+              onClick={() => handleRowClick(d.id)}
               aria-current={selectedId === d.id ? "true" : undefined}
               title={`${d.name} · ${d.ip}`}
             >

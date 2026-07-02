@@ -18,11 +18,31 @@ vi.mock("../api", () => ({
 }));
 import { api } from "../api";
 
+const dev = (over: Partial<Device> = {}): Device => ({
+  id: "nas",
+  name: "NAS",
+  host: "nas.home.arpa",
+  ip: "192.168.1.20",
+  mac: "AA:BB:CC:DD:EE:FF",
+  group: "Infra",
+  type: "nas",
+  online: true,
+  ...over,
+});
+
 const catalog = (devices: Device[]): CatalogValue => ({
   devices,
   switches: [],
   cables: [],
-  meta: { total: devices.length, online: 0, offline: 0, updated_at: null },
+  meta: {
+    total: devices.length,
+    online: 0,
+    offline: 0,
+    updated_at: null,
+    last_sweep: null,
+    next_sweep: null,
+    sweep_interval: 0,
+  },
   selfId: null,
   lastSync: new Date(),
   loading: false,
@@ -81,5 +101,57 @@ describe("EditView (add mode)", () => {
 
     expect(screen.getByText(/IPv4 形式/)).toBeInTheDocument();
     expect(api.create).not.toHaveBeenCalled();
+  });
+});
+
+function renderEdit(devices: Device[], id: string) {
+  const router = createMemoryRouter(
+    [
+      { path: "/d/:id/edit", element: <EditView mode="edit" /> },
+      { path: "/d/:id", element: <div data-testid="detail-stub" /> },
+    ],
+    { initialEntries: [`/d/${id}/edit`] }
+  );
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <CatalogContext.Provider value={catalog(devices)}>
+        <RouterProvider router={router} />
+      </CatalogContext.Provider>
+    </QueryClientProvider>
+  );
+}
+
+describe("EditView (edit mode) — delete failure and the unsaved-changes guard", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("keeps the unsaved-changes guard active after a failed delete, instead of silently disabling it (#review item 7)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.remove).mockRejectedValueOnce(new Error("boom"));
+    renderEdit([dev()], "nas");
+
+    // Make the form dirty first.
+    await user.clear(screen.getByLabelText(/display name/));
+    await user.type(screen.getByLabelText(/display name/), "NAS renamed");
+
+    await user.click(screen.getByRole("button", { name: "delete" }));
+    await user.click(screen.getByRole("button", { name: "削除" }));
+
+    // The delete failed — its error is shown...
+    expect(await screen.findByText(/削除に失敗しました/)).toBeInTheDocument();
+    expect(api.remove).toHaveBeenCalledOnce();
+
+    // ...and the dirty guard is still armed: navigating away (via "cancel",
+    // which routes to /d/nas) must still be blocked and prompt to confirm,
+    // exactly as it would have before the failed delete attempt. (The title
+    // and message both contain "未保存の変更", so match the dialog by its
+    // accessible name — the title — rather than the ambiguous text.)
+    await user.click(screen.getByRole("link", { name: "cancel" }));
+
+    expect(await screen.findByRole("dialog", { name: "未保存の変更" })).toBeInTheDocument();
+    expect(screen.queryByTestId("detail-stub")).not.toBeInTheDocument();
   });
 });

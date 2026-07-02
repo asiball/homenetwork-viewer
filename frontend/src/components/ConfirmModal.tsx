@@ -58,7 +58,21 @@ export function ConfirmModal({
       aria-labelledby={titleId}
       aria-describedby={messageId}
       onClick={(e) => {
-        if (e.target === dialogRef.current) onCancel();
+        // A native <dialog> click handler sees e.target === the dialog element
+        // itself both for a genuine ::backdrop click *and* for a click landing
+        // in the dialog's own padding (there's no child element out there to
+        // be the target). The dialog has 24px of padding, so the naive check
+        // used to cancel on a stray click nowhere near the backdrop (#review
+        // item 9). Only treat it as a backdrop click when the pointer is
+        // actually outside the dialog's box.
+        if (e.target !== dialogRef.current) return;
+        const rect = dialogRef.current.getBoundingClientRect();
+        const inside =
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom;
+        if (!inside) onCancel();
       }}
     >
       <div className="cm-content">

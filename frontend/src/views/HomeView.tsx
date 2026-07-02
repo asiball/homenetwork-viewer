@@ -10,10 +10,10 @@ import { SummaryPanel } from "../components/SummaryPanel";
 import { SwitchPanel } from "../components/SwitchPanel";
 import { RefreshControls } from "../components/RefreshControls";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { countOnline, gatewayInfo, matchesQuery, orderedByGroup } from "../lib/helpers";
+import { countOnline, gatewayInfo, matchesQuery, sortDevices } from "../lib/helpers";
 import { computeLayout } from "../lib/topology";
 import { analyzeBottlenecks, linkIndexByPair } from "../lib/bottleneck";
-import { prefs, type ViewMode } from "../lib/prefs";
+import { prefs, type SortMode, type ViewMode } from "../lib/prefs";
 import { isTypingTarget, useGlobalKeydown } from "../lib/useGlobalKeydown";
 import { useIsNarrow } from "../lib/useIsNarrow";
 import { APP_VERSION } from "../version";
@@ -48,6 +48,14 @@ export function HomeView() {
   const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
   // Wiring-tree link-speed overlay (off by default; only meaningful on the tree).
   const [showSpeeds, setShowSpeeds] = useState(() => prefs.showSpeeds.get());
+  // Sidebar sort mode, owned here (not just inside DeviceList) so the ↑/↓
+  // keyboard order below can match exactly what the sidebar displays (#review
+  // item 14) — passed down to Shell/DeviceList as a controlled prop.
+  const [sort, setSort] = useState<SortMode>(() => prefs.sort.get());
+  function changeSort(s: SortMode) {
+    setSort(s);
+    prefs.sort.set(s);
+  }
 
   // "compare" shows radial + tree stacked; both are "tree-active" for the
   // wiring-tree affordances (switch selection, the ⚡ speed overlay).
@@ -116,14 +124,18 @@ export function HomeView() {
   // Keyboard-nav order matches what's actually on the map (mapVisible, i.e.
   // search-filtered) — otherwise ↑/↓ would jump to devices hidden by the search
   // and the side panel could show a node that isn't drawn. When a tree is shown
-  // (incl. compare), follow the tree's row order; else group order.
+  // (incl. compare), follow the tree's row order (deliberate — the tree is read
+  // top-to-bottom by wiring, not by the sidebar's sort); otherwise it must match
+  // the sidebar's own sort mode exactly, via the same sortDevices() the sidebar
+  // itself renders with (#review item 14 — previously always group order, so
+  // ↑/↓ jumped around whenever the visible sort mode was name/ip/status).
   const ordered = useMemo(() => {
     if (treeActive) {
       const { positions } = treeLayout;
       return [...mapVisible].sort((a, b) => (positions[a.id]?.y ?? 0) - (positions[b.id]?.y ?? 0));
     }
-    return orderedByGroup(mapVisible);
-  }, [treeActive, mapVisible, treeLayout]);
+    return sortDevices(mapVisible, sort);
+  }, [treeActive, mapVisible, treeLayout, sort]);
 
   // `selId` holds the user's last explicit device pick; `selected` resolves it
   // against what's actually on the map, falling back to the first visible device
@@ -253,6 +265,8 @@ export function HomeView() {
       onSelect={handleSelect}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
+      sort={sort}
+      onSortChange={changeSort}
       crumbs={
         <>
           net <span>{gw.subnet}</span>
@@ -386,7 +400,30 @@ export function HomeView() {
         </>
       ) : (
         <div className="n-map">
-          <div className="center-screen">no devices · add one to begin</div>
+          <div className="center-screen">
+            {devices.length === 0 ? (
+              <span>no devices · add one to begin</span>
+            ) : (
+              // The catalog isn't empty — a search / "show offline" filter
+              // excluded every device from the map. Distinguish that from a
+              // truly empty catalog and offer a way back (#review item 6).
+              <>
+                <span>no match — clear search</span>
+                <span style={{ display: "flex", gap: 10 }}>
+                  {searchQuery && (
+                    <button className="f-btn ghost" onClick={() => setSearchQuery("")}>
+                      clear search
+                    </button>
+                  )}
+                  {!showOffline && (
+                    <button className="f-btn ghost" onClick={toggleOffline}>
+                      show offline
+                    </button>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       )}
       <ConfirmModal

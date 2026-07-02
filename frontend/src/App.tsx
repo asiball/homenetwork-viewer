@@ -8,7 +8,15 @@ import type { Cable, Device, Meta, Switch } from "./types";
 import { CatalogContext, type CatalogValue } from "./CatalogContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
-const EMPTY_META: Meta = { total: 0, online: 0, offline: 0, updated_at: null };
+const EMPTY_META: Meta = {
+  total: 0,
+  online: 0,
+  offline: 0,
+  updated_at: null,
+  last_sweep: null,
+  next_sweep: null,
+  sweep_interval: 0,
+};
 // Shared empty arrays so the "no data yet" fallbacks keep a stable identity
 // across renders (a fresh `[]` each render would defeat downstream memoisation).
 const EMPTY_DEVICES: Device[] = [];

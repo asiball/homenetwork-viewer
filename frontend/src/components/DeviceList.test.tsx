@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { DeviceList } from "./DeviceList";
 import { CatalogContext, type CatalogValue } from "../CatalogContext";
 import type { Device } from "../types";
@@ -22,7 +22,15 @@ const catalog = (over: Partial<CatalogValue> = {}): CatalogValue => ({
   devices: [],
   switches: [],
   cables: [],
-  meta: { total: 0, online: 0, offline: 0, updated_at: null },
+  meta: {
+    total: 0,
+    online: 0,
+    offline: 0,
+    updated_at: null,
+    last_sweep: null,
+    next_sweep: null,
+    sweep_interval: 0,
+  },
   selfId: null,
   lastSync: null,
   loading: false,
@@ -66,6 +74,23 @@ describe("DeviceList", () => {
     renderList({ devices: [dev({ id: "a", name: "Alpha" })], onSelect });
     await user.click(screen.getByRole("button", { name: /Alpha/ }));
     expect(onSelect).toHaveBeenCalledWith("a");
+  });
+
+  it("navigates straight to the device's detail page when no onSelect is given (#review item 2)", async () => {
+    const user = userEvent.setup();
+    const devices = [dev({ id: "a", name: "Alpha" })];
+    render(
+      <CatalogContext.Provider value={catalog({ devices })}>
+        <MemoryRouter initialEntries={["/inventory"]}>
+          <Routes>
+            <Route path="/inventory" element={<DeviceList devices={devices} />} />
+            <Route path="/d/:id" element={<div data-testid="detail-stub" />} />
+          </Routes>
+        </MemoryRouter>
+      </CatalogContext.Provider>
+    );
+    await user.click(screen.getByRole("button", { name: /Alpha/ }));
+    expect(screen.getByTestId("detail-stub")).toBeInTheDocument();
   });
 
   it("sorts by IP numerically when the IP sort is chosen", async () => {

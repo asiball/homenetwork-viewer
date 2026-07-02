@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { InventoryView } from "./InventoryView";
 import { CatalogContext, type CatalogValue } from "../CatalogContext";
 import type { Cable, Device, Switch } from "../types";
@@ -30,7 +31,15 @@ const catalog = (devices: Device[], switches: Switch[], cables: Cable[]): Catalo
   devices,
   switches,
   cables,
-  meta: { total: devices.length, online: devices.length, offline: 0, updated_at: null },
+  meta: {
+    total: devices.length,
+    online: devices.length,
+    offline: 0,
+    updated_at: null,
+    last_sweep: null,
+    next_sweep: null,
+    sweep_interval: 0,
+  },
   selfId: null,
   lastSync: new Date(),
   loading: false,
@@ -43,8 +52,11 @@ const catalog = (devices: Device[], switches: Switch[], cables: Cable[]): Catalo
 function renderInventory(devices: Device[], switches: Switch[], cables: Cable[]) {
   return render(
     <CatalogContext.Provider value={catalog(devices, switches, cables)}>
-      <MemoryRouter>
-        <InventoryView />
+      <MemoryRouter initialEntries={["/inventory"]}>
+        <Routes>
+          <Route path="/inventory" element={<InventoryView />} />
+          <Route path="/d/:id" element={<div data-testid="detail-stub" />} />
+        </Routes>
       </MemoryRouter>
     </CatalogContext.Provider>
   );
@@ -65,5 +77,17 @@ describe("InventoryView cable ledger", () => {
     // heading, once as the cable ledger's resolved "from" endpoint name.
     expect(screen.getAllByText("Rack Switch").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("sw-rack")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryView sidebar", () => {
+  it("navigates to the device's detail page when a sidebar row is clicked (#review item 2 — /inventory previously had no onSelect, so rows were a no-op)", async () => {
+    const user = userEvent.setup();
+    const nas = dev({ id: "nas", name: "NAS" });
+    renderInventory([nas], [], []);
+
+    await user.click(screen.getByRole("button", { name: /NAS/ }));
+
+    expect(screen.getByTestId("detail-stub")).toBeInTheDocument();
   });
 });

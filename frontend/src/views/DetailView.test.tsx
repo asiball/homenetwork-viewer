@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -13,6 +13,7 @@ vi.mock("../api", () => ({
       .fn()
       .mockResolvedValue({ device_id: "x", days: 7, history: [], uptime_pct: null, events: [] }),
     wake: vi.fn().mockResolvedValue({ status: "sent", mac: "AA:BB:CC:DD:EE:FF" }),
+    scan: vi.fn().mockResolvedValue({ status: "scheduled" }),
   },
 }));
 import { api } from "../api";
@@ -29,11 +30,23 @@ const dev = (over: Partial<Device> = {}): Device => ({
   ...over,
 });
 
-const catalog = (devices: Device[], cables: Cable[] = []): CatalogValue => ({
+const catalog = (
+  devices: Device[],
+  cables: Cable[] = [],
+  overrides: Partial<CatalogValue> = {}
+): CatalogValue => ({
   devices,
   switches: [],
   cables,
-  meta: { total: devices.length, online: 0, offline: 0, updated_at: null },
+  meta: {
+    total: devices.length,
+    online: 0,
+    offline: 0,
+    updated_at: null,
+    last_sweep: null,
+    next_sweep: null,
+    sweep_interval: 0,
+  },
   selfId: null,
   lastSync: new Date(),
   loading: false,
@@ -41,13 +54,20 @@ const catalog = (devices: Device[], cables: Cable[] = []): CatalogValue => ({
   syncError: null,
   refresh: vi.fn().mockResolvedValue(undefined),
   notify: vi.fn(),
+  ...overrides,
 });
 
-function renderDetail(id: string, devices: Device[], cables: Cable[] = []) {
+function renderDetail(
+  id: string,
+  devices: Device[],
+  cables: Cable[] = [],
+  overrides: Partial<CatalogValue> = {}
+) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const value = catalog(devices, cables, overrides);
+  const utils = render(
     <QueryClientProvider client={qc}>
-      <CatalogContext.Provider value={catalog(devices, cables)}>
+      <CatalogContext.Provider value={value}>
         <MemoryRouter initialEntries={[`/d/${id}`]}>
           <Routes>
             <Route path="/d/:id" element={<DetailView />} />
@@ -56,6 +76,7 @@ function renderDetail(id: string, devices: Device[], cables: Cable[] = []) {
       </CatalogContext.Provider>
     </QueryClientProvider>
   );
+  return { ...utils, catalogValue: value };
 }
 
 // The dossier content lives in #main-content; scope queries there so they don't
@@ -67,6 +88,9 @@ describe("DetailView", () => {
     localStorage.clear();
     vi.clearAllMocks();
   });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("renders the device dossier with a manual-metrics badge", () => {
     renderDetail("nas", [dev({ detail: { metrics: { cpu_pct: 18 } } })]);
@@ -75,10 +99,50 @@ describe("DetailView", () => {
     expect(dossier().getByText("manual metrics")).toBeInTheDocument();
   });
 
-  it("shows a not-found page for an unknown id", () => {
+  it("shows a not-found page for an unknown id, with a skip-link target (#review item 8)", () => {
     renderDetail("ghost", [dev()]);
     expect(screen.getByText("device not found")).toBeInTheDocument();
     expect(screen.getByText(/id · ghost/)).toBeInTheDocument();
+    expect(document.getElementById("main-content")).not.toBeNull();
+  });
+
+  it("filters the sidebar list when typing in the search box, not just on HomeView (#review item 1)", async () => {
+    const user = userEvent.setup();
+    const devices = [
+      dev({ id: "nas", name: "NAS" }),
+      dev({ id: "other", name: "OtherThing", ip: "192.168.1.30" }),
+    ];
+    renderDetail("nas", devices);
+    const sidebar = screen.getByRole("complementary", { name: "device list" });
+    expect(within(sidebar).getByText("OtherThing")).toBeInTheDocument();
+
+    await user.type(screen.getByRole("textbox", { name: "filter devices" }), "other");
+
+    expect(within(sidebar).getByText("OtherThing")).toBeInTheDocument();
+    expect(within(sidebar).queryByText("NAS")).not.toBeInTheDocument();
+  });
+
+  it("schedules a scan + delayed refresh after a successful wake (#review item 12)", async () => {
+    vi.useFakeTimers();
+    const { catalogValue } = renderDetail("pc", [
+      dev({ id: "pc", name: "Desktop", online: false, conn: "Wired 1G", ring: 2 }),
+    ]);
+
+    // fireEvent (not userEvent) under fake timers: userEvent's own internal
+    // event-loop delays don't reliably resolve with vitest's fake timers.
+    // Flush the click handler's awaited promises with advanceTimersByTimeAsync.
+    fireEvent.click(screen.getByRole("button", { name: /wake/ }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(api.wake).toHaveBeenCalledWith("pc");
+    expect(api.scan).toHaveBeenCalledOnce();
+    // Not yet — the follow-up refresh is delayed so the collector's sweep has
+    // time to actually run.
+    expect(catalogValue.refresh).not.toHaveBeenCalled();
+
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+
+    expect(catalogValue.refresh).toHaveBeenCalledOnce();
   });
 
   it("offers Wake-on-LAN for an offline wired device and sends the packet", async () => {

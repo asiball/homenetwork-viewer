@@ -79,6 +79,14 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     }),
+  // Trigger an immediate reachability sweep (spec §5.6 ⟳ scan) instead of
+  // waiting out the rest of the collector's interval. Same CSRF guard as
+  // /wake — a no-body POST is otherwise a CORS "simple request".
+  scan: () =>
+    req<{ status: string }>("/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    }),
   export: () =>
     fetch(BASE + "/export").then(async (r) => {
       if (!r.ok) throw new Error(await r.text());

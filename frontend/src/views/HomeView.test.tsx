@@ -23,7 +23,15 @@ const catalog = (devices: Device[], switches: Switch[] = []): CatalogValue => ({
   devices,
   switches,
   cables: [],
-  meta: { total: devices.length, online: devices.length, offline: 0, updated_at: null },
+  meta: {
+    total: devices.length,
+    online: devices.length,
+    offline: 0,
+    updated_at: null,
+    last_sweep: null,
+    next_sweep: null,
+    sweep_interval: 0,
+  },
   selfId: null,
   lastSync: new Date(),
   loading: false,
@@ -169,6 +177,76 @@ describe("HomeView", () => {
     // ...and the global handler did not *also* fire and navigate to /d/nas
     // using the stale render-time `selected`.
     expect(screen.queryByTestId("detail-stub")).not.toBeInTheDocument();
+  });
+
+  it("shows the plain empty-catalog message when there are no devices at all", () => {
+    renderHome([]);
+    expect(screen.getByText(/no devices · add one to begin/)).toBeInTheDocument();
+  });
+
+  it("distinguishes a filter-excluded empty map from an empty catalog, with a clear-search action (#review item 6)", async () => {
+    const user = userEvent.setup();
+    const devices = [dev({ id: "a", name: "Alpha" })];
+    renderHome(devices);
+
+    await user.type(screen.getByRole("textbox", { name: "filter devices" }), "nomatch");
+
+    // (DeviceList's own sidebar also shows a plain "no match" — match the map's
+    // more specific copy so the two can't collide.)
+    expect(screen.getByText("no match — clear search")).toBeInTheDocument();
+    expect(screen.queryByText(/no devices · add one to begin/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "clear search" }));
+
+    // "Alpha" now shows up in both the sidebar and the map/summary panel —
+    // just check the sidebar is back to normal.
+    expect(within(sidebar()).getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("offers a 'show offline' action when every device is offline and hidden by the footer toggle", async () => {
+    const user = userEvent.setup();
+    const devices = [dev({ id: "a", name: "Alpha", online: false })];
+    renderHome(devices);
+    // Default catalog starts with showOffline on; turn it off to exclude the
+    // only (offline) device from the map.
+    await user.click(screen.getByRole("button", { name: /show offline/ }));
+
+    expect(screen.getByText("no match — clear search")).toBeInTheDocument();
+    const showOfflineAction = screen.getByRole("button", { name: "show offline" });
+
+    await user.click(showOfflineAction);
+
+    expect(within(sidebar()).getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("moves the selection to the next device by IP when the sidebar sort is 'ip', matching the visible order (#review item 14)", async () => {
+    const user = userEvent.setup();
+    const devices = [
+      dev({ id: "gw", name: "Gateway", group: "Infra", ring: 0, ip: "192.168.1.1" }),
+      dev({ id: "hi", name: "HighIp", ip: "192.168.1.200" }),
+      dev({ id: "lo", name: "LowIp", ip: "192.168.1.5" }),
+    ];
+    renderHome(devices);
+    const current = () =>
+      within(sidebar())
+        .getAllByRole("button")
+        .find((b) => b.getAttribute("aria-current") === "true")?.textContent;
+
+    const sortSelect = screen.getByRole("combobox", { name: "sort devices" });
+    await user.selectOptions(sortSelect, "ip");
+    // ↑/↓ is a global shortcut that yields to an active text-entry control
+    // (isTypingTarget treats a focused <select> the same way) — blur it first,
+    // same as a real user clicking elsewhere after picking a sort mode.
+    sortSelect.blur();
+    // Sidebar visible order by IP: Gateway (.1) → LowIp (.5) → HighIp (.200).
+    // Default selection stays on Gateway until moved.
+    expect(current()).toContain("Gateway");
+
+    await user.keyboard("{ArrowDown}");
+    expect(current()).toContain("LowIp");
+
+    await user.keyboard("{ArrowDown}");
+    expect(current()).toContain("HighIp");
   });
 
   it("keeps the layout in sync when the URL's ?layout= changes without a remount (e.g. the brand link)", async () => {

@@ -29,6 +29,16 @@
   /* UI (chrome) font is its own token so it can diverge from the data/mono
      font later without touching every rule. Defaults to mono = no change. */
   --font-ui: var(--mono);
+  /* Topology map SVG colours (#review-3v3jxt item 4). These were hardcoded
+     hex/rgba values tuned only for the dark background — nearly invisible
+     (the translucent link colours) or AA-failing on the light theme's
+     #f6f7f9 bg. Dark values below are identical to the old hardcoded ones, so
+     the dark theme stays pixel-for-pixel unchanged; the light override further
+     down picks legible equivalents. */
+  --map-link: #2c3441;
+  --map-link-on: rgba(121, 221, 176, 0.45);
+  --map-link-off: rgba(232, 122, 106, 0.22);
+  --map-node-sel-fill: #1d1a12;
 }
 
 /* Light "home mode" palette (#101). Same tokens, lighter values; accents are
@@ -49,6 +59,13 @@
   /* amber is dark in light mode → button labels need light text */
   --on-amber: #ffffff;
   --grid: rgba(20, 35, 60, 0.05);
+  /* Legible on #f6f7f9 (see the dark-theme comment above): a mid-grey base
+     link, and on/off tints built from this theme's own --ok/--err so they
+     keep AA contrast instead of the dark theme's low-opacity pastels. */
+  --map-link: #c3cad3;
+  --map-link-on: rgba(24, 147, 90, 0.55);
+  --map-link-off: rgba(192, 67, 47, 0.4);
+  --map-node-sel-fill: #fdf0d5;
 }
 
 * {
@@ -429,15 +446,15 @@ body {
   stroke-dasharray: 2 4;
 }
 .link {
-  stroke: #2c3441;
+  stroke: var(--map-link);
   stroke-width: 0.6;
   fill: none;
 }
 .link.on {
-  stroke: rgba(121, 221, 176, 0.45);
+  stroke: var(--map-link-on);
 }
 .link.off {
-  stroke: rgba(232, 122, 106, 0.22);
+  stroke: var(--map-link-off);
   stroke-dasharray: 2 3;
 }
 .link.sel {
@@ -530,13 +547,13 @@ body {
 }
 .node-box.sel {
   stroke: var(--amber);
-  fill: #1d1a12;
+  fill: var(--map-node-sel-fill);
   stroke-width: 1.2;
 }
 .node-box.center {
   stroke: var(--amber);
   stroke-width: 1.2;
-  fill: #1d1a12;
+  fill: var(--map-node-sel-fill);
 }
 .node-hit {
   fill: transparent;
@@ -549,6 +566,16 @@ body {
   outline: 2px solid var(--amber);
   outline-offset: 1px;
   border-radius: 2px;
+}
+/* Hover highlight (spec §5.6): brighten the node's box + label while its hit
+   target is hovered — previously the only affordance was the pointer cursor
+   (#review item 10). `:has()` reaches "backwards" from the hit target (which
+   is the last child, drawn on top) to the box/label siblings drawn under it. */
+.n-map g:has(> .node-hit:hover) .node-box {
+  stroke: var(--amber);
+}
+.n-map g:has(> .node-hit:hover) .node-label {
+  fill: var(--amber);
 }
 .node-label {
   font-family: var(--mono);
@@ -570,6 +597,27 @@ body {
   fill: var(--amber);
   opacity: 0.12;
   pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* One-shot "pulse" on selection change (spec §5.6) — TopologyMap keys this
+   circle on the selected id so a fresh element mounts (and this animation
+   restarts) every time the selection changes, instead of a static ring
+   (#review item 10). Respects prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .pulse {
+    animation: pulse-ring 0.5s ease-out;
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0.12;
+    transform: scale(1);
+  }
 }
 
 /* ─── Right summary panel ──────────────────────────────────────────────── */
@@ -1317,7 +1365,7 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 10px;
-  color: var(--fg-dim);
+  color: var(--fg-faint);
   letter-spacing: 0.02em;
 }
 .f-field .oui-apply {
@@ -1327,7 +1375,7 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 2px 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule-2);
   border-radius: 2px;
   background: var(--bg-3);
   color: var(--amber);
@@ -1465,9 +1513,16 @@ body {
   /* The header's right-side controls (layout toggle, refresh, add) alone
      already fill the available width at this size — drop the breadcrumb and
      the "synced HH:MM:SS" clock (lowest-priority text, spec DoD #8) instead
-     of letting the row overflow into horizontal document scroll. */
-  .n-head .crumbs,
-  .n-head .flash {
+     of letting the row overflow into horizontal document scroll. The one
+     exception is a "← map / ← detail" back link (.crumb-back, on the detail
+     and edit screens): without it those screens lose their only way back at
+     this width (#review item 3). It's the sole element inside .crumbs kept
+     visible; .crumbs itself stays laid out (so the back link still renders)
+     but keeps its overflow/truncation so the row still can't grow past the
+     available width. */
+  .n-head .crumbs > *:not(.crumb-back),
+  .n-head .flash,
+  .n-head .sweep-countdown {
     display: none;
   }
   /* Even without those, the right block (~580px of toggle/poll/buttons) beats

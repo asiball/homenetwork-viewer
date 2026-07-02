@@ -256,6 +256,13 @@ export interface Meta {
   online: number;
   offline: number;
   updated_at?: string | null;
+  /** ISO8601 instant of the collector's most recent reachability sweep, or
+   *  null if it has never run (spec §4.3 "next scan" countdown). */
+  last_sweep: string | null;
+  /** ISO8601 instant of the next scheduled sweep, or null. */
+  next_sweep: string | null;
+  /** Collector sweep cadence in seconds (0 if unknown/disabled). */
+  sweep_interval: number;
 }
 
 export interface Catalog {

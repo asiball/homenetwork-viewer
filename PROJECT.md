@@ -13,7 +13,7 @@ backend/
     __init__.py
     main.py          # FastAPI routes
     models.py        # Pydantic models (Device, DeviceCreate, DeviceUpdate, etc.)
-    storage.py       # JSON file-based storage
+    storage.py       # SQLite-backed storage
     seed/            # Seed data
   tests/
     conftest.py
@@ -60,7 +60,7 @@ docker-compose.yml
 - GET /api/devices — list all devices
 - GET /api/devices/{id} — get single device
 - POST /api/devices — create device (IP/MAC uniqueness enforced)
-- PUT /api/devices/{id} — update device (partial: omitted keys kept, null clears; merges detail)
+- PUT /api/devices/{id} — update device (required fields — name/host/ip/mac/group/type — must always be sent; for optional fields, omitted keys are kept and null clears; merges detail) (#123)
 - DELETE /api/devices/{id} — delete device
 - GET /api/switches, /api/cables — topology data
 - GET /api/meta — catalog summary

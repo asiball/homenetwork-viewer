@@ -18,6 +18,17 @@ services:
       # store) it is migrated into the DB, otherwise the bundled seed is used.
       HOMENET_DB_FILE: /data/homenet.db
       HOMENET_DATA_FILE: /data/devices.json
+      # Wake-on-LAN target address. The default (limited broadcast,
+      # 255.255.255.255) is dropped at the docker bridge, so the magic packet
+      # never reaches the LAN even though /wake reports success. Set this to
+      # your LAN's subnet-directed broadcast (host bits all 1, e.g. a /24 on
+      # 192.168.1.0 → 192.168.1.255) — that address is routable off the
+      # bridge, unlike the limited broadcast.
+      # HOMENET_WOL_BROADCAST: "192.168.1.255"
+      # Reachability history is bucketed into daily uptime bars in the
+      # container's local timezone (default UTC). Set this so "today" in the
+      # 7-day chart lines up with the household's actual day.
+      # TZ: "Asia/Tokyo"
     volumes:
       - ./data:/data
     restart: unless-stopped

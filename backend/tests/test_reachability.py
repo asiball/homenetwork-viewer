@@ -79,6 +79,35 @@ def test_reachability_history_buckets_by_day(client):
     assert h["history"][1]["uptime"] == 1.0  # today: all online
 
 
+def test_reachability_history_buckets_by_local_day(client):
+    """A sample stamped just after *local* midnight must land in today's
+    local bucket even when that instant is still "yesterday" in UTC (e.g. any
+    timezone west of UTC) — daily buckets follow the server's local timezone,
+    not UTC (issue #123). Expected dates are computed with the same
+    localtime conversion storage.py uses, so this passes under any TZ."""
+    _make_device(online=True)
+    now_local = datetime.now().astimezone()
+    local_midnight = datetime.combine(
+        now_local.date(), datetime.min.time(), tzinfo=now_local.tzinfo
+    )
+    just_after_local_midnight = local_midnight + timedelta(minutes=1)
+
+    storage.record_reachability(
+        [
+            {
+                "id": "pi",
+                "reachable": True,
+                "ts": just_after_local_midnight.astimezone(UTC).isoformat(),
+            }
+        ]
+    )
+
+    h = storage.reachability_history("pi", days=1)
+    assert h["history"][0]["date"] == now_local.date().isoformat()
+    assert h["history"][0]["samples"] == 1
+    assert h["history"][0]["uptime"] == 1.0
+
+
 def test_reachability_history_no_samples_is_null_not_invented(client):
     _make_device()
     h = storage.reachability_history("pi", days=7)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
 import logging
 from time import perf_counter
 
@@ -97,6 +98,16 @@ async def _probe_device(
     """
     ip = device.get("ip", "")
     if not ip:
+        return device["id"], False, None, None
+    try:
+        ipaddress.IPv4Address(ip)
+    except ValueError:
+        # A non-IPv4 value would otherwise reach the `ping` argv unvalidated
+        # (e.g. "-f" is read as a flag rather than a target) — normally
+        # unreachable via the Pydantic-validated API, but a pre-fix legacy
+        # import could still poison the catalog with one. Treat it as simply
+        # unreachable instead of probing.
+        logger.warning("collector.probe id=%s error=invalid_ip ip=%r", device.get("id"), ip)
         return device["id"], False, None, None
     if sem is not None:
         async with sem:

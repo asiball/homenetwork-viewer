@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -330,6 +330,28 @@ class Cable(BaseModel):
     toDev: str
     toPort: str | int | None = None
     notes: str | None = None
+
+
+def validate_catalog_item(
+    item: Any, model: type[BaseModel], label: str, index: int
+) -> dict[str, Any]:
+    """Validate one devices/switches/cables item against *model*, returning
+    its normalized dump (``model_dump(exclude_none=True)`` — the exact shape
+    create_device / replace_catalog persist).
+
+    Raises ValueError with a ``"{label}[{index}]: ..."`` message describing
+    what failed. Shared by /api/import (main.py) and the legacy-JSON
+    migration path (storage.ensure_seeded) so a malformed record is rejected
+    the same way — and just as loudly — regardless of which path it arrives
+    through, instead of an unvalidated dict reaching storage and either
+    crashing startup (a missing required field) or poisoning the DB (a bad
+    value that later 500s every read) (issue #123)."""
+    if not isinstance(item, dict):
+        raise ValueError(f"{label}[{index}]: must be a JSON object")
+    try:
+        return model(**item).model_dump(exclude_none=True)
+    except Exception as exc:
+        raise ValueError(f"{label}[{index}]: {exc}") from exc
 
 
 class Meta(BaseModel):

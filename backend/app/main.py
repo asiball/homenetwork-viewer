@@ -34,6 +34,7 @@ from .models import (
     Meta,
     ReachabilityHistory,
     Switch,
+    validate_catalog_item,
 )
 
 # ─── Structured logging ────────────────────────────────────────────────────
@@ -127,6 +128,21 @@ async def _not_found(_request: Request, exc: storage.NotFoundError) -> JSONRespo
 @app.exception_handler(storage.ConflictError)
 async def _conflict(_request: Request, exc: storage.ConflictError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+def _require_requested_with(request: Request) -> None:
+    """CSRF guard: reject a request with no X-Requested-With header.
+
+    A no-body (or form/multipart) POST is a CORS "simple request" — no
+    preflight — so a hostile page can auto-submit one cross-site without ever
+    touching the response. Requiring a custom header forces a preflight,
+    which CORS then blocks for any origin not on the allow-list. Shared by
+    every state-changing endpoint that a browser could trigger this way
+    (currently /api/import and /wake); the SPA sends this header (see
+    api.ts) (#123).
+    """
+    if not request.headers.get("x-requested-with"):
+        raise HTTPException(status_code=403, detail="missing X-Requested-With header")
 
 
 @app.get("/api/health")
@@ -247,8 +263,12 @@ def device_reachability(device_id: str, days: int = 7) -> dict:
 
 
 @app.post("/api/devices/{device_id}/wake", status_code=200)
-def wake_device(device_id: str) -> dict[str, str]:
+def wake_device(device_id: str, request: Request) -> dict[str, str]:
     """Send a Wake-on-LAN magic packet to the device's MAC address."""
+    # CSRF guard: a bare POST like this is a CORS "simple request" a hostile
+    # page could auto-submit, same as /api/import — see _require_requested_with.
+    _require_requested_with(request)
+
     device = storage.get_device(device_id)  # NotFoundError -> 404 via the handler
 
     mac = device.get("mac", "")
@@ -311,22 +331,21 @@ MAX_IMPORT_BYTES = 5 * 1024 * 1024
 def _validate_and_dump(
     items: list, model: type[BaseModel], label: str
 ) -> tuple[list[dict], list[str]]:
-    """Validate each item against *model*; return (normalized dicts, errors).
+    """Validate every item against *model*; return (normalized dicts, errors).
 
-    The normalized dicts come from ``model_dump(exclude_none=True)`` — exactly
-    what create_device persists — so an imported device gets the same MAC
-    upper-casing and field shape as one added through the form.
+    Collects every error (rather than failing on the first) so an import
+    reports all of a payload's problems at once. Delegates the per-item check
+    to validate_catalog_item, the same helper storage.ensure_seeded uses to
+    validate a legacy devices.json (#123) — so a malformed record is rejected
+    identically whichever path it comes through.
     """
     dumped: list[dict] = []
     errors: list[str] = []
     for i, item in enumerate(items):
-        if not isinstance(item, dict):
-            errors.append(f"{label}[{i}]: must be a JSON object")
-            continue
         try:
-            dumped.append(model(**item).model_dump(exclude_none=True))
-        except Exception as exc:
-            errors.append(f"{label}[{i}]: {exc}")
+            dumped.append(validate_catalog_item(item, model, label, i))
+        except ValueError as exc:
+            errors.append(str(exc))
     return dumped, errors
 
 
@@ -359,12 +378,7 @@ def _check_referential_integrity(
 @app.post("/api/import", status_code=200)
 async def import_catalog(request: Request, file: UploadFile) -> dict[str, int]:
     """Replace catalog with uploaded JSON after validation."""
-    # CSRF guard: a multipart POST is a CORS "simple request" (no preflight), so
-    # a malicious site could otherwise auto-submit a form to wipe the catalog.
-    # Requiring a custom header forces a preflight, which CORS then blocks for
-    # any origin not on the allow-list. The SPA sends this header (see api.ts).
-    if not request.headers.get("x-requested-with"):
-        raise HTTPException(status_code=403, detail="missing X-Requested-With header")
+    _require_requested_with(request)
 
     # Read at most MAX_IMPORT_BYTES+1 so an oversized upload is rejected without
     # ever buffering the whole thing in memory.

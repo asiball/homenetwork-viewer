@@ -146,6 +146,11 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* The one header item allowed to shrink/truncate: flex-basis 0 + flex-grow
+     hands it the slack, and it gives it back (ellipsis) before the fixed
+     controls in .right ever get squeezed — e.g. compare mode's extra
+     ⚡ speeds toggle at ~1280px used to crop the layout toggle instead. */
+  flex: 1 1 0%;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -153,6 +158,10 @@ body {
 }
 .n-head .crumbs span {
   color: var(--fg-soft);
+}
+.n-head .brand,
+.n-head .nav-link {
+  flex-shrink: 0;
 }
 .n-head .right {
   margin-left: auto;
@@ -162,6 +171,7 @@ body {
   font-size: 10px;
   color: var(--fg-soft);
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 .n-head .layout-tog {
   display: flex;
@@ -1451,6 +1461,23 @@ body {
   /* iPad portrait: collapse the left list by default; it can be reopened. */
   .noc {
     grid-template-columns: 0 1fr 260px;
+  }
+  /* The header's right-side controls (layout toggle, refresh, add) alone
+     already fill the available width at this size — drop the breadcrumb and
+     the "synced HH:MM:SS" clock (lowest-priority text, spec DoD #8) instead
+     of letting the row overflow into horizontal document scroll. */
+  .n-head .crumbs,
+  .n-head .flash {
+    display: none;
+  }
+  /* Even without those, the right block (~580px of toggle/poll/buttons) beats
+     the width left beside the brand + nav links. Collapse the toggle/button
+     text labels to their glyphs (aria-labels keep them named) and drop the
+     up-count (the home footer repeats up/down) so every control stays
+     on-screen and tappable instead of overflowing into horizontal scroll. */
+  .n-head .tog-txt,
+  .n-head .up-count {
+    display: none;
   }
   .noc .n-left {
     position: absolute;

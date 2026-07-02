@@ -55,3 +55,53 @@ def test_send_magic_packet_broadcasts(monkeypatch):
     assert sent["addr"] == ("255.255.255.255", 9)
     assert sent["packet"][:6] == b"\xff" * 6
     assert "broadcast" in sent
+
+
+def test_send_magic_packet_honours_broadcast_env_override(monkeypatch):
+    """HOMENET_WOL_BROADCAST overrides the default destination (#123): the
+    limited broadcast never escapes the docker bridge in the documented
+    compose deployment, so a subnet-directed broadcast must be settable."""
+    sent: dict = {}
+
+    class _FakeSock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def setsockopt(self, *a):
+            pass
+
+        def sendto(self, packet, addr):
+            sent["addr"] = addr
+
+    monkeypatch.setattr(wol.socket, "socket", lambda *a, **k: _FakeSock())
+    monkeypatch.setenv("HOMENET_WOL_BROADCAST", "192.168.1.255")
+    wol.send_magic_packet("AA:BB:CC:DD:EE:FF")
+
+    assert sent["addr"] == ("192.168.1.255", 9)
+
+
+def test_send_magic_packet_explicit_broadcast_wins_over_env(monkeypatch):
+    """An explicit `broadcast=` argument still overrides the env var."""
+    sent: dict = {}
+
+    class _FakeSock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def setsockopt(self, *a):
+            pass
+
+        def sendto(self, packet, addr):
+            sent["addr"] = addr
+
+    monkeypatch.setattr(wol.socket, "socket", lambda *a, **k: _FakeSock())
+    monkeypatch.setenv("HOMENET_WOL_BROADCAST", "192.168.1.255")
+    wol.send_magic_packet("AA:BB:CC:DD:EE:FF", broadcast="10.0.0.255")
+
+    assert sent["addr"] == ("10.0.0.255", 9)

@@ -180,12 +180,29 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
   const depthOf = new Map<string, number>();
   let maxDepth = 0;
   const walk = (id: string, depth: number) => {
+    // Guard against a cycle in `children` (two switches whose uplinks name
+    // each other: addChild() lets each become the other's child before either
+    // has a parent of its own, since neither was `placed` yet when the other
+    // was added — see below).
+    if (depthOf.has(id)) return;
     order.push(id);
     depthOf.set(id, depth);
     if (depth > maxDepth) maxDepth = depth;
     for (const k of children.get(id) ?? []) walk(k, depth + 1);
   };
   walk(root.id, 0);
+
+  // `placed` records everything addChild() ever attached under *some* parent,
+  // but a cycle among those parents (e.g. sw1 ↔ sw2 mutual uplinks) means
+  // none of them is ever reachable from `root` — walk() above never visits
+  // them, so they (and every device patched into them) would keep no
+  // position and collapse onto (0,0) in TopologyMap's getPos() fallback.
+  // Lay out each such stranded component as its own disconnected row block,
+  // exactly like the pre-order walk from root, so every placed node ends up
+  // with real coordinates.
+  for (const id of placed) {
+    if (!depthOf.has(id)) walk(id, 0);
+  }
 
   // Fixed scale: the tree renders at its natural size and the map pane
   // scrolls/pans instead of squeezing everything into the viewport.
@@ -210,7 +227,14 @@ function computeTree(visible: Device[], switches: Switch[], compact: boolean): L
     };
   });
 
-  const offline = new Map(visible.map((d) => [d.id, !d.online] as const));
+  // Edge "off" (dashed) reflects the *child* end's own reachability. That end
+  // can be a pseudo switch/hub with no Device entry at all — without this, a
+  // link into/through a ledger switch whose `online` is false still drew
+  // solid, misreporting it as up.
+  const offline = new Map<string, boolean>(visible.map((d) => [d.id, !d.online] as const));
+  for (const s of switches) {
+    if (!deviceIds.has(s.id)) offline.set(s.id, !s.online);
+  }
   const edges: Edge[] = [];
   for (const [parent, kids] of children) {
     const px = positions[parent]?.x ?? left;

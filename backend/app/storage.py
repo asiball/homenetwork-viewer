@@ -129,13 +129,30 @@ def _write() -> Iterator[sqlite3.Connection]:
             conn.close()
 
 
+def _exec_script(conn: sqlite3.Connection, script: str) -> None:
+    """Run a semicolon-separated block of DDL one statement at a time.
+
+    conn.executescript() issues an implicit COMMIT before it runs (and, in the
+    absence of an explicit BEGIN, autocommits each statement as it goes), so it
+    won't compose with the caller's own transaction. Executing each statement
+    through conn.execute() instead lets _migrate() wrap a whole migration
+    (every statement here *and* the PRAGMA user_version bump) in one atomic
+    transaction.
+    """
+    for stmt in script.split(";"):
+        stmt = stmt.strip()
+        if stmt:
+            conn.execute(stmt)
+
+
 def _m001_initial(conn: sqlite3.Connection) -> None:
     """Catalog tables + machine-state table + a key/value meta table.
 
     `seq` preserves insertion order for list endpoints (ORDER BY seq). Device
     reachability lives in device_state, separate from the curated `doc`.
     """
-    conn.executescript(
+    _exec_script(
+        conn,
         """
         CREATE TABLE devices (
             id   TEXT PRIMARY KEY,
@@ -165,7 +182,7 @@ def _m001_initial(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX idx_devices_ip ON devices(ip);
         CREATE INDEX idx_devices_mac ON devices(mac);
-        """
+        """,
     )
 
 
@@ -177,7 +194,8 @@ def _m002_reachability_history(conn: sqlite3.Connection) -> None:
     source for outage history and, later, notifications). Both cascade-delete with
     their device, so removing a device cleans up its history too.
     """
-    conn.executescript(
+    _exec_script(
+        conn,
         """
         CREATE TABLE reachability_samples (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,49 +213,130 @@ def _m002_reachability_history(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX idx_samples_device_ts ON reachability_samples(device_id, ts);
         CREATE INDEX idx_events_device_ts ON reachability_events(device_id, ts);
+        """,
+    )
+
+
+def _m003_unique_indexes(conn: sqlite3.Connection) -> None:
+    """UNIQUE indexes on devices.ip / devices.mac, plus a ts-only index on
+    reachability_samples.
+
+    id/ip/mac uniqueness has always been enforced at the app layer
+    (_check_identity_unique, #123), so every existing database is already
+    clean — this just has SQLite itself refuse a duplicate too, as a second
+    line of defense. reachability_samples only had (device_id, ts) (the wrong
+    leading column for a ts-only predicate), so prune_reachability's
+    `DELETE ... WHERE ts < ?` was a full table scan every run (#93).
+    """
+    _exec_script(
+        conn,
         """
+        DROP INDEX idx_devices_ip;
+        DROP INDEX idx_devices_mac;
+        CREATE UNIQUE INDEX idx_devices_ip ON devices(ip);
+        CREATE UNIQUE INDEX idx_devices_mac ON devices(mac);
+        CREATE INDEX idx_samples_ts ON reachability_samples(ts);
+        """,
     )
 
 
 # Append-only: each migration is applied once, in order, the first time the DB's
 # user_version is below its index. Never edit a shipped migration — add a new one.
-_MIGRATIONS = [_m001_initial, _m002_reachability_history]
+_MIGRATIONS = [_m001_initial, _m002_reachability_history, _m003_unique_indexes]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply pending migrations in order, one at a time.
+
+    Each migration's DDL and its PRAGMA user_version bump run inside one
+    explicit transaction — SQLite's DDL is fully transactional, and so is
+    PRAGMA user_version — so a crash between two statements of the same
+    migration (e.g. between _m002's two CREATE TABLEs) can't leave
+    user_version stale while some of the migration's tables already exist.
+    Without this, the next startup would find a version that says "not
+    applied" but a database that says "already applied", and fail forever on
+    "table already exists". Re-running after such a crash instead just
+    re-applies the (all-or-nothing) migration from scratch.
+    """
     version = conn.execute("PRAGMA user_version").fetchone()[0]
+    # Autocommit: hand transaction control entirely to the explicit
+    # BEGIN/COMMIT/ROLLBACK below instead of sqlite3's implicit per-statement
+    # handling.
+    conn.isolation_level = None
     for i, migration in enumerate(_MIGRATIONS, start=1):
         if version < i:
-            migration(conn)
-            conn.execute(f"PRAGMA user_version = {i}")
+            conn.execute("BEGIN")
+            try:
+                migration(conn)
+                conn.execute(f"PRAGMA user_version = {i}")
+            except BaseException:
+                conn.execute("ROLLBACK")
+                raise
+            conn.execute("COMMIT")
             logger.info("storage.migrate applied=%d", i)
-    conn.commit()
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def _load_and_validate_catalog(source: Path) -> tuple[list[dict], list[dict], list[dict]]:
+    """Read + Pydantic-validate a catalog JSON file (legacy devices.json or the
+    bundled seed) before it's allowed anywhere near replace_catalog.
+
+    Without this, an entry missing `id` raises a raw KeyError deep in
+    replace_catalog (the process never finishes starting), and an entry
+    missing some other required field is written to the DB as-is, so every
+    later GET /api/devices 500s trying to re-parse it. Using the very models
+    /api/import validates against (Device / Switch / Cable, via
+    models.validate_catalog_item) means a broken catalog is rejected loudly,
+    here, instead of silently reseeding over — or poisoning — the user's data.
+    """
+    # Imported lazily: models.py has no dependency on storage.py, but keeping
+    # the import at call time (not module scope) avoids adding a load-bearing
+    # import cycle risk as the two modules evolve.
+    from .models import Cable, Device, Switch, validate_catalog_item
+
+    doc = json.loads(source.read_text(encoding="utf-8"))
+    devices, switches, cables = (
+        doc.get("devices", []),
+        doc.get("switches", []),
+        doc.get("cables", []),
+    )
+    try:
+        norm_devices = [
+            validate_catalog_item(d, Device, "device", i) for i, d in enumerate(devices)
+        ]
+        norm_switches = [
+            validate_catalog_item(s, Switch, "switch", i) for i, s in enumerate(switches)
+        ]
+        norm_cables = [validate_catalog_item(c, Cable, "cable", i) for i, c in enumerate(cables)]
+    except ValueError as exc:
+        raise DataFileError(f"{source.name}: invalid catalog data: {exc}") from exc
+    return norm_devices, norm_switches, norm_cables
+
+
 def ensure_seeded() -> None:
     """Create + migrate the database, seeding it on first run.
 
     Seeds from a legacy ``devices.json`` if one is present (so an upgrade keeps
-    existing data), otherwise from the bundled seed.
+    existing data), otherwise from the bundled seed. Either source is
+    validated against the same Pydantic models /api/import uses before it
+    touches the database (see _load_and_validate_catalog) — a broken file
+    raises DataFileError (-> 503 via the app's exception handler / a clear
+    startup failure) rather than crashing lifespan with a raw KeyError or
+    silently poisoning every future read.
     """
     with _lock:
-        with closing(_connect()) as conn:
+        with _db() as conn:
             _migrate(conn)
             already = conn.execute("SELECT 1 FROM devices LIMIT 1").fetchone()
         if already:
             return
         source = LEGACY_JSON if LEGACY_JSON.exists() else SEED_FILE
         if source.exists():
-            doc = json.loads(source.read_text(encoding="utf-8"))
-            replace_catalog(
-                doc.get("devices", []),
-                doc.get("switches", []),
-                doc.get("cables", []),
-            )
+            devices, switches, cables = _load_and_validate_catalog(source)
+            replace_catalog(devices, switches, cables)
             logger.info("storage.seed action=load src=%s", source.name)
         else:  # pragma: no cover - seed ships with the image
             with _write() as conn:
@@ -571,20 +670,36 @@ def record_reachability(samples: list[dict], ts: str | None = None) -> None:
 
 
 def reachability_history(device_id: str, days: int = 7) -> dict[str, Any]:
-    """Per-day uptime over the last *days* calendar days (UTC), from samples.
+    """Per-day uptime over the last *days* calendar days in the server's local
+    timezone, from samples.
+
+    Samples are stamped in UTC (unchanged), but day buckets are computed in
+    local time via SQLite's ``date(ts, 'localtime')`` — which reads the same
+    OS timezone as Python's ``datetime.now().astimezone()`` here — so a
+    household outside UTC (say JST) sees "today" split the way its members
+    actually experience the day, instead of e.g. a 00:00–09:00 JST outage
+    being folded into the previous UTC day's bar. Set TZ in docker-compose.yml
+    to the household's zone; it defaults to UTC.
 
     Returns ``{device_id, days, history: [{date, uptime, samples}], uptime_pct}``
     where ``uptime``/``uptime_pct`` are ratios in 0..1 and are ``None`` for a day
     (or window) with no samples — history is never invented (spec §6.4)."""
     days = max(1, days)
-    today = datetime.now(UTC).date()
+    now_local = datetime.now().astimezone()
+    today = now_local.date()
     start = today - timedelta(days=days - 1)
+    # Bound the SQL scan generously: convert local start-of-day back to UTC so
+    # a positive UTC offset (local start-of-day is still "yesterday" in UTC)
+    # can't drop samples that belong in the first bucket.
+    start_utc = datetime.combine(start, datetime.min.time(), tzinfo=now_local.tzinfo).astimezone(
+        UTC
+    )
     with _db() as conn:
         rows = conn.execute(
-            "SELECT date(ts) AS day, AVG(reachable) AS up, COUNT(*) AS n "
+            "SELECT date(ts, 'localtime') AS day, AVG(reachable) AS up, COUNT(*) AS n "
             "FROM reachability_samples WHERE device_id = ? AND ts >= ? "
-            "GROUP BY date(ts)",
-            (device_id, start.isoformat()),
+            "GROUP BY date(ts, 'localtime')",
+            (device_id, start_utc.isoformat()),
         ).fetchall()
     by_day = {r["day"]: (r["up"], r["n"]) for r in rows}
     history: list[dict[str, Any]] = []

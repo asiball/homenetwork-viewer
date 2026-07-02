@@ -38,7 +38,8 @@ export function RefreshControls() {
 
   return (
     <>
-      <span>
+      {/* Hidden under 820px (the home footer repeats the up/down counts). */}
+      <span className="up-count">
         up <b style={{ color: "var(--amber)" }}>{meta.online}</b>/{meta.total}
       </span>
       <select
@@ -71,7 +72,7 @@ export function RefreshControls() {
         <span className={refreshing ? "spin" : ""} style={{ display: "inline-block" }}>
           ⟳
         </span>{" "}
-        refresh
+        <span className="tog-txt">refresh</span>
       </button>
     </>
   );

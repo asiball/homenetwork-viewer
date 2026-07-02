@@ -2,7 +2,7 @@
 
 The first 24–36 bits of a MAC address are an IEEE-assigned Organizationally
 Unique Identifier that maps deterministically to the hardware vendor. We bundle
-a generated lookup table (``app/data/oui-prefixes.txt``) so the lookup runs
+a generated lookup table (``app/oui-prefixes.txt``) so the lookup runs
 entirely locally — no external request is ever made (spec §11; issue #107).
 
 IEEE hands out blocks of three sizes: MA-L (/24, 6 hex digits), MA-M (/28, 7

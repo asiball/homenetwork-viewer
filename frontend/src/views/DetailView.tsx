@@ -196,7 +196,10 @@ export function DetailView() {
         <div className="d-stats">
           <div className="d-stat">
             <div className="l">CPU load</div>
-            {m && m.cpu_pct != null ? (
+            {/* §6.4: an offline device shows "—", never the last manual value
+                the catalog happened to have on file (it's stale by definition) —
+                mirrors SummaryPanel's device.online gate + the Uptime card below. */}
+            {device.online && m && m.cpu_pct != null ? (
               <>
                 <div className="v amber">
                   {m.cpu_pct}
@@ -212,14 +215,16 @@ export function DetailView() {
             ) : (
               <>
                 <div className="v dim">—</div>
-                <div className="sub">no agent / offline</div>
+                <div className="sub">
+                  {device.online ? "no agent" : `last online ${formatLast(device.last)}`}
+                </div>
               </>
             )}
           </div>
 
           <div className="d-stat">
             <div className="l">Memory</div>
-            {m && m.mem_pct != null ? (
+            {device.online && m && m.mem_pct != null ? (
               <>
                 <div className="v ok">
                   {m.mem_pct}
@@ -233,14 +238,16 @@ export function DetailView() {
             ) : (
               <>
                 <div className="v dim">—</div>
-                <div className="sub">no agent / offline</div>
+                <div className="sub">
+                  {device.online ? "no agent" : `last online ${formatLast(device.last)}`}
+                </div>
               </>
             )}
           </div>
 
           <div className="d-stat">
             <div className="l">Throughput</div>
-            {m && m.net_in != null ? (
+            {device.online && m && m.net_in != null ? (
               <>
                 <div className="v">
                   {m.net_in}
@@ -517,12 +524,16 @@ export function DetailView() {
                       );
                     }
                     const cls = b.pct > 0.95 ? "" : b.pct > 0.7 ? "partial" : "poor";
+                    // Clamp like every other percent-driven bar width (helpers.ts
+                    // clampPct, #88) — a corrupt/hand-edited hist7 entry above 1
+                    // must not blow the bar past 100% height or label "120%".
+                    const pct = clampPct(b.pct * 100);
                     return (
                       <div key={i} className="day">
                         <div className="bar">
-                          <div className={`fill ${cls}`} style={{ height: `${b.pct * 100}%` }} />
+                          <div className={`fill ${cls}`} style={{ height: `${pct}%` }} />
                         </div>
-                        <div className="pct">{Math.round(b.pct * 100)}%</div>
+                        <div className="pct">{Math.round(pct)}%</div>
                         <div className="lbl">{b.label}</div>
                       </div>
                     );

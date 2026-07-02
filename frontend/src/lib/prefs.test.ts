@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { prefs } from "./prefs";
 
 describe("prefs", () => {
@@ -30,6 +30,34 @@ describe("prefs", () => {
     localStorage.setItem("homenet.sort", "nonsense");
     expect(prefs.layout.get()).toBe("radial");
     expect(prefs.sort.get()).toBe("group");
+  });
+
+  it("falls back to defaults, silently, when localStorage throws (storage disabled)", () => {
+    // e.g. Safari private browsing / an enterprise policy: getItem/setItem
+    // throw a SecurityError instead of just behaving oddly. main.tsx reads
+    // prefs.theme.get() before the app (and its ErrorBoundary) mounts, so a
+    // throw here must never escape.
+    const getSpy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("storage disabled", "SecurityError");
+    });
+    const setSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("storage disabled", "SecurityError");
+    });
+
+    expect(prefs.theme.get()).toBe("dark");
+    expect(prefs.poll.get()).toBe("5m");
+    expect(prefs.sort.get()).toBe("group");
+    expect(prefs.layout.get()).toBe("radial");
+    expect(prefs.showOffline.get()).toBe(true);
+    expect(prefs.showSpeeds.get()).toBe(false);
+    expect(prefs.recent.get()).toEqual([]);
+
+    expect(() => prefs.theme.set("light")).not.toThrow();
+    expect(() => prefs.showOffline.set(false)).not.toThrow();
+    expect(() => prefs.recent.push("x")).not.toThrow();
+
+    getSpy.mockRestore();
+    setSpy.mockRestore();
   });
 
   describe("recent", () => {

@@ -69,8 +69,15 @@ export const api = {
     await req<unknown>(`/devices/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
   wake: (id: string) =>
+    // X-Requested-With, same as importCatalog below: forces a CORS preflight
+    // so a cross-site form can't silently trigger a magic packet. The backend
+    // rejects POST /wake without this header.
+    // req()'s own default headers are spread *before* init, so passing custom
+    // headers here has to repeat Content-Type — a bare `init.headers` would
+    // otherwise replace (not merge with) the default.
     req<{ status: string; mac: string }>(`/devices/${encodeURIComponent(id)}/wake`, {
       method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     }),
   export: () =>
     fetch(BASE + "/export").then(async (r) => {

@@ -34,6 +34,17 @@ export function HomeView() {
   const gw = useMemo(() => gatewayInfo(devices), [devices]);
 
   const [view, setView] = useState<ViewMode>(() => initialView(params.get("layout")));
+  // The URL can change out from under `view` without HomeView remounting —
+  // browser back/forward, or clicking the brand link back to "/" (which drops
+  // the query string but keeps the same route element). Re-derive from the
+  // URL whenever it changes so the map never shows a layout the address bar
+  // no longer names; changeView() below always writes the URL first, so this
+  // is a no-op on the normal click path.
+  useEffect(() => {
+    const next = initialView(params.get("layout"));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setView((v) => (v === next ? v : next));
+  }, [params]);
   const [showOffline, setShowOffline] = useState(() => prefs.showOffline.get());
   // Wiring-tree link-speed overlay (off by default; only meaningful on the tree).
   const [showSpeeds, setShowSpeeds] = useState(() => prefs.showSpeeds.get());
@@ -176,9 +187,14 @@ export function HomeView() {
           setSelId(ordered[wrapped].id);
           setSelSwId(null);
         } else if (e.key === "Enter" && selected) {
-          // Let a focused button/link handle its own Enter (don't double-fire).
-          const tag = (e.target as HTMLElement)?.tagName;
-          if (tag === "BUTTON" || tag === "A") return;
+          // Let a focused interactive element handle its own Enter (don't
+          // double-fire). The old check only matched tagName BUTTON/A, but the
+          // map's SVG node/switch hit areas are rect/circle with role="button"
+          // (lowercase tagName) — so a focused tree row's Enter fired *both*
+          // its own onKeyDown (select) *and* this handler (navigate using the
+          // stale render-time `selected`), misnavigating away from what was
+          // just selected.
+          if ((e.target as HTMLElement)?.closest?.('button, a, [role="button"]')) return;
           navigate(`/d/${selected.id}`);
         }
       },
@@ -252,19 +268,30 @@ export function HomeView() {
       }
       right={
         <>
+          {/* .tog-txt labels collapse to icon-only under 820px (DoD #8) — the
+              aria-labels keep the buttons named when the text is hidden. */}
           <div className="layout-tog" title="switch layout (radial / tree / compare)">
-            <button className={view === "radial" ? "sel" : ""} onClick={() => changeView("radial")}>
-              ◎ radial
+            <button
+              className={view === "radial" ? "sel" : ""}
+              onClick={() => changeView("radial")}
+              aria-label="radial layout"
+            >
+              ◎ <span className="tog-txt">radial</span>
             </button>
-            <button className={view === "tree" ? "sel" : ""} onClick={() => changeView("tree")}>
-              ⑂ tree
+            <button
+              className={view === "tree" ? "sel" : ""}
+              onClick={() => changeView("tree")}
+              aria-label="tree layout"
+            >
+              ⑂ <span className="tog-txt">tree</span>
             </button>
             <button
               className={view === "compare" ? "sel" : ""}
               onClick={() => changeView("compare")}
               title="radial + tree side by side"
+              aria-label="compare layouts"
             >
-              ⊟ compare
+              ⊟ <span className="tog-txt">compare</span>
             </button>
           </div>
           {treeActive && (
@@ -272,9 +299,10 @@ export function HomeView() {
               className={`btn ${showSpeeds ? "" : "ghost"}`}
               onClick={toggleSpeeds}
               aria-pressed={showSpeeds}
+              aria-label="link-speed overlay"
               title="colour wiring-tree links by speed & flag cable bottlenecks"
             >
-              ⚡ speeds
+              ⚡ <span className="tog-txt">speeds</span>
             </button>
           )}
           <RefreshControls />

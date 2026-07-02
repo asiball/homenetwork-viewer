@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { HomeView } from "./HomeView";
 import { CatalogContext, type CatalogValue } from "../CatalogContext";
-import type { Device } from "../types";
+import type { Device, Switch } from "../types";
 
 const dev = (over: Partial<Device> = {}): Device => ({
   id: "d",
@@ -19,9 +19,9 @@ const dev = (over: Partial<Device> = {}): Device => ({
   ...over,
 });
 
-const catalog = (devices: Device[]): CatalogValue => ({
+const catalog = (devices: Device[], switches: Switch[] = []): CatalogValue => ({
   devices,
-  switches: [],
+  switches,
   cables: [],
   meta: { total: devices.length, online: devices.length, offline: 0, updated_at: null },
   selfId: null,
@@ -33,13 +33,16 @@ const catalog = (devices: Device[]): CatalogValue => ({
   notify: vi.fn(),
 });
 
-function renderHome(devices: Device[]) {
+function renderHome(devices: Device[], switches: Switch[] = [], initialEntries = ["/"]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <CatalogContext.Provider value={catalog(devices)}>
-        <MemoryRouter initialEntries={["/"]}>
-          <HomeView />
+      <CatalogContext.Provider value={catalog(devices, switches)}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <Routes>
+            <Route path="/" element={<HomeView />} />
+            <Route path="/d/:id" element={<div data-testid="detail-stub" />} />
+          </Routes>
         </MemoryRouter>
       </CatalogContext.Provider>
     </QueryClientProvider>
@@ -130,5 +133,57 @@ describe("HomeView", () => {
     expect(compare?.querySelectorAll(".n-map")).toHaveLength(2);
     expect(within(compare as HTMLElement).getByText("radial")).toBeInTheDocument();
     expect(within(compare as HTMLElement).getByText("wiring tree")).toBeInTheDocument();
+  });
+
+  it("Enter on a focused wiring-tree row only fires that row's own handler, not the global navigate-to-selected shortcut", async () => {
+    const user = userEvent.setup();
+    const gw = dev({ id: "gw", name: "Gateway", group: "Infra", ring: 0, type: "router" });
+    const nas = dev({ id: "nas", name: "NAS", group: "Infra" });
+    const sw1: Switch = {
+      id: "sw1",
+      name: "Switch · rack",
+      type: "switch",
+      online: true,
+      portMap: {
+        "1": { device: "gw", role: "uplink" },
+        "2": { device: "nas", role: "downlink" },
+      },
+    };
+    renderHome([gw, nas], [sw1]);
+
+    await user.click(screen.getByRole("button", { name: /tree/ }));
+    // Repro precondition: some other device (NAS) is the current `selected`
+    // before Enter lands on the switch's row.
+    await user.click(
+      within(screen.getByRole("complementary", { name: "device list" })).getByText("NAS")
+    );
+
+    // The switch's SVG hit area is a rect with role="button" — lowercase
+    // tagName, which the old BUTTON/A-only guard didn't recognise.
+    const switchRow = screen.getByRole("button", { name: "Switch · rack" });
+    switchRow.focus();
+    fireEvent.keyDown(switchRow, { key: "Enter" });
+
+    // The row's own onKeyDown selected the switch (side panel swaps to it)...
+    expect(screen.getByRole("complementary", { name: "switch summary" })).toBeInTheDocument();
+    // ...and the global handler did not *also* fire and navigate to /d/nas
+    // using the stale render-time `selected`.
+    expect(screen.queryByTestId("detail-stub")).not.toBeInTheDocument();
+  });
+
+  it("keeps the layout in sync when the URL's ?layout= changes without a remount (e.g. the brand link)", async () => {
+    const user = userEvent.setup();
+    const devices = [dev({ id: "gw", name: "Gateway", group: "Infra", ring: 0, type: "router" })];
+    renderHome(devices, [], ["/?layout=tree"]);
+
+    expect(screen.getByRole("button", { name: /tree/ }).className).toContain("sel");
+
+    // The brand link navigates to "/" (no query) without unmounting HomeView
+    // — the view has to fall back like a fresh visit instead of keeping the
+    // stale "tree" selection the URL no longer names.
+    await user.click(screen.getByRole("link", { name: /HOMENET/ }));
+
+    expect(screen.getByRole("button", { name: /radial/ }).className).toContain("sel");
+    expect(screen.getByRole("button", { name: /tree/ }).className).not.toContain("sel");
   });
 });

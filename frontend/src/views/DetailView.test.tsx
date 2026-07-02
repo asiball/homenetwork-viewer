@@ -113,4 +113,49 @@ describe("DetailView", () => {
     renderDetail("gw", [gw]);
     expect(dossier().queryByText("path ↑")).not.toBeInTheDocument();
   });
+
+  it("hides stale manual CPU/memory/throughput metrics for an offline device (§6.4)", () => {
+    const { container } = renderDetail("nas", [
+      dev({
+        online: false,
+        last: "2024-01-01T00:00:00Z",
+        detail: { metrics: { cpu_pct: 42, mem_pct: 55, net_in: 100 } },
+      }),
+    ]);
+    const [cpu, mem, throughput, uptime] = Array.from(container.querySelectorAll(".d-stat"));
+    // The last-collected manual numbers must not leak through once offline...
+    expect(cpu.textContent).not.toContain("42");
+    expect(mem.textContent).not.toContain("55");
+    expect(throughput.textContent).not.toContain("100");
+    // ...each shows "—" plus an offline-aware subtext instead (CPU/Memory/
+    // Uptime say "last online …"; Throughput already had its own "offline ·
+    // last …" wording, preserved as-is).
+    for (const card of [cpu, mem, throughput, uptime]) {
+      expect(card.querySelector(".v")?.textContent).toBe("—");
+    }
+    expect(cpu.textContent).toContain("last online");
+    expect(mem.textContent).toContain("last online");
+    expect(uptime.textContent).toContain("last online");
+    expect(throughput.textContent).toContain("offline");
+    expect(throughput.textContent).toContain("last");
+  });
+
+  it("still shows manual metrics for an online device", () => {
+    const { container } = renderDetail("nas", [
+      dev({ online: true, detail: { metrics: { cpu_pct: 42, mem_pct: 55, net_in: 100 } } }),
+    ]);
+    const [cpu, mem, throughput] = Array.from(container.querySelectorAll(".d-stat"));
+    expect(cpu.textContent).toContain("42");
+    expect(mem.textContent).toContain("55");
+    expect(throughput.textContent).toContain("100");
+  });
+
+  it("clamps a >100% manual 7-day history bar instead of overflowing the meter (clampPct, #88 pattern)", () => {
+    const { container } = renderDetail("nas", [dev({ detail: { hist7: [1.2, 0.5, 0.9] } })]);
+    const days = container.querySelectorAll(".d-hist .day");
+    expect(days).toHaveLength(3);
+    const firstFill = days[0].querySelector(".fill") as HTMLElement;
+    expect(firstFill.style.height).toBe("100%");
+    expect(days[0].querySelector(".pct")?.textContent).toBe("100%");
+  });
 });

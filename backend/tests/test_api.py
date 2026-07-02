@@ -2,7 +2,7 @@
 
 import json
 
-from app import storage
+from app import storage, wol
 
 # Derive expected counts from the bundled seed instead of hard-coding magic
 # numbers (issue #90, item 5): the assertions then track the seed automatically
@@ -12,6 +12,10 @@ _SEED_DEVICES = len(_SEED["devices"])
 _SEED_ONLINE = sum(1 for d in _SEED["devices"] if d.get("online"))
 _SEED_SWITCHES = len(_SEED["switches"])
 _SEED_CABLES = len(_SEED["cables"])
+
+# Required on every state-changing endpoint a browser could auto-submit as a
+# CORS "simple request" (/api/import, /wake) — see main._require_requested_with.
+_CSRF_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
 
 def _sample_device(**overrides):
@@ -86,7 +90,7 @@ def test_create_device(client):
     assert r.json()["mac"] == "DE:AD:BE:EF:00:01"
     # persisted
     assert client.get("/api/devices/test-pi").status_code == 200
-    assert len(client.get("/api/devices").json()) == 23
+    assert len(client.get("/api/devices").json()) == _SEED_DEVICES + 1
 
 
 def test_create_duplicate_id_conflicts(client):
@@ -420,7 +424,7 @@ def _import(client, payload, headers=None):
     return client.post(
         "/api/import",
         files={"file": ("catalog.json", blob, "application/json")},
-        headers={"X-Requested-With": "XMLHttpRequest", **(headers or {})},
+        headers={**_CSRF_HEADERS, **(headers or {})},
     )
 
 
@@ -557,30 +561,67 @@ def test_import_normalizes_mac_to_uppercase(client):
 
 
 def test_wake_missing_device_404(client):
-    assert client.post("/api/devices/ghost/wake").status_code == 404
+    assert client.post("/api/devices/ghost/wake", headers=_CSRF_HEADERS).status_code == 404
 
 
-def test_wake_sends_magic_packet(client):
-    """A device with a MAC returns 200 and reports the MAC it targeted."""
+def test_wake_requires_csrf_header(client):
+    """/wake is a no-body POST — a CORS "simple request" a hostile page could
+    auto-submit — so it needs the same X-Requested-With guard as /api/import."""
     client.post("/api/devices", json=_sample_device(mac="AA:BB:CC:DD:EE:01"))
     r = client.post("/api/devices/test-pi/wake")
+    assert r.status_code == 403
+    assert "X-Requested-With" in r.json()["detail"]
+
+
+def test_wake_sends_magic_packet(client, monkeypatch):
+    """A device with a MAC returns 200 and reports the MAC it targeted.
+
+    The socket layer is faked out so no real UDP packet ever leaves the test
+    run (flaky in sandboxed CI, noisy on a real LAN) — this only asserts what
+    homenet actually controls: the magic packet's byte layout and the
+    default broadcast destination (issue #123).
+    """
+    client.post("/api/devices", json=_sample_device(mac="AA:BB:CC:DD:EE:01"))
+
+    sent: dict = {}
+
+    class _FakeSock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def setsockopt(self, *a):
+            sent["broadcast"] = a
+
+        def sendto(self, packet, addr):
+            sent["packet"] = packet
+            sent["addr"] = addr
+
+    monkeypatch.setattr(wol.socket, "socket", lambda *a, **k: _FakeSock())
+
+    r = client.post("/api/devices/test-pi/wake", headers=_CSRF_HEADERS)
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "sent"
     assert body["mac"] == "AA:BB:CC:DD:EE:01"
+
+    assert sent["addr"] == ("255.255.255.255", 9)  # default broadcast/port
+    assert sent["packet"][:6] == b"\xff" * 6
+    assert sent["packet"][6:] == bytes.fromhex("AABBCCDDEE01") * 16
+    assert "broadcast" in sent  # SO_BROADCAST was set
 
 
 def test_wake_socket_failure_returns_503(client, monkeypatch):
     """If the UDP broadcast can't be sent, the endpoint surfaces a 503."""
     client.post("/api/devices", json=_sample_device())
 
-    import socket as _socket
-
     def _boom(*_a, **_k):
         raise OSError("no broadcast route")
 
-    monkeypatch.setattr(_socket, "socket", _boom)
-    r = client.post("/api/devices/test-pi/wake")
+    monkeypatch.setattr(wol.socket, "socket", _boom)
+    r = client.post("/api/devices/test-pi/wake", headers=_CSRF_HEADERS)
     assert r.status_code == 503
     assert "failed to send magic packet" in r.json()["detail"]
 

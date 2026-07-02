@@ -31,6 +31,19 @@ def test_probe_device_reports_reachable(monkeypatch):
     assert rtt == 4.2
 
 
+def test_probe_device_rejects_non_ipv4(monkeypatch):
+    """A device whose ip isn't valid IPv4 (e.g. leaked in via a pre-fix legacy
+    import) must never reach the `ping` argv — it's reported unreachable
+    instead of probed, so a value like "-f" can't be read as a flag (#123)."""
+
+    def _boom(_ip):
+        raise AssertionError("must not probe an unparseable ip")
+
+    monkeypatch.setattr(collector, "_probe", _boom)
+    dev_id, reachable, rtt, method = asyncio.run(collector._probe_device({"id": "bad", "ip": "-f"}))
+    assert (dev_id, reachable, rtt, method) == ("bad", False, None, None)
+
+
 def test_probe_device_honours_semaphore(monkeypatch):
     """With a semaphore passed, the probe still resolves correctly."""
 

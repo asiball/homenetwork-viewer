@@ -9,8 +9,12 @@ import { switchPortRows } from "../lib/helpers";
 export function InventoryView() {
   const { devices, switches, cables } = useCatalog();
 
+  // A cable/port endpoint can be a ledger switch that isn't itself a catalog
+  // device (e.g. a dumb switch) — fall back to the switch ledger the same way
+  // SwitchPanel's nameOf() does, so the table shows "Core Switch" rather than
+  // the raw id.
   function deviceName(id: string): string {
-    return devices.find((d) => d.id === id)?.name ?? id;
+    return devices.find((d) => d.id === id)?.name ?? switches.find((s) => s.id === id)?.name ?? id;
   }
 
   return (

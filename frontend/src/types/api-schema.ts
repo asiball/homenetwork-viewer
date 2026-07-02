@@ -195,6 +195,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Scan
+         * @description Trigger an immediate reachability sweep (spec §5.6 ⟳ scan) instead of
+         *     waiting out the rest of the collector's interval.
+         *
+         *     Same CSRF guard as /wake (a no-body POST is a CORS "simple request").
+         *     Always 202 "scheduled": whether the collector is currently running is an
+         *     operational detail (it's disabled in tests), not something a client needs
+         *     to distinguish from "your request was accepted".
+         */
+        post: operations["trigger_scan_api_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/switches": {
         parameters: {
             query?: never;
@@ -545,6 +571,15 @@ export interface components {
             offline: number;
             /** Updated At */
             updated_at?: string | null;
+            /** Last Sweep */
+            last_sweep?: string | null;
+            /** Next Sweep */
+            next_sweep?: string | null;
+            /**
+             * Sweep Interval
+             * @default 0
+             */
+            sweep_interval: number;
         };
         /** Metrics */
         Metrics: {
@@ -1098,6 +1133,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_scan_api_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

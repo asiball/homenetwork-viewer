@@ -18,6 +18,10 @@ services:
       # store) it is migrated into the DB, otherwise the bundled seed is used.
       HOMENET_DB_FILE: /data/homenet.db
       HOMENET_DATA_FILE: /data/devices.json
+      # Seconds between full reachability sweeps (spec §4.1: 5 min). POST
+      # /api/scan triggers an out-of-band sweep immediately without waiting
+      # out this interval.
+      # HOMENET_SWEEP_INTERVAL: "300"
       # Wake-on-LAN target address. The default (limited broadcast,
       # 255.255.255.255) is dropped at the docker bridge, so the magic packet
       # never reaches the LAN even though /wake reports success. Set this to

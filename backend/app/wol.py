@@ -7,8 +7,11 @@ packet assembly can be unit-tested without a FastAPI request or a live socket
 
 from __future__ import annotations
 
+import logging
 import os
 import socket
+
+logger = logging.getLogger(__name__)
 
 # Destination for the magic packet. The limited broadcast address
 # (255.255.255.255) never leaves the docker bridge in the documented compose
@@ -50,6 +53,17 @@ def send_magic_packet(mac: str, *, broadcast: str | None = None, port: int = 9) 
     """
     if broadcast is None:
         broadcast = os.environ.get("HOMENET_WOL_BROADCAST", DEFAULT_BROADCAST)
+    if broadcast == DEFAULT_BROADCAST:
+        # This is the misconfiguration the compose file's comments already
+        # warn about (see DEFAULT_BROADCAST above): the packet is built and
+        # "sent" successfully from this process's point of view, but dies at
+        # the docker bridge before ever reaching the LAN. Surface it in the
+        # logs since the API response alone can't tell the two apart.
+        logger.warning(
+            "magic packet sent to the limited broadcast address; set "
+            "HOMENET_WOL_BROADCAST=<subnet>.255 if the device does not wake "
+            "— see docker-compose.yml"
+        )
     packet = build_magic_packet(mac)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)

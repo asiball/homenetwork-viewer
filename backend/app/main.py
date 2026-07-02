@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -200,11 +200,26 @@ def meta() -> Meta:
     # Counts come from a SQL COUNT, not a full device load + JSON decode (the
     # summary only needs the numbers).
     total, online = storage.catalog_counts()
+    # Sweep visibility (spec §4.3 "next scan"): last_sweep is None until the
+    # collector's first sweep completes (or forever, if it's disabled), in
+    # which case next_sweep stays None too rather than guessing.
+    last_sweep = storage.get_meta("last_sweep")
+    next_sweep = None
+    if last_sweep is not None:
+        try:
+            next_sweep = (
+                datetime.fromisoformat(last_sweep) + timedelta(seconds=collector.INTERVAL)
+            ).isoformat(timespec="seconds")
+        except ValueError:  # pragma: no cover - defensive against a hand-edited meta row
+            next_sweep = None
     return Meta(
         total=total,
         online=online,
         offline=total - online,
         updated_at=storage.updated_at(),
+        last_sweep=last_sweep,
+        next_sweep=next_sweep,
+        sweep_interval=collector.INTERVAL,
     )
 
 
@@ -256,7 +271,10 @@ def device_reachability(device_id: str, days: int = 7) -> dict:
     ``uptime: null`` (history is never invented — spec §6.4).
     """
     storage.get_device(device_id)  # NotFoundError -> 404 via the handler above
-    days = max(1, min(days, 90))
+    # Clamp to storage.RETENTION_DAYS, not a hardcoded 90: samples older than
+    # the retention window are pruned, so a days value beyond it would just
+    # return the same always-null tail as RETENTION_DAYS, indistinguishably.
+    days = max(1, min(days, storage.RETENTION_DAYS))
     data = storage.reachability_history(device_id, days)
     data["events"] = storage.list_reachability_events(device_id, limit=20)
     return data
@@ -284,6 +302,21 @@ def wake_device(device_id: str, request: Request) -> dict[str, str]:
 
     logger.info("wol device_id=%s mac=%s", device_id, mac)
     return {"status": "sent", "mac": mac}
+
+
+@app.post("/api/scan", status_code=202)
+def trigger_scan(request: Request) -> dict[str, str]:
+    """Trigger an immediate reachability sweep (spec §5.6 ⟳ scan) instead of
+    waiting out the rest of the collector's interval.
+
+    Same CSRF guard as /wake (a no-body POST is a CORS "simple request").
+    Always 202 "scheduled": whether the collector is currently running is an
+    operational detail (it's disabled in tests), not something a client needs
+    to distinguish from "your request was accepted".
+    """
+    _require_requested_with(request)
+    collector.request_sweep()
+    return {"status": "scheduled"}
 
 
 # ─── Topology (read-only) ───────────────────────────────────────────────────

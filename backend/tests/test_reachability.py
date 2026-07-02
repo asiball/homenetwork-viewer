@@ -152,3 +152,15 @@ def test_reachability_endpoint_returns_history(client):
 
 def test_reachability_endpoint_unknown_device_404(client):
     assert client.get("/api/devices/does-not-exist/reachability").status_code == 404
+
+
+def test_reachability_endpoint_clamps_days_to_retention(client):
+    """`days` beyond storage.RETENTION_DAYS is clamped to it, not to a
+    hardcoded 90 — samples that old are pruned anyway, so anything past the
+    retention window would just repeat the same always-null tail."""
+    device_id = client.get("/api/devices").json()[0]["id"]
+
+    res = client.get(f"/api/devices/{device_id}/reachability?days=90")
+    assert res.status_code == 200
+    assert res.json()["days"] == storage.RETENTION_DAYS
+    assert len(res.json()["history"]) == storage.RETENTION_DAYS

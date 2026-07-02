@@ -98,3 +98,103 @@ def test_probe_prefers_tcp_then_falls_back_to_icmp(monkeypatch):
     monkeypatch.setattr(collector, "_tcp_reachable", _tcp_down)
     monkeypatch.setattr(collector, "_ping_reachable", _ping_up)
     assert asyncio.run(collector._probe("10.0.0.5")) == (True, 9.0, "icmp")
+
+
+# ─── _sweep_once / request_sweep (items 5, 6, 8) ───────────────────────────
+
+
+class _FakeStorage:
+    """A stand-in for app.storage exposing just the sync functions
+    _sweep_once calls via asyncio.to_thread, so a sweep can be driven
+    repeatedly without a real database or waiting out INTERVAL."""
+
+    def __init__(self, devices=None):
+        self.devices = devices or []
+        self.recorded: list[tuple[list[dict], str | None]] = []
+        self.pruned = 0
+        self.backed_up = 0
+        self.backup_should_fail = False
+        self.meta: dict[str, str] = {}
+
+    def list_devices(self):
+        return self.devices
+
+    def now_iso(self):
+        return "2026-07-02T00:00:00+00:00"
+
+    def record_reachability(self, samples, ts=None):
+        self.recorded.append((samples, ts))
+
+    def prune_reachability(self):
+        self.pruned += 1
+
+    def backup_catalog(self):
+        if self.backup_should_fail:
+            raise OSError("disk full")
+        self.backed_up += 1
+
+    def set_meta(self, key, value):
+        self.meta[key] = value
+
+
+def test_sweep_once_records_samples_and_stamps_last_sweep(monkeypatch):
+    async def _up(_ip):
+        return True, 1.0, "tcp"
+
+    monkeypatch.setattr(collector, "_probe", _up)
+    fake = _FakeStorage(devices=[{"id": "pi", "ip": "192.168.1.2"}])
+
+    asyncio.run(collector._sweep_once(fake, 1))
+
+    assert len(fake.recorded) == 1
+    samples, ts = fake.recorded[0]
+    assert samples == [{"id": "pi", "reachable": True, "rtt_ms": 1.0, "method": "tcp"}]
+    assert ts == "2026-07-02T00:00:00+00:00"
+    assert fake.meta["last_sweep"] == "2026-07-02T00:00:00+00:00"
+
+
+def test_sweep_once_prunes_only_on_schedule(monkeypatch):
+    monkeypatch.setattr(collector, "PRUNE_EVERY_SWEEPS", 3)
+    fake = _FakeStorage()
+
+    for i in range(1, 7):
+        asyncio.run(collector._sweep_once(fake, i))
+
+    assert fake.pruned == 2  # sweeps 3 and 6
+
+
+def test_sweep_once_backs_up_daily_on_schedule(monkeypatch):
+    """Item 8: the collector loop backs up the catalog roughly once a day,
+    derived from BACKUPS_EVERY_SWEEPS (analogous to PRUNE_EVERY_SWEEPS)."""
+    monkeypatch.setattr(collector, "BACKUPS_EVERY_SWEEPS", 3)
+    fake = _FakeStorage()
+
+    for i in range(1, 7):
+        asyncio.run(collector._sweep_once(fake, i))
+
+    assert fake.backed_up == 2  # sweeps 3 and 6
+
+
+def test_sweep_once_backup_failure_does_not_raise(monkeypatch):
+    """A backup failure (disk full, permissions...) must never take the sweep
+    loop down with it — reachability probing is the collector's real job."""
+    monkeypatch.setattr(collector, "BACKUPS_EVERY_SWEEPS", 1)
+    fake = _FakeStorage()
+    fake.backup_should_fail = True
+
+    asyncio.run(collector._sweep_once(fake, 1))  # must not raise
+
+    assert fake.backed_up == 0
+    assert fake.meta["last_sweep"] == "2026-07-02T00:00:00+00:00"  # sweep still completes
+
+
+def test_request_sweep_without_running_collector_is_a_noop(monkeypatch):
+    monkeypatch.setattr(collector, "_sweep_requested", None)
+    assert collector.request_sweep() is False
+
+
+def test_request_sweep_sets_the_running_collectors_event(monkeypatch):
+    event = asyncio.Event()
+    monkeypatch.setattr(collector, "_sweep_requested", event)
+    assert collector.request_sweep() is True
+    assert event.is_set()

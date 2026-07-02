@@ -138,6 +138,18 @@ def _exec_script(conn: sqlite3.Connection, script: str) -> None:
     through conn.execute() instead lets _migrate() wrap a whole migration
     (every statement here *and* the PRAGMA user_version bump) in one atomic
     transaction.
+
+    The split itself is a naive ``script.split(";")`` — it knows nothing about
+    compound statements or string literals. A migration that needs a
+    ``CREATE TRIGGER ... BEGIN ... END;`` block (the statements inside the
+    trigger body are also `;`-terminated, so the split would sever the body
+    from its own trigger) or a string literal containing a semicolon will
+    silently come apart into invalid fragments here. None of the existing
+    migrations need either, so this is safe today — but a future migration
+    that does must extend this helper first (e.g. skip splitting inside
+    BEGIN…END / quoted strings), not work around it by calling
+    conn.executescript() directly (which would drop out of the caller's
+    transaction — see above).
     """
     for stmt in script.split(";"):
         stmt = stmt.strip()
@@ -280,6 +292,13 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def now_iso() -> str:
+    """Public wrapper around _now_iso so a caller (the collector) can stamp
+    one instant and reuse it both as a reachability sample batch's ``ts`` and
+    as the ``last_sweep`` meta key, instead of the two drifting apart."""
+    return _now_iso()
+
+
 def _load_and_validate_catalog(source: Path) -> tuple[list[dict], list[dict], list[dict]]:
     """Read + Pydantic-validate a catalog JSON file (legacy devices.json or the
     bundled seed) before it's allowed anywhere near replace_catalog.
@@ -291,6 +310,13 @@ def _load_and_validate_catalog(source: Path) -> tuple[list[dict], list[dict], li
     /api/import validates against (Device / Switch / Cable, via
     models.validate_catalog_item) means a broken catalog is rejected loudly,
     here, instead of silently reseeding over — or poisoning — the user's data.
+
+    Per-item validation alone still lets two devices that each parse fine
+    individually collide on id/ip/mac: find_duplicate_identities (the same
+    check /api/import runs) catches that here too, so the UNIQUE index added
+    by _m003 can't be the thing that discovers it — inside replace_catalog,
+    wrapped by _wrap_db_error into a misleading "not a valid SQLite database"
+    message that names a constraint, not the duplicate.
     """
     # Imported lazily: models.py has no dependency on storage.py, but keeping
     # the import at call time (not module scope) avoids adding a load-bearing
@@ -313,6 +339,9 @@ def _load_and_validate_catalog(source: Path) -> tuple[list[dict], list[dict], li
         norm_cables = [validate_catalog_item(c, Cable, "cable", i) for i, c in enumerate(cables)]
     except ValueError as exc:
         raise DataFileError(f"{source.name}: invalid catalog data: {exc}") from exc
+    dup_errors = find_duplicate_identities(norm_devices)
+    if dup_errors:
+        raise DataFileError(f"{source.name}: {'; '.join(dup_errors)}")
     return norm_devices, norm_switches, norm_cables
 
 
@@ -488,6 +517,31 @@ def updated_at() -> str | None:
     try:
         with _db() as conn:
             row = conn.execute("SELECT value FROM meta WHERE key = 'catalog_updated_at'").fetchone()
+    except DataFileError:
+        return None
+    return row["value"] if row else None
+
+
+def set_meta(key: str, value: str) -> None:
+    """Set an arbitrary key in the meta key/value table (e.g. the collector's
+    ``last_sweep`` timestamp — spec §4.3 "next scan" / issue: sweep visibility
+    in /api/meta). Generic on top of the table _touch_catalog already uses for
+    ``catalog_updated_at``, so a second machine-owned timestamp doesn't need
+    its own table."""
+    with _write() as conn:
+        conn.execute(
+            "INSERT INTO meta(key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+
+def get_meta(key: str) -> str | None:
+    """Read an arbitrary key from the meta table, or None if it's never been
+    set (e.g. no sweep has completed yet)."""
+    try:
+        with _db() as conn:
+            row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
     except DataFileError:
         return None
     return row["value"] if row else None
@@ -765,18 +819,31 @@ def backup_catalog() -> None:
 def replace_catalog(devices: list, switches: list, cables: list) -> None:
     """Atomically replace the whole catalog with new data.
 
-    A full replace also drops reachability history: deleting devices cascades to
-    device_state, reachability_samples and reachability_events (so an import never
-    leaves history orphaned to ids that no longer exist)."""
+    Devices are upserted rather than delete+reinserted: a device id that
+    exists both before and after the import keeps its device_state row
+    (online/last) and its reachability_samples/reachability_events untouched
+    — only the curated doc/ip/mac/seq columns are overwritten. Only device
+    ids that disappear from the new catalog are deleted, which cascades to
+    their device_state/reachability_samples/reachability_events (so an
+    import never leaves history orphaned to an id that no longer exists,
+    while a re-import of an unchanged catalog no longer wipes every device's
+    reachability history — issue: /api/import wiping history wholesale).
+    Switches/cables have no history-bearing children, so they stay a plain
+    delete + reinsert."""
     with _write() as conn:
-        conn.execute("DELETE FROM device_state")
-        conn.execute("DELETE FROM devices")
-        conn.execute("DELETE FROM switches")
-        conn.execute("DELETE FROM cables")
+        new_ids = {dev["id"] for dev in devices}
+        old_ids = {r["id"] for r in conn.execute("SELECT id FROM devices")}
+        removed_ids = old_ids - new_ids
+        if removed_ids:
+            # ON DELETE CASCADE also removes device_state / reachability_*
+            # rows for these ids.
+            conn.executemany("DELETE FROM devices WHERE id = ?", [(i,) for i in removed_ids])
         for seq, dev in enumerate(devices):
             doc, online, last = _split_state(dev)
             conn.execute(
-                "INSERT INTO devices(id, ip, mac, doc, seq) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO devices(id, ip, mac, doc, seq) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET "
+                "ip = excluded.ip, mac = excluded.mac, doc = excluded.doc, seq = excluded.seq",
                 (
                     dev["id"],
                     dev.get("ip"),
@@ -785,10 +852,17 @@ def replace_catalog(devices: list, switches: list, cables: list) -> None:
                     seq,
                 ),
             )
-            conn.execute(
-                "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?)",
-                (dev["id"], online, last),
-            )
+            if dev["id"] not in old_ids:
+                # Genuinely new device: seed its state row. An id that already
+                # existed keeps whatever device_state / history it already had —
+                # the import payload's online/last is machine state, not the
+                # curated catalog, so it's deliberately not applied here.
+                conn.execute(
+                    "INSERT INTO device_state(id, online, last) VALUES (?, ?, ?)",
+                    (dev["id"], online, last),
+                )
+        conn.execute("DELETE FROM switches")
+        conn.execute("DELETE FROM cables")
         for seq, sw in enumerate(switches):
             conn.execute(
                 "INSERT INTO switches(id, doc, seq) VALUES (?, ?, ?)",

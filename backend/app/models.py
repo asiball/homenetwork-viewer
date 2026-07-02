@@ -290,6 +290,26 @@ class DeviceUpdate(DeviceBase):
     # distinction explicit and prevents future regressions.
     online: bool | None = None
 
+    @field_validator("online")
+    @classmethod
+    def _online_not_explicit_null(cls, v: bool | None) -> bool | None:
+        """Reject `"online": null` with a 422 instead of letting it survive
+        into the storage merge.
+
+        `None` is also this field's "omitted" default (see above), so a
+        field_validator is exactly the right tool here: pydantic v2 only
+        invokes a field_validator when the field is actually present in the
+        input, never when a default is used to fill in a missing key. That
+        means this only fires for an *explicit* null, not an omitted field —
+        which otherwise reached storage.update_device as `online=None`,
+        committed a merged device with a non-bool `online`, and then failed
+        Device response_model validation with a 500 *after* the write had
+        already landed (silently flipping the device offline; see
+        storage._split_state)."""
+        if v is None:
+            raise ValueError("online must not be null (omit the field to keep the stored value)")
+        return v
+
 
 class Device(DeviceCreate):
     """A stored device: create payload + its (immutable) id."""
@@ -359,6 +379,12 @@ class Meta(BaseModel):
     online: int
     offline: int
     updated_at: str | None = None
+    # Sweep visibility (spec §4.3 "next scan" / POST /api/scan). last_sweep is
+    # null until the collector's first sweep completes; next_sweep is derived
+    # from it (last_sweep + sweep_interval) and is null whenever last_sweep is.
+    last_sweep: str | None = None
+    next_sweep: str | None = None
+    sweep_interval: int = 0
 
 
 # ─── Reachability time series (#93) ──────────────────────────────────────────

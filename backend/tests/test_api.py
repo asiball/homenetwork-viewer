@@ -1,8 +1,10 @@
 """API tests for the homenet backend."""
 
+import asyncio
 import json
+from datetime import datetime, timedelta
 
-from app import storage, wol
+from app import collector, storage, wol
 
 # Derive expected counts from the bundled seed instead of hard-coding magic
 # numbers (issue #90, item 5): the assertions then track the seed automatically
@@ -298,6 +300,32 @@ def test_put_merges_fields_correctly(client):
     assert body["detail"]["hw"]["cpu_full"] == "ARM Cortex-A53"
 
 
+def test_put_explicit_online_null_rejected(client):
+    """`"online": null` is a 422, not a 500 — see models.DeviceUpdate. Before
+    the fix this committed a merged device with online=None, then failed
+    Device response_model validation *after* the write landed."""
+    client.post("/api/devices", json=_sample_device(online=True))
+
+    update = {**_sample_device(), "online": None}
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 422
+
+    # The write must not have landed: online is unchanged.
+    assert client.get("/api/devices/test-pi").json()["online"] is True
+
+
+def test_put_omitting_online_keeps_stored_value(client):
+    """Omitting `online` entirely (not sending the key at all) still means
+    "keep the stored value" — only an explicit null is rejected."""
+    client.post("/api/devices", json=_sample_device(online=True))
+
+    update = _sample_device()
+    del update["online"]
+    r = client.put("/api/devices/test-pi", json=update)
+    assert r.status_code == 200
+    assert client.get("/api/devices/test-pi").json()["online"] is True
+
+
 # ─── C3: IP/MAC uniqueness ────────────────────────────────────────────────
 
 
@@ -547,6 +575,58 @@ def test_import_rejects_duplicate_ip(client):
     assert "duplicate ip" in r.json()["detail"]
 
 
+def test_import_preserves_history_and_state_for_kept_device_id(client):
+    """A device id present both before and after an import keeps its
+    device_state (online/last) and reachability samples/events — an import
+    must not wipe reachability history just because the catalog was
+    re-uploaded."""
+    client.post("/api/devices", json=_sample_device(online=True))
+    storage.record_reachability([{"id": "test-pi", "reachable": False}])  # up->down: an event
+    before = storage.get_device("test-pi")
+    events_before = storage.list_reachability_events("test-pi")
+    assert events_before  # the flip above recorded a "down" event
+
+    # Re-import the same device id, with a *different* online value in the
+    # payload — machine state must win over whatever the import carries.
+    payload = {"devices": [_sample_device(online=True)], "switches": [], "cables": []}
+    r = _import(client, payload)
+    assert r.status_code == 200
+
+    after = storage.get_device("test-pi")
+    assert after["online"] == before["online"]
+    assert after.get("last") == before.get("last")
+    assert storage.list_reachability_events("test-pi") == events_before
+    h = storage.reachability_history("test-pi", days=7)
+    assert sum(d["samples"] for d in h["history"]) >= 1
+
+
+def test_import_drops_history_for_removed_device_id(client):
+    """A device id that disappears from the imported catalog loses its
+    history too (no orphaned rows) — the cascade-delete property is kept."""
+    client.post("/api/devices", json=_sample_device())
+    storage.record_reachability([{"id": "test-pi", "reachable": True}])
+
+    payload = {"devices": [], "switches": [], "cables": []}
+    r = _import(client, payload)
+    assert r.status_code == 200
+
+    assert client.get("/api/devices/test-pi").status_code == 404
+    h = storage.reachability_history("test-pi", days=7)
+    assert sum(d["samples"] for d in h["history"]) == 0
+
+
+def test_import_new_device_id_starts_with_clean_state(client):
+    """A device id that's new to this import starts with the state the
+    import payload itself carries, not some leftover row."""
+    payload = {"devices": [_sample_device(online=True)], "switches": [], "cables": []}
+    r = _import(client, payload)
+    assert r.status_code == 200
+
+    dev = storage.get_device("test-pi")
+    assert dev["online"] is True
+    assert storage.list_reachability_events("test-pi") == []
+
+
 def test_import_normalizes_mac_to_uppercase(client):
     """An imported device is stored in the same shape as a form-created one."""
     r = _import(
@@ -624,6 +704,52 @@ def test_wake_socket_failure_returns_503(client, monkeypatch):
     r = client.post("/api/devices/test-pi/wake", headers=_CSRF_HEADERS)
     assert r.status_code == 503
     assert "failed to send magic packet" in r.json()["detail"]
+
+
+# ─── POST /api/scan (spec §5.6 ⟳ scan) ─────────────────────────────────────
+
+
+def test_scan_requires_csrf_header(client):
+    """Same no-body-POST CSRF guard as /wake and /api/import."""
+    r = client.post("/api/scan")
+    assert r.status_code == 403
+
+
+def test_scan_returns_202_scheduled_and_wakes_the_collector(client, monkeypatch):
+    """A running collector's event is set so its loop wakes for an immediate
+    sweep instead of waiting out INTERVAL. The `client` fixture disables the
+    real collector task (HOMENET_DISABLE_COLLECTOR=1), so a real
+    asyncio.Event stands in for "a collector is running" here."""
+    event = asyncio.Event()
+    monkeypatch.setattr(collector, "_sweep_requested", event)
+
+    r = client.post("/api/scan", headers=_CSRF_HEADERS)
+    assert r.status_code == 202
+    assert r.json() == {"status": "scheduled"}
+    assert event.is_set()
+
+
+# ─── /api/meta sweep visibility (items 5, 6) ───────────────────────────────
+
+
+def test_meta_sweep_fields_null_before_any_sweep(client):
+    """Before the collector's first sweep, last_sweep/next_sweep are null and
+    sweep_interval reflects the configured interval."""
+    meta = client.get("/api/meta").json()
+    assert meta["last_sweep"] is None
+    assert meta["next_sweep"] is None
+    assert meta["sweep_interval"] == collector.INTERVAL
+
+
+def test_meta_reports_last_and_next_sweep_after_a_sweep(client):
+    storage.set_meta("last_sweep", "2026-07-02T00:00:00+00:00")
+
+    meta = client.get("/api/meta").json()
+    assert meta["last_sweep"] == "2026-07-02T00:00:00+00:00"
+    expected_next = (
+        datetime.fromisoformat("2026-07-02T00:00:00+00:00") + timedelta(seconds=collector.INTERVAL)
+    ).isoformat(timespec="seconds")
+    assert meta["next_sweep"] == expected_next
 
 
 def test_bulk_update_reachability_keeps_last_seen_when_offline(client):

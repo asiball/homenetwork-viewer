@@ -93,6 +93,32 @@ def test_ensure_seeded_rejects_legacy_json_missing_required_field(tmp_path, monk
     assert storage.list_devices() == []
 
 
+def test_ensure_seeded_rejects_legacy_json_with_duplicate_ip(tmp_path, monkeypatch):
+    """Two legacy devices sharing an ip each pass per-item Pydantic validation
+    individually, so without a find_duplicate_identities check here the first
+    sign of trouble used to be the UNIQUE index (_m003) failing deep inside
+    replace_catalog — surfaced as a misleading "not a valid SQLite database:
+    UNIQUE constraint failed" error. It must instead fail loudly here, naming
+    the file and the duplicate ip."""
+    db, legacy = _fresh_paths(tmp_path)
+    dev_a = _valid_legacy_device(id="dev-a", mac="AA:BB:CC:00:09:09")
+    dev_b = _valid_legacy_device(id="dev-b", mac="AA:BB:CC:00:09:10")  # same ip as dev_a
+    legacy.write_text(
+        json.dumps({"devices": [dev_a, dev_b], "switches": [], "cables": []}), encoding="utf-8"
+    )
+    monkeypatch.setattr(storage, "DB_FILE", db)
+    monkeypatch.setattr(storage, "LEGACY_JSON", legacy)
+
+    with pytest.raises(storage.DataFileError) as exc_info:
+        storage.ensure_seeded()
+    msg = str(exc_info.value)
+    assert legacy.name in msg
+    assert "duplicate ip" in msg
+    assert "192.168.9.9" in msg
+    assert "not a valid SQLite database" not in msg
+    assert storage.list_devices() == []
+
+
 # ─── Corrupt DB before first start (item 4) ─────────────────────────────────
 
 

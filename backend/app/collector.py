@@ -12,19 +12,46 @@ import asyncio
 import contextlib
 import ipaddress
 import logging
+import os
 from time import perf_counter
 
 logger = logging.getLogger(__name__)
 
-INTERVAL = 120  # seconds between full sweeps
+# Seconds between full sweeps. Spec §4.1 calls for 5 minutes; configurable via
+# HOMENET_SWEEP_INTERVAL so a household with a slower/faster LAN can tune it
+# without a rebuild (mention it next to the other backend env vars in
+# docker-compose.yml).
+INTERVAL = int(os.environ.get("HOMENET_SWEEP_INTERVAL", "300"))
 CONNECT_TIMEOUT = 2  # seconds per TCP connect attempt
 TCP_PROBE_PORTS = [22, 80, 443, 8080, 8443]  # try these in order
 # Cap simultaneous probes so a large or offline-heavy sweep can't exhaust file
 # descriptors / ping subprocesses on a small host like a Raspberry Pi (#89).
 MAX_CONCURRENT_PROBES = 16
 # Prune old reachability samples roughly hourly rather than every sweep, so the
-# indexed DELETE isn't paid on each 2-minute cycle (#93).
+# indexed DELETE isn't paid on each sweep (#93).
 PRUNE_EVERY_SWEEPS = max(1, 3600 // INTERVAL)
+# Back up the catalog roughly once a day from the collector loop too (backups
+# otherwise only happened right before /api/import, so a household that never
+# imports never got one).
+BACKUPS_EVERY_SWEEPS = max(1, 86400 // INTERVAL)
+
+# Set (by request_sweep(), called from POST /api/scan) to wake the loop for an
+# immediate sweep instead of waiting out the rest of INTERVAL. Created fresh
+# each time run_collector() starts — None while the collector isn't running
+# (e.g. HOMENET_DISABLE_COLLECTOR=1 in tests), in which case request_sweep()
+# is a harmless no-op.
+_sweep_requested: asyncio.Event | None = None
+
+
+def request_sweep() -> bool:
+    """Ask the running collector loop for an immediate sweep (spec §5.6 ⟳
+    scan). Returns True if a running collector picked it up, False if there
+    is none to wake (nothing to do, not an error — the caller still reports
+    success since a sweep will happen once the collector does start)."""
+    if _sweep_requested is None:
+        return False
+    _sweep_requested.set()
+    return True
 
 
 async def _tcp_reachable(ip: str) -> float | None:
@@ -117,46 +144,83 @@ async def _probe_device(
     return device["id"], reachable, rtt, method
 
 
+async def _sweep_once(storage_module, sweep_index: int) -> None:
+    """Run one probe sweep: probe every device, append reachability samples,
+    prune / back up on their own (much coarser) schedules, and stamp
+    ``last_sweep`` — all the work one iteration of run_collector's loop does,
+    pulled out so it can be driven directly (and repeatedly, without waiting
+    out INTERVAL) from tests.
+
+    ``sweep_index`` is the 1-based count of sweeps run since the collector
+    started; it only decides whether *this* sweep also prunes / backs up.
+    """
+    # storage reads/writes are blocking (and fsync on write) — run them off
+    # the event loop so a sweep never stalls API request handling.
+    devices = await asyncio.to_thread(storage_module.list_devices)
+    # Stamp the sweep instant once, up front, and reuse it both for every
+    # sample in this batch and as the last_sweep meta value, so the two never
+    # drift apart (spec §4.3 "next scan").
+    sweep_ts = await asyncio.to_thread(storage_module.now_iso)
+    if devices:
+        sem = asyncio.Semaphore(MAX_CONCURRENT_PROBES)
+        results = await asyncio.gather(
+            *[_probe_device(d, sem) for d in devices],
+            return_exceptions=True,
+        )
+        # record_reachability derives last-seen / events from the samples (the
+        # frozen "just now" string is gone — issue #84).
+        samples: list[dict] = []
+        for r in results:
+            if isinstance(r, Exception):
+                logger.warning("collector.probe error=%s", r)
+                continue
+            dev_id, reachable, rtt, method = r
+            samples.append({"id": dev_id, "reachable": reachable, "rtt_ms": rtt, "method": method})
+        if samples:
+            await asyncio.to_thread(storage_module.record_reachability, samples, sweep_ts)
+            online = sum(1 for s in samples if s["reachable"])
+            logger.info(
+                "collector.sweep devices=%d online=%d offline=%d",
+                len(samples),
+                online,
+                len(samples) - online,
+            )
+    if sweep_index % PRUNE_EVERY_SWEEPS == 0:
+        await asyncio.to_thread(storage_module.prune_reachability)
+    if sweep_index % BACKUPS_EVERY_SWEEPS == 0:
+        try:
+            await asyncio.to_thread(storage_module.backup_catalog)
+        except Exception as exc:
+            # A backup failure (disk full, permissions...) must never take the
+            # sweep loop down with it — reachability probing is the collector's
+            # primary job.
+            logger.warning("collector.backup_failed error=%s", exc)
+    await asyncio.to_thread(storage_module.set_meta, "last_sweep", sweep_ts)
+
+
 async def run_collector(storage_module) -> None:
     """Continuously probe all devices, append a reachability sample per device and
-    refresh the online/last cache (#84, #93)."""
+    refresh the online/last cache (#84, #93).
+
+    Normally waits out INTERVAL between sweeps, but POST /api/scan can wake it
+    early via request_sweep() (spec §5.6 ⟳ scan): the loop waits on an
+    asyncio.Event with a timeout instead of a plain sleep, so a set event
+    returns immediately while a timeout behaves exactly like the old
+    asyncio.sleep(INTERVAL).
+    """
+    global _sweep_requested
+    _sweep_requested = asyncio.Event()
     logger.info("collector.start interval=%ds", INTERVAL)
     sweep = 0
-    while True:
-        try:
-            # storage reads/writes are blocking (and fsync on write) — run them
-            # off the event loop so a sweep never stalls API request handling.
-            devices = await asyncio.to_thread(storage_module.list_devices)
-            if devices:
-                sem = asyncio.Semaphore(MAX_CONCURRENT_PROBES)
-                results = await asyncio.gather(
-                    *[_probe_device(d, sem) for d in devices],
-                    return_exceptions=True,
-                )
-                # record_reachability stamps one ISO8601 sweep instant for the
-                # batch and appends each result as a sample (the frozen "just now"
-                # string is gone — issue #84), deriving last-seen / events from it.
-                samples: list[dict] = []
-                for r in results:
-                    if isinstance(r, Exception):
-                        logger.warning("collector.probe error=%s", r)
-                        continue
-                    dev_id, reachable, rtt, method = r
-                    samples.append(
-                        {"id": dev_id, "reachable": reachable, "rtt_ms": rtt, "method": method}
-                    )
-                if samples:
-                    await asyncio.to_thread(storage_module.record_reachability, samples)
-                    online = sum(1 for s in samples if s["reachable"])
-                    logger.info(
-                        "collector.sweep devices=%d online=%d offline=%d",
-                        len(samples),
-                        online,
-                        len(samples) - online,
-                    )
+    try:
+        while True:
+            try:
                 sweep += 1
-                if sweep % PRUNE_EVERY_SWEEPS == 0:
-                    await asyncio.to_thread(storage_module.prune_reachability)
-        except Exception as exc:
-            logger.error("collector.error %s", exc, exc_info=True)
-        await asyncio.sleep(INTERVAL)
+                await _sweep_once(storage_module, sweep)
+            except Exception as exc:
+                logger.error("collector.error %s", exc, exc_info=True)
+            _sweep_requested.clear()
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(_sweep_requested.wait(), timeout=INTERVAL)
+    finally:
+        _sweep_requested = None

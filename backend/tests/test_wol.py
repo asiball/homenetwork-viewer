@@ -83,6 +83,59 @@ def test_send_magic_packet_honours_broadcast_env_override(monkeypatch):
     assert sent["addr"] == ("192.168.1.255", 9)
 
 
+def test_send_magic_packet_warns_on_default_broadcast(monkeypatch, caplog):
+    """Sending to the limited broadcast (255.255.255.255) is the exact
+    misconfiguration the compose file's comments warn about — it never leaves
+    the docker bridge, but the send still "succeeds" from this process's
+    point of view, so it must be logged."""
+
+    class _FakeSock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def setsockopt(self, *a):
+            pass
+
+        def sendto(self, *a):
+            pass
+
+    monkeypatch.setattr(wol.socket, "socket", lambda *a, **k: _FakeSock())
+    monkeypatch.delenv("HOMENET_WOL_BROADCAST", raising=False)
+
+    with caplog.at_level("WARNING", logger="app.wol"):
+        wol.send_magic_packet("AA:BB:CC:DD:EE:FF")
+
+    assert any("limited broadcast" in r.message for r in caplog.records)
+    assert any("HOMENET_WOL_BROADCAST" in r.message for r in caplog.records)
+
+
+def test_send_magic_packet_no_warning_with_configured_broadcast(monkeypatch, caplog):
+    """A subnet-directed broadcast (the documented fix) must not warn."""
+
+    class _FakeSock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def setsockopt(self, *a):
+            pass
+
+        def sendto(self, *a):
+            pass
+
+    monkeypatch.setattr(wol.socket, "socket", lambda *a, **k: _FakeSock())
+
+    with caplog.at_level("WARNING", logger="app.wol"):
+        wol.send_magic_packet("AA:BB:CC:DD:EE:FF", broadcast="192.168.1.255")
+
+    assert not any("limited broadcast" in r.message for r in caplog.records)
+
+
 def test_send_magic_packet_explicit_broadcast_wins_over_env(monkeypatch):
     """An explicit `broadcast=` argument still overrides the env var."""
     sent: dict = {}
